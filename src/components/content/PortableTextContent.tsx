@@ -1,98 +1,97 @@
-import Image from "next/image";
 import Link from "next/link";
-import { PortableText, type PortableTextComponents } from "@portabletext/react";
-import { headingId, type PortableTextBlock } from "@/lib/content-helpers";
+import type { PortableTextBlock } from "@/lib/content-helpers";
+
+function blockText(block: PortableTextBlock) {
+  return (block.children || []).map((child) => child.text || "").join("");
+}
+
+function headingId(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function renderInlineChildren(block: PortableTextBlock) {
+  const markDefs = block.markDefs || [];
+  return (block.children || []).map((child, i) => {
+    const text = child.text || "";
+    if (!text) return null;
+    const key = child._key || `${block._key}-c${i}`;
+    const marks = child.marks || [];
+
+    let element: React.ReactNode = text;
+    for (const mark of marks) {
+      if (mark === "strong") element = <strong key={`${key}-strong`}>{element}</strong>;
+      else if (mark === "em") element = <em key={`${key}-em`}>{element}</em>;
+      else {
+        const def = markDefs.find((md) => md._key === mark);
+        if (def && def._type === "link" && def.href) {
+          const isExternal = def.href.startsWith("http");
+          element = isExternal ? (
+            <a key={`${key}-link`} href={def.href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{element}</a>
+          ) : (
+            <Link key={`${key}-link`} href={def.href} className="text-primary hover:underline">{element}</Link>
+          );
+        }
+      }
+    }
+    return <span key={key}>{element}</span>;
+  });
+}
+
+function renderBlock(block: PortableTextBlock, key: string) {
+  if (block._type === "contentImage" || block._type === "image") {
+    const imageUrl = (block as any)?.asset?.url;
+    if (!imageUrl) return null;
+    return (
+      <figure key={key}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt={(block as any)?.alt || ""} className="w-full rounded-xl" />
+        {(block as any)?.caption ? <figcaption>{(block as any).caption}</figcaption> : null}
+      </figure>
+    );
+  }
+
+  const text = blockText(block);
+  if (!text && block._type === "block") return null;
+  const children = renderInlineChildren(block);
+
+  if (block.listItem === "bullet" || block.listItem === "number") return <li key={key}>{children}</li>;
+  if (block.style === "h2") return <h2 id={headingId(text)} key={key}>{children}</h2>;
+  if (block.style === "h3") return <h3 key={key}>{children}</h3>;
+  if (block.style === "h4") return <h4 key={key}>{children}</h4>;
+  if (block.style === "blockquote") return <blockquote key={key}>{children}</blockquote>;
+  return <p key={key}>{children}</p>;
+}
+
+export function PortableTextContent({ blocks }: { blocks?: PortableTextBlock[] }) {
+  const content = blocks || [];
+  const result: React.ReactNode[] = [];
+  let i = 0;
+  while (i < content.length) {
+    const block = content[i];
+    const key = block._key || `${block._type}-${i}`;
+    if (block.listItem) {
+      const listType = block.listItem;
+      const items: PortableTextBlock[] = [];
+      while (i < content.length && content[i].listItem === listType) {
+        items.push(content[i]);
+        i++;
+      }
+      const Tag = listType === "number" ? "ol" : "ul";
+      result.push(<Tag key={`list-${key}`}>{items.map((item, idx) => renderBlock(item, item._key || `${key}-${idx}`))}</Tag>);
+      continue;
+    }
+    result.push(renderBlock(block, key));
+    i++;
+  }
+  return <>{result}</>;
+}
 
 export function portableTextHeadings(blocks?: PortableTextBlock[]) {
   return (blocks || [])
-    .filter((block) => /^h[1-6]$/.test(block.style || ""))
+    .filter((block) => block.style === "h2")
     .map((block) => {
-      const label = (block.children || []).map((child) => child.text || "").join("");
-      return { id: headingId(label), label };
+      const text = blockText(block);
+      return { id: headingId(text), label: text };
     })
     .filter((item) => item.label);
-}
-
-const components: PortableTextComponents = {
-  types: {
-    image: ({ value }) => {
-      const src = value?.asset?.url;
-      if (!src) return null;
-      return (
-        <figure className="my-8 overflow-hidden rounded-2xl border border-border bg-card">
-          <Image src={src} alt={value?.alt || ""} width={1400} height={900} className="h-auto w-full" unoptimized />
-          {value?.caption ? <figcaption className="px-4 py-3 text-sm text-muted-foreground">{value.caption}</figcaption> : null}
-        </figure>
-      );
-    },
-    contentImage: ({ value }) => {
-      const src = value?.asset?.url;
-      if (!src) return null;
-      return (
-        <figure className="my-8 overflow-hidden rounded-2xl border border-border bg-card">
-          <Image src={src} alt={value?.alt || ""} width={1400} height={900} className="h-auto w-full" unoptimized />
-          {value?.caption ? <figcaption className="px-4 py-3 text-sm text-muted-foreground">{value.caption}</figcaption> : null}
-        </figure>
-      );
-    },
-    table: ({ value }) => {
-      const rows = value?.rows || [];
-      if (!rows.length) return null;
-      return (
-        <div className="my-8 overflow-x-auto rounded-2xl border border-border bg-card">
-          <table className="w-full min-w-[640px] border-collapse">
-            <tbody>
-              {rows.map((row: any, index: number) => (
-                <tr key={index} className="border-b border-border last:border-0">
-                  {(row?.cells || []).map((cell: any, cellIndex: number) => (
-                    <td key={cellIndex} className="px-4 py-3 align-top text-sm text-foreground">
-                      {typeof cell === "string" ? cell : JSON.stringify(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    },
-  },
-  block: {
-    h1: ({ children }) => <h1 id={headingId(String(children))}>{children}</h1>,
-    h2: ({ children }) => <h2 id={headingId(String(children))}>{children}</h2>,
-    h3: ({ children }) => <h3 id={headingId(String(children))}>{children}</h3>,
-    h4: ({ children }) => <h4 id={headingId(String(children))}>{children}</h4>,
-    h5: ({ children }) => <h5 id={headingId(String(children))}>{children}</h5>,
-    h6: ({ children }) => <h6 id={headingId(String(children))}>{children}</h6>,
-    normal: ({ children }) => <p>{children}</p>,
-    blockquote: ({ children }) => <blockquote>{children}</blockquote>,
-  },
-  marks: {
-    strong: ({ children }) => <strong>{children}</strong>,
-    em: ({ children }) => <em>{children}</em>,
-    link: ({ children, value }) => {
-      const href = value?.href || "#";
-      const external = href.startsWith("http");
-      return external ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">
-          {children}
-        </a>
-      ) : (
-        <Link href={href} className="text-primary underline underline-offset-4">{children}</Link>
-      );
-    },
-  },
-  list: {
-    bullet: ({ children }) => <ul>{children}</ul>,
-    number: ({ children }) => <ol>{children}</ol>,
-  },
-  listItem: {
-    bullet: ({ children }) => <li>{children}</li>,
-    number: ({ children }) => <li>{children}</li>,
-  },
-};
-
-export function PortableTextContent({ blocks }: { blocks?: PortableTextBlock[] }) {
-  if (!blocks?.length) return null;
-  return <PortableText value={blocks as any} components={components} />;
 }

@@ -1,1 +1,25 @@
-import Link from "next/link"; import { fetchRegulations, splitNestedSlug } from "@/lib/content-pages"; import { buildMetadata } from "@/lib/metadata"; export const revalidate = 3600; export const metadata = buildMetadata('Regulations', 'Local short-term rental regulations by platform and location.', '/regulations'); export default async function RegulationsIndexPage() { const pages = await fetchRegulations(); return <div className="min-h-screen bg-background pb-20 pt-8"><div className="container mx-auto px-4 max-w-screen-xl"><div className="text-center max-w-3xl mx-auto mb-12"><h1 className="font-display text-4xl md:text-6xl font-bold mb-6">Regulations</h1><p className="text-xl text-muted-foreground">SEO-ready city and market regulation guides with real view-source content.</p></div><div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{pages.map((page) => { const [platform, location] = splitNestedSlug(page.slug, 'regulations', 2); return <Link key={page.id} href={`/regulations/${platform}/${location}`} className="rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-lg transition-all"><div className="text-sm text-primary font-bold uppercase tracking-wider mb-2">{platform}</div><h2 className="font-display text-2xl font-bold mb-3">{page.title}</h2><p className="text-muted-foreground line-clamp-3">{page.excerpt}</p></Link>; })}</div></div></div>; }
+import { DirectoryLayout } from "@/components/layout/DirectoryLayout";
+import { buildMetadata } from "@/lib/metadata";
+import { fetchRegulations } from "@/lib/content-pages";
+
+export const revalidate = 3600;
+export const metadata = buildMetadata("Regulations", "Local short-term rental regulations by platform and location.", "/regulations");
+
+export default async function RegulationsIndexPage() {
+  const regulationGuides = await fetchRegulations();
+  return (
+    <DirectoryLayout
+      title="STR Regulations & Laws"
+      subtitle="Navigate local zoning laws, licenses, and permits for your rental business."
+      type="regulations"
+      items={regulationGuides.map((item) => ({
+        id: item.slug,
+        location: item.location || item.title,
+        platform: item.platform || "airbnb",
+        region: item.region || "north-america",
+        updated: item.updated,
+        flag: "🌍",
+      }))}
+    />
+  );
+}
