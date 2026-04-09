@@ -7,10 +7,13 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  title: { default: "Mr. Props", template: "%s | Mr. Props" },
-  description: "Property management software, guides, templates, calculators, and SEO-ready content for short-term rental operators.",
-  openGraph: { title: "Mr. Props", description: "Modern property management for ambitious hosts.", type: "website", siteName: "Mr. Props" },
-  twitter: { card: "summary_large_image", title: "Mr. Props", description: "Modern property management for ambitious hosts." },
+  metadataBase: new URL("https://mrprops.io"),
+  title: { default: "Mr. Props — Property Management Software", template: "%s | Mr. Props" },
+  description: "AI-powered property management tools for short-term rental hosts.",
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", siteName: "Mr. Props", locale: "en_US" },
+  twitter: { card: "summary_large_image", site: "@mrprops" },
+  robots: { index: true, follow: true },
 };
 
 const menu = [

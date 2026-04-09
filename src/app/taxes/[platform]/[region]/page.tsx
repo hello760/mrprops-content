@@ -1,1 +1,46 @@
-import type { Metadata } from "next"; import { notFound } from "next/navigation"; import { FAQAndCTA, ProseBody } from "@/components/content/PageBits"; import { fetchTaxes, splitNestedSlug } from "@/lib/content-pages"; import { buildMetadata } from "@/lib/metadata"; export const revalidate = 3600; export async function generateStaticParams() { const pages = await fetchTaxes(); return pages.map((page) => { const [platform, region] = splitNestedSlug(page.slug, 'taxes', 2); return { platform, region }; }); } export async function generateMetadata({ params }: { params: Promise<{ platform: string; region: string }> }): Promise<Metadata> { const { platform, region } = await params; const page = (await fetchTaxes()).find((item) => { const [p, r] = splitNestedSlug(item.slug, 'taxes', 2); return p === platform && r === region; }); return buildMetadata(page?.seoTitle || 'Taxes', page?.seoDescription || 'Tax guide.', `/taxes/${platform}/${region}`); } export default async function TaxPage({ params }: { params: Promise<{ platform: string; region: string }> }) { const { platform, region } = await params; const page = (await fetchTaxes()).find((item) => { const [p, r] = splitNestedSlug(item.slug, 'taxes', 2); return p === platform && r === region; }); if (!page) notFound(); return <div className="min-h-screen bg-background pb-20"><div className="sticky top-0 z-40 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-700 py-3 text-center text-sm font-medium px-4 backdrop-blur-sm">{page.alertText || 'Educational guide only. Always consult a certified tax professional.'}</div><div className="container mx-auto px-4 max-w-screen-xl mt-8"><div className="mb-8"><div className="inline-flex items-center gap-2 bg-green-500/10 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold mb-6 border border-green-500/20">{page.reviewedBadge || 'Reviewed by CPA'}</div><h1 className="font-display text-4xl md:text-6xl font-bold mb-6">{page.title}</h1><p className="text-xl text-muted-foreground">{page.excerpt}</p></div><ProseBody blocks={page.body} /></div><FAQAndCTA faqs={page.faqs} faqTitle={page.faqTitle} ctaTitle={page.ctaTitle} ctaText={page.ctaText} ctaPrimaryButton={page.ctaPrimaryButton} ctaSecondaryButton={page.ctaSecondaryButton} /></div>; }
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { FAQAndCTA, JsonLd, ProseBody } from "@/components/content/PageBits";
+import { fetchTaxes, splitNestedSlug } from "@/lib/content-pages";
+import { buildMetadata } from "@/lib/metadata";
+import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
+
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const pages = await fetchTaxes();
+  return pages.map((page) => {
+    const [platform, region] = splitNestedSlug(page.slug, 'taxes', 2);
+    return { platform, region };
+  });
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ platform: string; region: string }> }): Promise<Metadata> {
+  const { platform, region } = await params;
+  const page = (await fetchTaxes()).find((item) => {
+    const [p, r] = splitNestedSlug(item.slug, 'taxes', 2);
+    return p === platform && r === region;
+  });
+  return buildMetadata(page?.seoTitle || 'Taxes', page?.seoDescription || 'Tax guide.', `/taxes/${platform}/${region}`);
+}
+
+export default async function TaxPage({ params }: { params: Promise<{ platform: string; region: string }> }) {
+  const { platform, region } = await params;
+  const page = (await fetchTaxes()).find((item) => {
+    const [p, r] = splitNestedSlug(item.slug, 'taxes', 2);
+    return p === platform && r === region;
+  });
+  if (!page) notFound();
+
+  const path = `/taxes/${platform}/${region}`;
+  const structuredData = buildStructuredData(
+    createBreadcrumbSchema([
+      { name: "Home", path: "/" },
+      { name: "Taxes", path: "/taxes" },
+      { name: page.title },
+    ]),
+    createFaqSchema(page.faqs)
+  );
+
+  return <div className="min-h-screen bg-background pb-20"><div className="sticky top-0 z-40 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-700 py-3 text-center text-sm font-medium px-4 backdrop-blur-sm">{page.alertText || 'Educational guide only. Always consult a certified tax professional.'}</div><div className="container mx-auto px-4 max-w-screen-xl mt-8"><div className="mb-8"><div className="inline-flex items-center gap-2 bg-green-500/10 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold mb-6 border border-green-500/20">{page.reviewedBadge || 'Reviewed by CPA'}</div><h1 className="font-display text-4xl md:text-6xl font-bold mb-6">{page.title}</h1><p className="text-xl text-muted-foreground">{page.excerpt}</p></div><ProseBody blocks={page.body} /></div><FAQAndCTA faqs={page.faqs} faqTitle={page.faqTitle} ctaTitle={page.ctaTitle} ctaText={page.ctaText} ctaPrimaryButton={page.ctaPrimaryButton} ctaSecondaryButton={page.ctaSecondaryButton} /><JsonLd data={structuredData} /></div>;
+}

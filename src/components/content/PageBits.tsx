@@ -16,6 +16,6 @@ export function FAQAndCTA({ faqs, faqTitle, ctaTitle, ctaText, ctaPrimaryButton,
   return <>{faqs?.length ? <FAQ title={faqTitle || "Frequently Asked Questions"} items={faqs} /> : null}<CTA title={ctaTitle} text={ctaText} primaryButton={ctaPrimaryButton} secondaryButton={ctaSecondaryButton} /></>;
 }
 
-export function JsonLd({ data }: { data: Record<string, unknown> }) {
+export function JsonLd({ data }: { data: unknown }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
 }

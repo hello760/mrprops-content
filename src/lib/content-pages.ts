@@ -32,6 +32,8 @@ export interface DirectoryEntry {
   body: PortableTextBlock[];
   seoTitle: string;
   seoDescription: string;
+  publishedAt?: string;
+  updatedAt?: string;
   image?: string;
   platform?: string;
   location?: string;
@@ -102,6 +104,8 @@ export interface LandingContent {
   image: string;
   seoTitle: string;
   seoDescription: string;
+  publishedAt?: string;
+  updatedAt?: string;
   heroBadge?: string;
   primaryCtaButton?: LinkButtonConfig;
   secondaryCtaButton?: LinkButtonConfig;
@@ -136,7 +140,7 @@ interface SanityDoc {
   seoTitle?: string;
   seoDescription?: string;
   publishedAt?: string;
-  updatedAt?: string;
+  _updatedAt?: string;
   imageUrl?: string;
   pageType?: "features" | "services";
   platform?: string;
@@ -259,6 +263,8 @@ function normalizeDirectoryDoc(doc: SanityDoc, prefix?: string): DirectoryEntry 
     body,
     seoTitle: doc.seoTitle || `${title} | Mr. Props`,
     seoDescription: doc.seoDescription || excerpt,
+    publishedAt: doc.publishedAt,
+    updatedAt: doc._updatedAt || doc.publishedAt,
     image: doc.imageUrl || DEFAULT_IMAGE,
     platform: doc.platform?.toLowerCase(),
     location: doc.locationName,
@@ -266,7 +272,7 @@ function normalizeDirectoryDoc(doc: SanityDoc, prefix?: string): DirectoryEntry 
     competitorName: doc.competitorName,
     primaryItem: doc.primaryItem,
     secondaryItem: doc.secondaryItem,
-    updated: formatDisplayDate(doc.updatedAt || doc.publishedAt),
+    updated: formatDisplayDate(doc._updatedAt || doc.publishedAt),
     heroBadge: doc.heroBadge,
     heroTitle: doc.heroTitle,
     heroDescription: doc.heroDescription,
@@ -333,6 +339,8 @@ function normalizeLandingDoc(doc: SanityDoc): LandingContent {
     image: doc.imageUrl || DEFAULT_IMAGE,
     seoTitle: doc.seoTitle || `${title} | Mr. Props`,
     seoDescription: doc.seoDescription || doc.excerpt || portableTextToPlainText(body).slice(0, 160),
+    publishedAt: doc.publishedAt,
+    updatedAt: doc._updatedAt || doc.publishedAt,
     heroBadge: doc.heroBadge,
     primaryCtaButton: normalizeButtons(doc.primaryCtaButton),
     secondaryCtaButton: normalizeButtons(doc.secondaryCtaButton),
@@ -360,7 +368,10 @@ async function queryDocs(filter: string, params: Record<string, unknown> = {}) {
 
 const fetchByType = cache(async (types: string[]) => {
   const typeFilter = types.map((t) => `_type == "${t}"`).join(" || ");
-  return sanityFetch<SanityDoc[]>(`*[(${typeFilter}) && defined(slug.current)]|order(coalesce(publishedAt, _updatedAt) desc)${BASE_PROJECTION}`);
+  return sanityFetch<SanityDoc[]>(`*[(${typeFilter}) && defined(slug.current)]|order(coalesce(publishedAt, _updatedAt) desc){
+    ${BASE_PROJECTION.slice(1, -1)},
+    _updatedAt
+  }`);
 });
 
 export const fetchLandingPages = cache(async (pageType: "features" | "services") => {

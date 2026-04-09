@@ -11,6 +11,8 @@ export interface GlossaryTerm {
   relatedTerms: string[];
   seoTitle: string;
   seoDescription: string;
+  publishedAt?: string;
+  updatedAt?: string;
   date: string;
   readTime: string;
   definitionPrefix?: string;
@@ -36,6 +38,7 @@ interface SanityGlossaryDocument {
   seoTitle?: string;
   seoDescription?: string;
   publishedAt?: string;
+  _updatedAt?: string;
   relatedTerms?: Array<string | { term?: string; title?: string; slug?: { current?: string } }>;
   definitionPrefix?: string;
   proTipBadge?: string;
@@ -86,6 +89,8 @@ export function normalizeGlossaryTerm(doc: SanityGlossaryDocument): GlossaryTerm
     relatedTerms: normalizeRelatedTerms(doc.relatedTerms),
     seoTitle: doc.seoTitle || `What is ${term}? | Mr. Props`,
     seoDescription: doc.seoDescription || definition,
+    publishedAt: doc.publishedAt,
+    updatedAt: doc._updatedAt || doc.publishedAt,
     date: formatDisplayDate(doc.publishedAt),
     readTime: calculateReadTime(plainTextBody),
     definitionPrefix: doc.definitionPrefix,
@@ -102,11 +107,11 @@ export function normalizeGlossaryTerm(doc: SanityGlossaryDocument): GlossaryTerm
 }
 
 const LIST_QUERY = `*[_type == "glossaryTerm" && defined(slug.current)]|order(coalesce(term, title) asc){
-  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, relatedTerms, definitionPrefix, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton
+  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, _updatedAt, relatedTerms, definitionPrefix, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton
 }`;
 
 const BY_SLUG_QUERY = `*[_type == "glossaryTerm" && slug.current in [$slug, $prefixedSlug, $baseSlug, $prefixedBaseSlug, $whatIsSlug, $prefixedWhatIsSlug]][0]{
-  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, definitionPrefix, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton,
+  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, _updatedAt, definitionPrefix, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton,
   relatedTerms[]{..., term, title, slug}
 }`;
 
