@@ -214,7 +214,6 @@ interface SanityDoc {
 
 const DEFAULT_IMAGE = "/assets/MrProps_main_screen_1768972680323.png";
 const DEFAULT_GUIDE_IMAGE = "/assets/generated_images/minimalist_finance_graph.png";
-const DEFAULT_ALTERNATIVE_IMAGE = "/assets/generated_images/side_by_side_comparison_of_outdated_software_interface_versus_modern_clean_interface.png";
 const DEFAULT_COMPARISON_IMAGE = "/assets/generated_images/head_to_head_boxing_match_style_vs_graphic_for_software.png";
 const DEFAULT_PRICING_IMAGE = "/assets/generated_images/fragmented_software_stack_cost_equation_visual.png";
 const FALLBACK_DATE = "Oct 24, 2025";
@@ -283,9 +282,19 @@ function fallbackImageForSlug(slug: string) {
     return templateImages[slug] || DEFAULT_IMAGE;
   }
 
+  if (slug.startsWith("guides/")) {
+    const guideImages: Record<string, string> = {
+      "guides/how-to-start-short-term-rental": "/assets/generated_images/minimalist_automation_gear.png",
+      "guides/what-is-airbnb": "/assets/generated_images/minimalist_house_blueprint.png",
+      "guides/post-featured": "/assets/generated_images/minimalist_automation_gear.png",
+      "guides/airbnb-hosting-guide": "/assets/stock_images/laptop_showing_listi_245cd225.jpg",
+      "guides/property-maintenance-guide": "/assets/stock_images/laptop_showing_listi_245cd225.jpg",
+    };
+    return guideImages[slug] || DEFAULT_GUIDE_IMAGE;
+  }
+
   if (slug.startsWith("compare/")) return DEFAULT_COMPARISON_IMAGE;
-  if (slug.startsWith("alternatives/")) return DEFAULT_ALTERNATIVE_IMAGE;
-  if (slug.startsWith("guides/")) return DEFAULT_GUIDE_IMAGE;
+  if (slug.startsWith("alternatives/")) return DEFAULT_IMAGE;
   if (slug.includes("pricing")) return DEFAULT_PRICING_IMAGE;
   return DEFAULT_IMAGE;
 }
@@ -401,6 +410,94 @@ function normalizeLandingDoc(doc: SanityDoc): LandingContent {
     ctaSecondaryButton: normalizeButtons(doc.ctaSecondaryButton),
   };
 }
+
+const fallbackGuides: Array<DirectoryEntry & { date: string; readTime: string; authorName: string; category: string }> = [
+  {
+    id: "guide-how-to-start-short-term-rental",
+    slug: "how-to-start-short-term-rental",
+    title: "How to Start a Short-Term Rental Empire in 2026",
+    excerpt: "The complete blueprint for launching your first arbitrage unit, mastering dynamic pricing, and automating operations.",
+    body: defaultBody("The complete blueprint for launching your first arbitrage unit, mastering dynamic pricing, and automating operations."),
+    seoTitle: "How to Start a Short-Term Rental Empire in 2026 | Mr. Props",
+    seoDescription: "The complete blueprint for launching your first arbitrage unit, mastering dynamic pricing, and automating operations.",
+    image: fallbackImageForSlug("guides/how-to-start-short-term-rental"),
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+    category: "Operations",
+    authorName: "Mr. Props Team",
+    date: "Oct 24, 2025",
+    readTime: "1 min read",
+  },
+  {
+    id: "guide-what-is-airbnb",
+    slug: "what-is-airbnb",
+    title: "What Is Airbnb? A Host's Perspective",
+    excerpt: "Understanding fees, algorithms, and how the platform really works for modern hosts.",
+    body: defaultBody("Understanding fees, algorithms, and how the platform really works for modern hosts."),
+    seoTitle: "What Is Airbnb? A Host's Perspective | Mr. Props",
+    seoDescription: "Understanding fees, algorithms, and how the platform really works for modern hosts.",
+    image: fallbackImageForSlug("guides/what-is-airbnb"),
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-23",
+    updatedAt: "2025-10-23",
+    category: "Marketing",
+    authorName: "Mr. Props Team",
+    date: "Oct 23, 2025",
+    readTime: "1 min read",
+  },
+  {
+    id: "guide-post-featured",
+    slug: "post-featured",
+    title: "The Blueprint: Scaling from 1 to 10 Units in 12 Months",
+    excerpt: "A step-by-step guide to leveraging rental arbitrage, co-hosting, and automation to build a six-figure portfolio without owning property.",
+    body: defaultBody("A step-by-step guide to leveraging rental arbitrage, co-hosting, and automation to build a six-figure portfolio without owning property."),
+    seoTitle: "The Blueprint: Scaling from 1 to 10 Units in 12 Months | Mr. Props",
+    seoDescription: "A step-by-step guide to leveraging rental arbitrage, co-hosting, and automation to build a six-figure portfolio without owning property.",
+    image: fallbackImageForSlug("guides/post-featured"),
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-22",
+    updatedAt: "2025-10-22",
+    category: "Operations",
+    authorName: "Mr. Props Team",
+    date: "Oct 22, 2025",
+    readTime: "1 min read",
+  },
+  {
+    id: "guide-airbnb-hosting-guide",
+    slug: "airbnb-hosting-guide",
+    title: "Mastering Airbnb Hosting",
+    excerpt: "From your first listing to Superhost status, here is everything you need to know about building a profitable short-term rental business.",
+    body: defaultBody("From your first listing to Superhost status, here is everything you need to know about building a profitable short-term rental business."),
+    seoTitle: "Mastering Airbnb Hosting: The Ultimate Guide | Mr. Props",
+    seoDescription: "From your first listing to Superhost status, here is everything you need to know about building a profitable short-term rental business.",
+    image: fallbackImageForSlug("guides/airbnb-hosting-guide"),
+    updated: "Nov 15, 2025",
+    publishedAt: "2025-11-15",
+    updatedAt: "2025-11-15",
+    category: "Operations",
+    authorName: "Mr. Props Team",
+    date: "Nov 15, 2025",
+    readTime: "15 min read",
+  },
+  {
+    id: "guide-property-maintenance-guide",
+    slug: "property-maintenance-guide",
+    title: "The Complete Guide to Property Maintenance",
+    excerpt: "Keep your properties in pristine condition with automated tracking, scheduled upkeep, and contractor management.",
+    body: defaultBody("Keep your properties in pristine condition with automated tracking, scheduled upkeep, and contractor management."),
+    seoTitle: "Property Maintenance Guide for Hosts | Mr. Props",
+    seoDescription: "Keep your properties in pristine condition with automated tracking, scheduled upkeep, and contractor management.",
+    image: fallbackImageForSlug("guides/property-maintenance-guide"),
+    updated: "Dec 10, 2025",
+    publishedAt: "2025-12-10",
+    updatedAt: "2025-12-10",
+    category: "Operations",
+    authorName: "Mr. Props Team",
+    date: "Dec 10, 2025",
+    readTime: "10 min read",
+  },
+];
 
 const templateFallbacks: DirectoryEntry[] = [
   ["guest-experience", "airbnb-welcome-book", "Airbnb Welcome Book"],
@@ -613,14 +710,17 @@ export const fetchTools = cache(async () => {
 
 export const fetchGuides = cache(async () => {
   const docs = await fetchByType(["guide", "post"]);
-  return docs.map((doc) => {
+  const sanityGuides = docs.map((doc) => {
     const item = normalizeDirectoryDoc(doc, "guides");
     return {
       ...item,
+      authorName: doc.title ? (doc as any).authorName || "Mr. Props Team" : "Mr. Props Team",
+      category: doc.category || "Operations",
       date: formatDisplayDate(doc.publishedAt),
       readTime: calculateReadTime(portableTextToPlainText(item.body) || item.excerpt),
     };
   });
+  return dedupeBySlug([...sanityGuides, ...fallbackGuides]);
 });
 
 export const fetchGuideBySlug = cache(async (slug: string) => {
@@ -635,11 +735,13 @@ export const fetchGuideBySlug = cache(async (slug: string) => {
     prefixedBaseSlug: `guides/${stripPrefix(cleanSlug, "guides")}`,
   });
 
-  if (!doc) return null;
+  if (!doc) return fallbackGuides.find((guide) => guide.slug === cleanSlug) || null;
 
   const item = normalizeDirectoryDoc(doc, "guides");
   return {
     ...item,
+    authorName: (doc as any).authorName || "Mr. Props Team",
+    category: doc.category || "Operations",
     date: formatDisplayDate(doc.publishedAt),
     readTime: calculateReadTime(portableTextToPlainText(item.body) || item.excerpt),
   };
