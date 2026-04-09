@@ -16,7 +16,8 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const guide = await fetchGuideBySlug(slug);
-  return buildMetadata(guide?.seoTitle || "Guides", guide?.seoDescription || "Property management guides.", `/guides/${slug}`);
+  if (!guide) notFound();
+  return buildMetadata(guide.seoTitle || guide.title, guide.seoDescription || guide.excerpt, `/guides/${guide.slug}`);
 }
 
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {

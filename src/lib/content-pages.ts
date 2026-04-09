@@ -427,8 +427,25 @@ export const fetchGuides = cache(async () => {
 });
 
 export const fetchGuideBySlug = cache(async (slug: string) => {
-  const guides = await fetchGuides();
-  return guides.find((item) => item.slug === slug) || null;
+  const cleanSlug = stripPrefix(slug, "guides");
+  const doc = await sanityFetch<SanityDoc | null>(`*[_type in ["guide", "post"] && defined(slug.current) && slug.current in [$slug, $prefixedSlug, $baseSlug, $prefixedBaseSlug]][0]{
+    ${BASE_PROJECTION.slice(1, -1)},
+    _updatedAt
+  }`, {
+    slug,
+    prefixedSlug: `guides/${cleanSlug}`,
+    baseSlug: cleanSlug,
+    prefixedBaseSlug: `guides/${stripPrefix(cleanSlug, "guides")}`,
+  });
+
+  if (!doc) return null;
+
+  const item = normalizeDirectoryDoc(doc, "guides");
+  return {
+    ...item,
+    date: formatDisplayDate(doc.publishedAt),
+    readTime: calculateReadTime(portableTextToPlainText(item.body) || item.excerpt),
+  };
 });
 
 export function splitNestedSlug(fullSlug: string, prefix: string, expectedDepth: number) {
