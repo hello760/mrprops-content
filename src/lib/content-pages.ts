@@ -212,7 +212,11 @@ interface SanityDoc {
   features?: FeatureCardConfig[];
 }
 
-const DEFAULT_IMAGE = "/og-image.png";
+const DEFAULT_IMAGE = "/assets/MrProps_main_screen_1768972680323.png";
+const DEFAULT_GUIDE_IMAGE = "/assets/generated_images/minimalist_finance_graph.png";
+const DEFAULT_ALTERNATIVE_IMAGE = "/assets/generated_images/side_by_side_comparison_of_outdated_software_interface_versus_modern_clean_interface.png";
+const DEFAULT_COMPARISON_IMAGE = "/assets/generated_images/head_to_head_boxing_match_style_vs_graphic_for_software.png";
+const DEFAULT_PRICING_IMAGE = "/assets/generated_images/fragmented_software_stack_cost_equation_visual.png";
 const FALLBACK_DATE = "Oct 24, 2025";
 
 const BASE_PROJECTION = `{
@@ -262,6 +266,30 @@ function dedupeBySlug<T extends { slug: string }>(items: T[]) {
   });
 }
 
+function fallbackImageForSlug(slug: string) {
+  if (slug.startsWith("templates/")) {
+    const templateImages: Record<string, string> = {
+      "templates/guest-experience/airbnb-welcome-book": "/assets/stock_images/airbnb_welcome_book__763d0d3b.jpg",
+      "templates/legal/house-rules-template": "/assets/stock_images/house_rules_document_4cf60d5b.jpg",
+      "templates/operations/cleaning-checklist": "/assets/stock_images/cleaning_checklist_o_083d553b.jpg",
+      "templates/operations/inventory-tracker": "/assets/stock_images/inventory_list_for_r_c0f0808d.jpg",
+      "templates/guest-experience/guest-message-scripts": "/assets/stock_images/smartphone_showing_g_796edb1e.jpg",
+      "templates/legal/rental-agreement": "/assets/stock_images/rental_agreement_con_73f69648.jpg",
+      "templates/marketing/listing-optimization-guide": "/assets/stock_images/laptop_showing_listi_245cd225.jpg",
+      "templates/legal/co-host-contract": "/assets/stock_images/contract_document_fo_9ff75724.jpg",
+      "templates/operations/pricing-strategy-calculator": "/assets/stock_images/calculator_and_finan_e5a6228f.jpg",
+      "templates/guest-experience/amenities-checklist": "/assets/stock_images/list_of_amenities_fo_77f0028e.jpg",
+    };
+    return templateImages[slug] || DEFAULT_IMAGE;
+  }
+
+  if (slug.startsWith("compare/")) return DEFAULT_COMPARISON_IMAGE;
+  if (slug.startsWith("alternatives/")) return DEFAULT_ALTERNATIVE_IMAGE;
+  if (slug.startsWith("guides/")) return DEFAULT_GUIDE_IMAGE;
+  if (slug.includes("pricing")) return DEFAULT_PRICING_IMAGE;
+  return DEFAULT_IMAGE;
+}
+
 function normalizeDirectoryDoc(doc: SanityDoc, prefix?: string): DirectoryEntry {
   const slug = normalizeSlug(doc.slug?.current, prefix) || doc._id;
   const title = doc.title || startCaseSlug(slug);
@@ -277,7 +305,7 @@ function normalizeDirectoryDoc(doc: SanityDoc, prefix?: string): DirectoryEntry 
     seoDescription: doc.seoDescription || excerpt,
     publishedAt: doc.publishedAt,
     updatedAt: doc._updatedAt || doc.publishedAt,
-    image: doc.imageUrl || DEFAULT_IMAGE,
+    image: doc.imageUrl || fallbackImageForSlug(slug),
     platform: doc.platform?.toLowerCase(),
     location: doc.locationName,
     region: (doc.regionName || "global").toLowerCase().replace(/\s+/g, "-"),
@@ -348,7 +376,7 @@ function normalizeLandingDoc(doc: SanityDoc): LandingContent {
     headline: doc.headline || title,
     subheadline: doc.subheadline || doc.excerpt || "Modern property management for modern hosts.",
     body,
-    image: doc.imageUrl || DEFAULT_IMAGE,
+    image: doc.imageUrl || "/assets/MrProps_main_screen_1768972680323.png",
     seoTitle: doc.seoTitle || `${title} | Mr. Props`,
     seoDescription: doc.seoDescription || doc.excerpt || portableTextToPlainText(body).slice(0, 160),
     publishedAt: doc.publishedAt,
@@ -393,7 +421,7 @@ const templateFallbacks: DirectoryEntry[] = [
   body: defaultBody(`Download the ${title.toLowerCase()} and customize it for your short-term rental operation.`),
   seoTitle: `${title} | Mr. Props`,
   seoDescription: `Download the ${title.toLowerCase()} and customize it for your short-term rental operation.`,
-  image: DEFAULT_IMAGE,
+  image: fallbackImageForSlug(`templates/${category}/${slug}`),
   updated: FALLBACK_DATE,
   publishedAt: "2025-10-24",
   updatedAt: "2025-10-24",
@@ -488,7 +516,7 @@ const landingFallbacks: LandingContent[] = [
     headline: "Automate Your Unified Inbox",
     subheadline: "Centralize guest communication and reduce context switching across Airbnb, Booking.com, and direct bookings.",
     body: defaultBody("Centralize guest communication and reduce context switching across Airbnb, Booking.com, and direct bookings."),
-    image: DEFAULT_IMAGE,
+    image: "/assets/MrProps_main_screen_1768972680323.png",
     seoTitle: "Unified Inbox for Property Managers | Mr. Props",
     seoDescription: "Centralize guest communication and reduce context switching across channels.",
     heroBadge: "Feature",
@@ -509,7 +537,7 @@ const landingFallbacks: LandingContent[] = [
     headline: "Built for Operators Managing Real Portfolios",
     subheadline: "Run a tighter operation with messaging, cleaning, reporting, and compliance in one workflow.",
     body: defaultBody("Run a tighter operation with messaging, cleaning, reporting, and compliance in one workflow."),
-    image: DEFAULT_IMAGE,
+    image: "/assets/MrProps_main_screen_1768972680323.png",
     seoTitle: "Property Management Software for Operators | Mr. Props",
     seoDescription: "Run a tighter operation with messaging, cleaning, reporting, and compliance in one workflow.",
     heroBadge: "Service",
