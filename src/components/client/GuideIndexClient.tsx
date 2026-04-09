@@ -36,14 +36,14 @@ export function GuideIndexClient({ guides }: { guides: Array<DirectoryEntry & { 
         <div className="container mx-auto px-4 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 animate-in slide-in-from-left-5 duration-700">
-              <div className="bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 px-3 py-1 text-sm font-bold uppercase tracking-wider rounded-full inline-flex">
+              <div className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 px-3 py-1 text-sm font-bold uppercase tracking-wider">
                 Featured Strategy
               </div>
               <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground">
                 {featuredGuide?.title}
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-xl">{featuredGuide?.excerpt}</p>
-              <div className="flex flex-wrap gap-4 pt-2 items-center">
+              <div className="flex flex-wrap gap-4 pt-2">
                 <Link href={`/guides/${featuredGuide?.slug}`}>
                   <Button size="lg" className="rounded-full font-bold h-12 px-8 shadow-lg shadow-primary/20">
                     Read Full Guide
@@ -147,9 +147,10 @@ export function GuideIndexClient({ guides }: { guides: Array<DirectoryEntry & { 
                         {category}
                       </span>
                     </div>
-                    <div
-                      className="w-full h-full bg-slate-800 group-hover:scale-105 transition-transform duration-700 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${post.image})` }}
+                    <img
+                      src={post.image}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
                   </div>

@@ -51,7 +51,7 @@ export function GlossaryIndexClient({ terms }: { terms: GlossaryTerm[] }) {
             </div>
           </div>
           <div className="space-y-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold font-display">{search ? `Search Results for "${search}"` : "All Terms"}</h2>
               <span className="text-muted-foreground text-sm">{filteredTerms.length} definitions found</span>
             </div>

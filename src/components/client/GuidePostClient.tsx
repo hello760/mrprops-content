@@ -126,8 +126,8 @@ export function GuidePostClient({ guide, relatedGuides }: { guide: DirectoryEntr
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-muted-foreground">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 border border-border rounded-full overflow-hidden bg-primary text-white flex items-center justify-center text-sm font-bold">
-              <img src="/mascot.png" alt="Mr. Props" className="w-full h-full object-cover" />
+            <div className="h-10 w-10 border border-border">
+              <img src="/mascot.png" alt="Mr. Props" className="w-full h-full object-cover bg-primary text-white" />
             </div>
             <div className="text-left">
               <div className="font-bold text-foreground text-sm leading-none">{guide.authorName || "Mr. Props Team"}</div>

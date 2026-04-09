@@ -80,7 +80,7 @@ export function PricingPageClient() {
             </div>
 
             <div className="mb-12 relative px-4">
-              <input type="range" min={1} max={150} step={1} value={unitCount} onChange={(e) => setUnitCount(Number(e.target.value))} className="w-full accent-primary py-4" />
+              <input type="range" min={1} max={150} step={1} value={unitCount} onChange={(e) => setUnitCount(Number(e.target.value))} className="py-4" />
               <div className="flex justify-between text-xs font-bold text-muted-foreground mt-2 px-1">
                 <span>1 Unit</span>
                 <span>75 Units</span>
