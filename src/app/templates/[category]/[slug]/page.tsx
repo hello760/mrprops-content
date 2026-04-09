@@ -1,46 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { FAQAndCTA, JsonLd, ProseBody } from "@/components/content/PageBits";
+import { JsonLd } from "@/components/content/PageBits";
+import { LeadGenTemplateClient } from "@/components/client/LeadGenTemplateClient";
 import { fetchTemplates, splitNestedSlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 
 export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  const pages = await fetchTemplates();
-  return pages.map((page) => {
-    const [category, slug] = splitNestedSlug(page.slug, 'templates', 2);
-    return { category, slug };
-  });
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ category: string; slug: string }> }): Promise<Metadata> {
-  const { category, slug } = await params;
-  const page = (await fetchTemplates()).find((item) => {
-    const [c, s] = splitNestedSlug(item.slug, 'templates', 2);
-    return c === category && s === slug;
-  });
-  return buildMetadata(page?.seoTitle || 'Templates', page?.seoDescription || 'Template page.', `/templates/${category}/${slug}`);
-}
+export async function generateStaticParams() { const pages = await fetchTemplates(); return pages.map((page) => { const [category, slug] = splitNestedSlug(page.slug, "templates", 2); return { category, slug }; }); }
+export async function generateMetadata({ params }: { params: Promise<{ category: string; slug: string }> }): Promise<Metadata> { const { category, slug } = await params; const page = (await fetchTemplates()).find((item) => { const [c, s] = splitNestedSlug(item.slug, "templates", 2); return c === category && s === slug; }); return buildMetadata(page?.seoTitle || "Templates", page?.seoDescription || "Template page.", `/templates/${category}/${slug}`); }
 
 export default async function TemplatePage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category, slug } = await params;
-  const page = (await fetchTemplates()).find((item) => {
-    const [c, s] = splitNestedSlug(item.slug, 'templates', 2);
-    return c === category && s === slug;
-  });
+  const page = (await fetchTemplates()).find((item) => { const [c, s] = splitNestedSlug(item.slug, "templates", 2); return c === category && s === slug; });
   if (!page) notFound();
-
-  const path = `/templates/${category}/${slug}`;
-  const structuredData = buildStructuredData(
-    createBreadcrumbSchema([
-      { name: "Home", path: "/" },
-      { name: "Templates", path: "/templates" },
-      { name: page.title },
-    ]),
-    createFaqSchema(page.faqs)
-  );
-
-  return <div className="min-h-screen bg-secondary/30 pt-8 pb-20"><div className="container mx-auto px-4 max-w-screen-xl"><div className="text-center max-w-3xl mx-auto mb-12"><h1 className="font-display text-4xl md:text-6xl font-bold mb-6">{page.title}</h1><p className="text-xl text-muted-foreground mb-8">{page.excerpt}</p></div><section className="container mx-auto max-w-screen-xl pb-16"><ProseBody blocks={page.body} /></section><FAQAndCTA faqs={page.faqs} faqTitle={page.faqTitle} ctaTitle={page.ctaTitle} ctaText={page.ctaText} ctaPrimaryButton={page.ctaPrimaryButton} ctaSecondaryButton={page.ctaSecondaryButton} /></div><JsonLd data={structuredData} /></div>;
+  const structuredData = buildStructuredData(createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Templates", path: "/templates" }, { name: page.title }]), createFaqSchema(page.faqs));
+  return <><LeadGenTemplateClient page={{ ...page, category }} /><JsonLd data={structuredData} /></>;
 }

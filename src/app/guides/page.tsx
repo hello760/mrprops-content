@@ -1,6 +1,11 @@
-import Link from "next/link";
+import { GuideIndexClient } from "@/components/client/GuideIndexClient";
 import { fetchGuides } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
+
 export const revalidate = 3600;
 export const metadata = buildMetadata("Guides", "Mr. Props guides and blog content for property managers.", "/guides");
-export default async function GuidesIndexPage() { const guides = await fetchGuides(); return <div className="min-h-screen bg-background pb-20 pt-8"><div className="container mx-auto px-4 max-w-screen-xl"><div className="text-center max-w-3xl mx-auto mb-12"><h1 className="font-display text-4xl md:text-6xl font-bold mb-6">Blog & Guides</h1><p className="text-xl text-muted-foreground">Actionable playbooks for acquisition, automation, compliance, pricing, and growth.</p></div><div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{guides.map((guide) => <Link key={guide.id} href={`/guides/${guide.slug}`} className="rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-lg transition-all"><div className="text-sm text-primary font-bold uppercase tracking-wider mb-2">{guide.date} · {guide.readTime}</div><h2 className="font-display text-2xl font-bold mb-3">{guide.title}</h2><p className="text-muted-foreground line-clamp-3">{guide.excerpt}</p></Link>)}</div></div></div>; }
+
+export default async function GuidesIndexPage() {
+  const guides = await fetchGuides();
+  return <GuideIndexClient guides={guides} />;
+}

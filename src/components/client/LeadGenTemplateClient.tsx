@@ -1,0 +1,178 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { PortableTextContent } from "@/components/content/PortableTextContent";
+import { Lock, FileText, CheckCircle2, Home, ChevronRight } from "lucide-react";
+import type { DirectoryEntry } from "@/lib/content-pages";
+
+interface TemplatePage extends DirectoryEntry {
+  category?: string;
+  badge?: string;
+  description?: string;
+  trustItems?: string[];
+  previewTitle?: string;
+  previewMeta?: string;
+  previewBody?: any[];
+  gateTitle?: string;
+  gateDescription?: string;
+  formPlaceholder?: string;
+  formButtonLabel?: string;
+  formDisclaimer?: string;
+  whatIsTitle?: string;
+  whatIsText?: string;
+  useCasesTitle?: string;
+  useCases?: string[];
+  customizeTitle?: string;
+  customizeText?: string;
+  resourcesTitle?: string;
+  resources?: Array<{ href: string; label: string; meta?: string }>;
+}
+
+export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDownload = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setEmail("");
+    }, 1500);
+  };
+
+  const categoryName = (page.category || "templates").split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+  const trustItems = page.trustItems?.length ? page.trustItems : ["Free Download", "Instant Access", "Editable Format"];
+  const useCases = page.useCases?.length ? page.useCases : ["Launch a new listing faster", "Standardize team workflows", "Reduce guest friction", "Save admin time every week"];
+  const resources = page.resources?.length ? page.resources : [{ href: "/templates", label: "More Templates", meta: "Explore" }];
+  const faqs = page.faqs?.length ? page.faqs : [{ question: "How do I use this template?", answer: "Download it, customize it for your property, and use it as a starting point for your team." }];
+
+  return (
+    <div className="min-h-screen bg-secondary/30 pt-4 md:pt-8 pb-20">
+      <div className="container mx-auto px-4 max-w-screen-xl">
+        <div className="flex items-center text-sm text-muted-foreground gap-2 mb-8 overflow-x-auto whitespace-nowrap">
+          <Link href="/" className="hover:text-primary transition-colors flex items-center gap-1"><Home className="h-3 w-3" /> Home</Link>
+          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+          <Link href="/templates" className="hover:text-primary transition-colors">Templates</Link>
+          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+          <Link href={`/templates/${page.category || "templates"}`} className="hover:text-primary transition-colors capitalize">{categoryName}</Link>
+          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+          <span className="text-foreground font-medium truncate max-w-[200px]">{page.title}</span>
+        </div>
+
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <Badge variant="secondary" className="mb-4 text-primary bg-primary/10 border-primary/20">{(page as any).badge || page.heroBadge || "Free Template"}</Badge>
+          <h1 className="font-display text-4xl md:text-6xl font-bold mb-6 text-foreground">{page.title}</h1>
+          <p className="text-xl text-muted-foreground mb-8">{(page as any).description || page.excerpt}</p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm font-medium text-muted-foreground">
+            {trustItems.map((item) => (
+              <div key={item} className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-full border border-border shadow-sm">
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[1fr_350px] gap-12 items-start max-w-6xl mx-auto">
+          <div className="space-y-12">
+            <div className="relative w-full mx-auto bg-white dark:bg-card border border-border/50 shadow-2xl rounded-sm overflow-hidden min-h-[900px] md:p-12 p-6">
+              <div className="mb-8 pb-8 border-b border-gray-100 dark:border-gray-800">
+                <div className="font-serif text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">{page.title}</div>
+                <div className="text-gray-500 font-mono text-sm uppercase tracking-wider">{(page as any).previewMeta || categoryName}</div>
+              </div>
+
+              <div className="font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-300 space-y-6">
+                <PortableTextContent blocks={(page as any).previewBody?.length ? (page as any).previewBody : page.body} />
+              </div>
+
+              <div className="absolute inset-0 top-0 bg-gradient-to-b from-transparent from-60% via-white/90 to-white dark:from-transparent dark:from-60% dark:via-card/95 dark:to-card z-10 flex items-end justify-center pb-20">
+                <div className="w-full max-w-md bg-background/80 backdrop-blur-xl border border-primary/20 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-8 text-center animate-in fade-in slide-in-from-bottom-10 duration-700">
+                  <div className="h-14 w-14 bg-primary rounded-2xl rotate-3 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30">
+                    <Lock className="h-7 w-7 text-primary-foreground" />
+                  </div>
+
+                  <h3 className="font-display font-bold text-2xl mb-2">{(page as any).gateTitle || "Download the full template"}</h3>
+                  <p className="text-muted-foreground mb-6">{(page as any).gateDescription || "Enter your email to unlock the editable version instantly."}</p>
+
+                  <form onSubmit={handleDownload} className="space-y-3">
+                    <Input type="email" placeholder={(page as any).formPlaceholder || "Enter your email"} className="h-12 bg-background/50 border-primary/20 focus:border-primary text-lg" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Button size="lg" className="w-full h-12 font-bold text-lg shadow-lg shadow-primary/20" disabled={isSubmitting}>
+                      {isSubmitting ? "Sending..." : (page as any).formButtonLabel || "Send me the template"}
+                    </Button>
+                  </form>
+                  <p className="text-xs text-muted-foreground mt-4">{(page as any).formDisclaimer || "No spam. Just the template."}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-12 max-w-4xl mx-auto pt-12">
+              <div className="prose prose-lg dark:prose-invert max-w-none">
+                <h2 className="font-display font-bold text-3xl mb-6">{(page as any).whatIsTitle || "What is included?"}</h2>
+                <p className="lead">{(page as any).whatIsText || page.excerpt}</p>
+
+                <h2 className="font-display font-bold text-3xl mb-6 mt-12">{(page as any).useCasesTitle || "Use cases"}</h2>
+                <ul className="grid md:grid-cols-2 gap-4 not-prose mt-6">
+                  {useCases.map((item) => (
+                    <li key={item} className="flex items-center gap-3 bg-card p-4 rounded-lg border border-border shadow-sm">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <span className="font-medium">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <h2 className="font-display font-bold text-3xl mb-6 mt-12">{(page as any).customizeTitle || "Customize it for your property"}</h2>
+                <p>{(page as any).customizeText || "Edit the copy, branding, and details so the template matches your property and operational flow."}</p>
+              </div>
+
+              {page.body?.length ? (
+                <div className="prose prose-lg dark:prose-invert max-w-none mt-12 pt-12 border-t border-border">
+                  <PortableTextContent blocks={page.body} />
+                </div>
+              ) : null}
+
+              <div className="bg-transparent mt-12">
+                <h2 className="font-display font-bold text-3xl mb-8">{page.faqTitle || "Frequently Asked Questions"}</h2>
+                <Accordion type="single" collapsible className="w-full space-y-4">
+                  {faqs.map((faq, index) => (
+                    <AccordionItem key={faq.question} value={`item-${index}`} className="border border-border bg-card rounded-xl px-6">
+                      <AccordionTrigger className="font-display font-semibold text-lg hover:text-primary hover:no-underline py-6">{faq.question}</AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground text-base pb-6 leading-relaxed">{faq.answer}</AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden lg:block sticky top-24 space-y-6">
+            <div className="bg-card rounded-2xl p-6 border border-border shadow-md">
+              <h3 className="font-bold text-lg mb-4">{(page as any).resourcesTitle || "Related Resources"}</h3>
+              <div className="space-y-4">
+                {resources.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer group mb-2">
+                      <FileText className="h-5 w-5 text-primary mt-0.5 group-hover:scale-110 transition-transform" />
+                      <div>
+                        <div className="font-medium text-sm group-hover:text-primary transition-colors">{item.label}</div>
+                        <div className="text-xs text-muted-foreground">{item.meta || "Open"}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              <Link href="/templates">
+                <Button variant="outline" className="w-full mt-6 font-bold">View All Templates</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
