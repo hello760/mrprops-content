@@ -129,6 +129,7 @@ export interface LandingContent {
 interface SanityDoc {
   _id: string;
   _type: string;
+  category?: string;
   title?: string;
   headline?: string;
   subheadline?: string;
@@ -212,9 +213,11 @@ interface SanityDoc {
 }
 
 const DEFAULT_IMAGE = "/og-image.png";
+const FALLBACK_DATE = "Oct 24, 2025";
+
 const BASE_PROJECTION = `{
   _id, _type, title, term, slug, excerpt, definition, body, seoTitle, seoDescription,
-  publishedAt, updatedAt, headline, subheadline, pageType, platform, competitorName,
+  publishedAt, updatedAt, headline, subheadline, pageType, category, platform, competitorName,
   primaryItem, secondaryItem, heroBadge, heroTitle, heroDescription, comparisonSnapshotTitle,
   tocTitle, showdownBadge, showdownTitle, showdownDescription, showdownButtonLabel,
   comparisonTableRows, alternativeCards, primaryCtaLabel, secondaryCtaLabel,
@@ -248,6 +251,15 @@ function normalizeButtons(btn?: { label?: string; href?: string }) {
 
 function defaultBody(text: string): PortableTextBlock[] {
   return [{ _key: "intro", _type: "block", style: "normal", children: [{ _type: "span", text }] }];
+}
+
+function dedupeBySlug<T extends { slug: string }>(items: T[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (!item.slug || seen.has(item.slug)) return false;
+    seen.add(item.slug);
+    return true;
+  });
 }
 
 function normalizeDirectoryDoc(doc: SanityDoc, prefix?: string): DirectoryEntry {
@@ -362,9 +374,155 @@ function normalizeLandingDoc(doc: SanityDoc): LandingContent {
   };
 }
 
-async function queryDocs(filter: string, params: Record<string, unknown> = {}) {
-  return sanityFetch<SanityDoc[]>(`*[$filter]`, { filter, ...params } as never);
-}
+const templateFallbacks: DirectoryEntry[] = [
+  ["guest-experience", "airbnb-welcome-book", "Airbnb Welcome Book"],
+  ["legal", "house-rules-template", "House Rules Template"],
+  ["operations", "cleaning-checklist", "Cleaning Checklist"],
+  ["operations", "inventory-tracker", "Inventory Tracker"],
+  ["guest-experience", "guest-message-scripts", "Guest Message Scripts"],
+  ["legal", "rental-agreement", "Short-Term Rental Agreement"],
+  ["marketing", "listing-optimization-guide", "Listing Optimization Guide"],
+  ["legal", "co-host-contract", "Co-Hosting Contract"],
+  ["operations", "pricing-strategy-calculator", "Pricing Strategy Calculator"],
+  ["guest-experience", "amenities-checklist", "Essential Amenities List"],
+].map(([category, slug, title]) => ({
+  id: `template-${slug}`,
+  slug: `templates/${category}/${slug}`,
+  title,
+  excerpt: `Free ${title.toLowerCase()} template for short-term rental hosts and property managers.`,
+  body: defaultBody(`Download the ${title.toLowerCase()} and customize it for your short-term rental operation.`),
+  seoTitle: `${title} | Mr. Props`,
+  seoDescription: `Download the ${title.toLowerCase()} and customize it for your short-term rental operation.`,
+  image: DEFAULT_IMAGE,
+  updated: FALLBACK_DATE,
+  publishedAt: "2025-10-24",
+  updatedAt: "2025-10-24",
+  faqTitle: "Frequently Asked Questions",
+  faqs: [
+    { question: "Can I customize this template?", answer: "Yes. Download it, edit it, and adapt it to your operation." },
+    { question: "Is it free?", answer: "Yes. These template pages are available as free resources for hosts." },
+  ],
+  ctaTitle: "Want the full operating system?",
+  ctaText: "Use Mr. Props to turn scattered SOPs, files, and checklists into one repeatable workflow.",
+  ctaPrimaryButton: { label: "Start Free Trial", href: "https://app.mrprops.io/register" },
+  ctaSecondaryButton: { label: "See Pricing", href: "/pricing" },
+}));
+
+const toolFallbacks: DirectoryEntry[] = [
+  {
+    id: "tool-rental-yield-calculator",
+    slug: "tools/finance/rental-yield-calculator",
+    title: "Rental Yield Calculator",
+    excerpt: "Calculate gross and net rental yields for your investment property instantly.",
+    body: defaultBody("Calculate gross and net rental yields for your investment property. Essential for property investors and short-term rental operators."),
+    seoTitle: "Rental Yield Calculator | Mr. Props",
+    seoDescription: "Calculate gross and net rental yields for your investment property. Essential for property investors.",
+    image: DEFAULT_IMAGE,
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+    faqTitle: "Rental Yield FAQ",
+    faqs: [
+      { question: "What is gross yield?", answer: "Gross yield is annual rent divided by purchase price, before expenses." },
+      { question: "What is net yield?", answer: "Net yield subtracts annual expenses before calculating the return percentage." },
+    ],
+    ctaTitle: "Turn yield into actual performance",
+    ctaText: "Track revenue, occupancy, and operating costs in one place with Mr. Props.",
+    ctaPrimaryButton: { label: "Start Free Trial", href: "https://app.mrprops.io/register" },
+  },
+  {
+    id: "tool-renovation-calculator",
+    slug: "tools/renovations/renovation-calculator",
+    title: "Renovation ROI Calculator",
+    excerpt: "Calculate the return on investment for rental property renovations.",
+    body: defaultBody("Calculate the return on investment for your rental property renovations so you can prioritize upgrades that actually move ADR, occupancy, and payback period."),
+    seoTitle: "Renovation ROI Calculator | Mr. Props",
+    seoDescription: "Calculate the return on investment for your rental property renovations. Make data-driven decisions.",
+    image: DEFAULT_IMAGE,
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+    faqTitle: "Renovation ROI FAQ",
+    faqs: [
+      { question: "Which upgrades usually pay back fastest?", answer: "High-visibility upgrades like design, photography, hot tubs, and kitchen refreshes often produce the clearest ROI." },
+      { question: "Should I include financing cost?", answer: "Yes. If the project is debt-funded, include the cost of capital in your analysis." },
+    ],
+    ctaTitle: "Plan smarter capex",
+    ctaText: "Benchmark projects, performance, and payback across your portfolio with Mr. Props.",
+    ctaPrimaryButton: { label: "Start Free Trial", href: "https://app.mrprops.io/register" },
+  },
+  {
+    id: "tool-airbnb-profit-calculator",
+    slug: "tools/booking/airbnb-profit-calculator",
+    title: "Airbnb Profit Calculator",
+    excerpt: "Estimate revenue, expenses, and ROI for your short-term rental.",
+    body: defaultBody("Use this calculator to estimate revenue, expenses, and profit margin for your short-term rental."),
+    seoTitle: "Airbnb Profit Calculator 2026 | Mr. Props",
+    seoDescription: "Free Airbnb profit calculator. Estimate revenue, expenses, and ROI for your short-term rental property.",
+    image: DEFAULT_IMAGE,
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+  },
+  {
+    id: "tool-cleaning-fee-calculator",
+    slug: "tools/operations/cleaning-fee-calculator",
+    title: "Cleaning Fee Calculator",
+    excerpt: "Set a profitable cleaning fee without hurting conversion.",
+    body: defaultBody("Balance labor, linen, and reset costs against guest conversion with a pricing model that protects margin."),
+    seoTitle: "Cleaning Fee Calculator | Mr. Props",
+    seoDescription: "Estimate the right guest-facing cleaning fee for your short-term rental.",
+    image: DEFAULT_IMAGE,
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+  },
+];
+
+const landingFallbacks: LandingContent[] = [
+  {
+    id: "landing-unified-inbox",
+    slug: "unified-inbox",
+    pageType: "features",
+    title: "Unified Inbox",
+    headline: "Automate Your Unified Inbox",
+    subheadline: "Centralize guest communication and reduce context switching across Airbnb, Booking.com, and direct bookings.",
+    body: defaultBody("Centralize guest communication and reduce context switching across Airbnb, Booking.com, and direct bookings."),
+    image: DEFAULT_IMAGE,
+    seoTitle: "Unified Inbox for Property Managers | Mr. Props",
+    seoDescription: "Centralize guest communication and reduce context switching across channels.",
+    heroBadge: "Feature",
+    faqTitle: "Unified Inbox FAQ",
+    faqs: [
+      { question: "What channels can I unify?", answer: "Airbnb, Booking.com, email, WhatsApp, and direct booking flows." },
+      { question: "Why does this matter?", answer: "A single inbox reduces missed messages, slow replies, and context switching for your team." },
+    ],
+    ctaTitle: "See your guest ops in one place",
+    ctaText: "Bring messaging, operations, and follow-up into a single workflow with Mr. Props.",
+    ctaPrimaryButton: { label: "Start Free Trial", href: "https://app.mrprops.io/register" },
+  },
+  {
+    id: "landing-property-managers",
+    slug: "property-managers",
+    pageType: "services",
+    title: "For Property Managers",
+    headline: "Built for Operators Managing Real Portfolios",
+    subheadline: "Run a tighter operation with messaging, cleaning, reporting, and compliance in one workflow.",
+    body: defaultBody("Run a tighter operation with messaging, cleaning, reporting, and compliance in one workflow."),
+    image: DEFAULT_IMAGE,
+    seoTitle: "Property Management Software for Operators | Mr. Props",
+    seoDescription: "Run a tighter operation with messaging, cleaning, reporting, and compliance in one workflow.",
+    heroBadge: "Service",
+    faqTitle: "Property Manager FAQ",
+    faqs: [
+      { question: "Who is this for?", answer: "Property managers, co-hosting teams, and operators running multiple listings or portfolios." },
+      { question: "What problems does it solve?", answer: "Operational drag across guest messaging, turnovers, owner reporting, and compliance tasks." },
+    ],
+    ctaTitle: "Run a tighter portfolio",
+    ctaText: "Replace scattered tools and manual follow-ups with a single operating layer.",
+    ctaPrimaryButton: { label: "Start Free Trial", href: "https://app.mrprops.io/register" },
+  },
+];
 
 const fetchByType = cache(async (types: string[]) => {
   const typeFilter = types.map((t) => `_type == "${t}"`).join(" || ");
@@ -376,12 +534,15 @@ const fetchByType = cache(async (types: string[]) => {
 
 export const fetchLandingPages = cache(async (pageType: "features" | "services") => {
   const docs = await fetchByType(["landingPage", "contentPage", "featurePage", "servicePage"]);
-  return docs.filter((doc) => (doc.pageType || (doc.slug?.current?.startsWith("services/") ? "services" : "features")) === pageType).map(normalizeLandingDoc);
+  const sanityPages = docs
+    .filter((doc) => (doc.pageType || (doc.slug?.current?.startsWith("services/") ? "services" : "features")) === pageType)
+    .map(normalizeLandingDoc);
+  return dedupeBySlug([...sanityPages, ...landingFallbacks.filter((item) => item.pageType === pageType)]);
 });
 
 export const fetchLandingPageBySlug = cache(async (pageType: "features" | "services", slug: string) => {
   const pages = await fetchLandingPages(pageType);
-  return pages.find((item) => item.slug === slug || item.slug === `${pageType}/${slug}`.replace(`${pageType}/`, "")) || null;
+  return pages.find((item) => item.slug === slug) || landingFallbacks.find((item) => item.pageType === pageType) || null;
 });
 
 export const fetchComparisons = cache(async () => {
@@ -405,13 +566,21 @@ export const fetchTaxes = cache(async () => {
 });
 
 export const fetchTemplates = cache(async () => {
-  const docs = await fetchByType(["leadGenTemplate", "templatePage", "template"]);
-  return docs.map((doc) => normalizeDirectoryDoc(doc, "templates"));
+  const docs = await fetchByType(["leadGenTemplatePage", "leadGenTemplate", "templatePage", "template"]);
+  const sanityPages = docs.map((doc) => normalizeDirectoryDoc({
+    ...doc,
+    slug: { current: `templates/${doc.category || "general"}/${stripPrefix(doc.slug?.current || doc._id, "templates")}` },
+  }, "templates"));
+  return dedupeBySlug([...sanityPages, ...templateFallbacks]);
 });
 
 export const fetchTools = cache(async () => {
-  const docs = await fetchByType(["calculatorTool", "toolPage", "tool"]);
-  return docs.map((doc) => normalizeDirectoryDoc(doc, "tools"));
+  const docs = await fetchByType(["calculatorToolPage", "calculatorTool", "toolPage", "tool"]);
+  const sanityPages = docs.map((doc) => normalizeDirectoryDoc({
+    ...doc,
+    slug: { current: `tools/${doc.category || "general"}/${stripPrefix(doc.slug?.current || doc._id, "tools")}` },
+  }, "tools"));
+  return dedupeBySlug([...sanityPages, ...toolFallbacks]);
 });
 
 export const fetchGuides = cache(async () => {

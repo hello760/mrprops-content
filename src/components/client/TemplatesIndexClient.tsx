@@ -30,8 +30,8 @@ function templateDownloads(index: number) {
   return values[index % values.length];
 }
 
-export function TemplatesIndexClient({ pages }: { pages: Array<DirectoryEntry & { category: string; href: string }> }) {
-  const [selectedCategory, setSelectedCategory] = useState("All");
+export function TemplatesIndexClient({ pages, initialCategory = "All" }: { pages: Array<DirectoryEntry & { category: string; href: string }>; initialCategory?: string }) {
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredTemplates = useMemo(() => {
