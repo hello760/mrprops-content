@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,19 @@ export function GlossaryTermPageClient({ term }: { term: GlossaryTerm }) {
                 <strong className="text-primary">{term.definitionPrefix || term.term}</strong> {term.definition}
               </p>
             </div>
+
+            {term.conceptImageUrl && (
+              <div className="my-8 rounded-2xl overflow-hidden shadow-lg border border-border">
+                <Image
+                  src={term.conceptImageUrl}
+                  alt={term.conceptImageAlt || `Visual explanation of ${term.term}`}
+                  width={800}
+                  height={450}
+                  className="w-full h-auto"
+                  priority
+                />
+              </div>
+            )}
 
             <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl">
               <PortableTextContent blocks={term.body} />

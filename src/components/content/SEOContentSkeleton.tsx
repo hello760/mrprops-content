@@ -64,7 +64,7 @@ export function SEOContentSkeleton({
   ctaButtonHref = "https://app.mrprops.io/register",
 }: SEOContentSkeletonProps) {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background pb-20">
       <div className="hidden">
         <span data-testid="slug">{slug}</span>
         <span data-testid="word-count">{wordCount} words</span>
@@ -80,7 +80,7 @@ export function SEOContentSkeleton({
         </div>
       )}
 
-      {!bannerImage && (
+      {!bannerImage && mainTitle && (
         <div className="bg-secondary/20 py-20">
           <div className="container mx-auto px-4">
             <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground max-w-4xl">{mainTitle}</h1>
@@ -89,9 +89,11 @@ export function SEOContentSkeleton({
       )}
 
       <div className="container mx-auto px-4 py-12 max-w-screen-xl space-y-20">
+        {introText && (
         <div className="prose prose-lg dark:prose-invert max-w-3xl">
           <p className="text-xl text-muted-foreground leading-relaxed">{introText}</p>
         </div>
+        )}
 
         {whatItIsContent && (
           <section className="space-y-6">

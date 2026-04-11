@@ -16,6 +16,8 @@ export interface GlossaryTerm {
   date: string;
   readTime: string;
   definitionPrefix?: string;
+  conceptImageUrl?: string;
+  conceptImageAlt?: string;
   proTipBadge?: string;
   proTipTitle?: string;
   proTipDescription?: string;
@@ -41,6 +43,7 @@ interface SanityGlossaryDocument {
   _updatedAt?: string;
   relatedTerms?: Array<string | { term?: string; title?: string; slug?: { current?: string } }>;
   definitionPrefix?: string;
+  conceptImage?: { asset?: { _ref?: string; url?: string }; alt?: string };
   proTipBadge?: string;
   proTipTitle?: string;
   proTipDescription?: string;
@@ -94,6 +97,8 @@ export function normalizeGlossaryTerm(doc: SanityGlossaryDocument): GlossaryTerm
     date: formatDisplayDate(doc.publishedAt),
     readTime: calculateReadTime(plainTextBody),
     definitionPrefix: doc.definitionPrefix,
+    conceptImageUrl: doc.conceptImage?.asset?.url || undefined,
+    conceptImageAlt: doc.conceptImage?.alt || undefined,
     proTipBadge: doc.proTipBadge,
     proTipTitle: doc.proTipTitle,
     proTipDescription: doc.proTipDescription,
@@ -107,11 +112,11 @@ export function normalizeGlossaryTerm(doc: SanityGlossaryDocument): GlossaryTerm
 }
 
 const LIST_QUERY = `*[_type == "glossaryTerm" && defined(slug.current)]|order(coalesce(term, title) asc){
-  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, _updatedAt, relatedTerms, definitionPrefix, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton
+  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, _updatedAt, relatedTerms, definitionPrefix, conceptImage{alt, asset->{_ref, url}}, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton
 }`;
 
 const BY_SLUG_QUERY = `*[_type == "glossaryTerm" && slug.current in [$slug, $prefixedSlug, $baseSlug, $prefixedBaseSlug, $whatIsSlug, $prefixedWhatIsSlug]][0]{
-  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, _updatedAt, definitionPrefix, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton,
+  _id, title, term, slug, excerpt, definition, body, seoTitle, seoDescription, publishedAt, _updatedAt, definitionPrefix, conceptImage{alt, asset->{_ref, url}}, proTipBadge, proTipTitle, proTipDescription, proTipButtonLabel, faqTitle, faqs, ctaTitle, ctaText, ctaPrimaryButton,
   relatedTerms[]{..., term, title, slug}
 }`;
 
