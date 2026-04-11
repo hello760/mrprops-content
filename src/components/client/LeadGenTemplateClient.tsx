@@ -12,25 +12,6 @@ import type { DirectoryEntry } from "@/lib/content-pages";
 
 interface TemplatePage extends DirectoryEntry {
   category: string;
-  badge?: string;
-  description?: string;
-  trustItems?: string[];
-  previewTitle?: string;
-  previewMeta?: string;
-  previewBody?: any[];
-  gateTitle?: string;
-  gateDescription?: string;
-  formPlaceholder?: string;
-  formButtonLabel?: string;
-  formDisclaimer?: string;
-  whatIsTitle?: string;
-  whatIsText?: string;
-  useCasesTitle?: string;
-  useCases?: string[];
-  customizeTitle?: string;
-  customizeText?: string;
-  resourcesTitle?: string;
-  resources?: Array<{ href: string; label: string; meta?: string }>;
 }
 
 export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {

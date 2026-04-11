@@ -91,6 +91,26 @@ export interface DirectoryEntry {
   ctaText?: string;
   ctaPrimaryButton?: LinkButtonConfig;
   ctaSecondaryButton?: LinkButtonConfig;
+  // Template-specific fields (leadGenTemplatePage)
+  badge?: string;
+  description?: string;
+  trustItems?: string[];
+  previewTitle?: string;
+  previewMeta?: string;
+  previewBody?: PortableTextBlock[];
+  gateTitle?: string;
+  gateDescription?: string;
+  formPlaceholder?: string;
+  formButtonLabel?: string;
+  formDisclaimer?: string;
+  whatIsTitle?: string;
+  whatIsText?: string;
+  useCasesTitle?: string;
+  useCases?: string[];
+  customizeTitle?: string;
+  customizeText?: string;
+  resourcesTitle?: string;
+  resources?: Array<{ href: string; label: string; meta?: string }>;
 }
 
 export interface LandingContent {
@@ -196,6 +216,26 @@ interface SanityDoc {
   faqTitle?: string;
   faqDescription?: string;
   faqs?: Array<{ question?: string; answer?: string }>;
+  // Template-specific fields (leadGenTemplatePage)
+  badge?: string;
+  description?: string;
+  trustItems?: string[];
+  previewTitle?: string;
+  previewMeta?: string;
+  previewBody?: PortableTextBlock[];
+  gateTitle?: string;
+  gateDescription?: string;
+  formPlaceholder?: string;
+  formButtonLabel?: string;
+  formDisclaimer?: string;
+  whatIsTitle?: string;
+  whatIsText?: string;
+  useCasesTitle?: string;
+  useCases?: string[];
+  customizeTitle?: string;
+  customizeText?: string;
+  resourcesTitle?: string;
+  resources?: Array<{ href?: string; label?: string; meta?: string }>;
   ctaTitle?: string;
   ctaText?: string;
   ctaPrimaryButton?: { label?: string; href?: string };
@@ -234,6 +274,10 @@ const BASE_PROJECTION = `{
   faqTitle, faqDescription, faqs, ctaTitle, ctaText, ctaPrimaryButton, ctaSecondaryButton,
   primaryCtaButton, secondaryCtaButton, trustBarLabel, trustBarLogos, spotlightTitle,
   spotlightDescription, spotlightApps, featuresTitle, featuresDescription, features,
+  badge, description, trustItems, previewTitle, previewMeta, previewBody,
+  gateTitle, gateDescription, formPlaceholder, formButtonLabel, formDisclaimer,
+  whatIsTitle, whatIsText, useCasesTitle, useCases, customizeTitle, customizeText,
+  resourcesTitle, resources,
   "imageUrl": coalesce(image.asset->url, heroImage.asset->url, coverImage.asset->url, featuredImage.asset->url),
   "locationName": coalesce(locationName, location, city, regionName, market, destination, title),
   "regionName": coalesce(regionName, region, state, country)
@@ -371,6 +415,26 @@ function normalizeDirectoryDoc(doc: SanityDoc, prefix?: string): DirectoryEntry 
     ctaText: doc.ctaText,
     ctaPrimaryButton: normalizeButtons(doc.ctaPrimaryButton),
     ctaSecondaryButton: normalizeButtons(doc.ctaSecondaryButton),
+    // Template-specific fields (leadGenTemplatePage)
+    badge: doc.badge,
+    description: doc.description,
+    trustItems: doc.trustItems,
+    previewTitle: doc.previewTitle,
+    previewMeta: doc.previewMeta,
+    previewBody: doc.previewBody,
+    gateTitle: doc.gateTitle,
+    gateDescription: doc.gateDescription,
+    formPlaceholder: doc.formPlaceholder,
+    formButtonLabel: doc.formButtonLabel,
+    formDisclaimer: doc.formDisclaimer,
+    whatIsTitle: doc.whatIsTitle,
+    whatIsText: doc.whatIsText,
+    useCasesTitle: doc.useCasesTitle,
+    useCases: doc.useCases,
+    customizeTitle: doc.customizeTitle,
+    customizeText: doc.customizeText,
+    resourcesTitle: doc.resourcesTitle,
+    resources: (doc.resources || []).map((r) => ({ href: r.href || "#", label: r.label || "Resource", meta: r.meta })),
   };
 }
 
