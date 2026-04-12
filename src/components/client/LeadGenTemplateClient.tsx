@@ -88,20 +88,28 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
             </div>
 
             <div className="space-y-12 max-w-4xl mx-auto pt-12">
-              <div className="prose prose-lg dark:prose-invert max-w-none">
-                <h2 className="font-display font-bold text-3xl mb-6">{page.whatIsTitle}</h2>
-                <p className="lead">{page.whatIsText}</p>
-                <h2 className="font-display font-bold text-3xl mb-6 mt-12">{page.useCasesTitle}</h2>
-                <ul className="grid md:grid-cols-2 gap-4 not-prose mt-6">
-                  {useCases.map((item) => (
-                    <li key={item} className="flex items-center gap-3 bg-card p-4 rounded-lg border border-border shadow-sm"><CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" /><span className="font-medium">{item}</span></li>
-                  ))}
-                </ul>
-                <h2 className="font-display font-bold text-3xl mb-6 mt-12">{page.customizeTitle}</h2>
-                <p>{page.customizeText}</p>
-              </div>
-
-              {page.body?.length ? <div className="prose prose-lg dark:prose-invert max-w-none mt-12 pt-12 border-t border-border"><PortableTextContent blocks={page.body} /></div> : null}
+              {/* Primary content: render body PortableText which contains all article sections with H2 headings */}
+              {page.body?.length ? (
+                <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
+                  <PortableTextContent blocks={page.body} />
+                </div>
+              ) : (
+                /* Fallback: structured fields when body is empty */
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  {page.whatIsTitle && <><h2 className="font-display font-bold text-3xl mb-6">{page.whatIsTitle}</h2><p className="lead">{page.whatIsText}</p></>}
+                  {useCases.length > 0 && (
+                    <>
+                      <h2 className="font-display font-bold text-3xl mb-6 mt-12">{page.useCasesTitle}</h2>
+                      <ul className="grid md:grid-cols-2 gap-4 not-prose mt-6">
+                        {useCases.map((item) => (
+                          <li key={item} className="flex items-center gap-3 bg-card p-4 rounded-lg border border-border shadow-sm"><CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" /><span className="font-medium">{item}</span></li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {page.customizeTitle && <><h2 className="font-display font-bold text-3xl mb-6 mt-12">{page.customizeTitle}</h2><p>{page.customizeText}</p></>}
+                </div>
+              )}
 
               <div className="bg-transparent mt-12">
                 <h2 className="font-display font-bold text-3xl mb-8">{page.faqTitle}</h2>

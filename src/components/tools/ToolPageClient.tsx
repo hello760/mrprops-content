@@ -7,6 +7,7 @@ import { GenericCalculator } from "@/components/tools/GenericCalculator";
 import { KitchenCostCalculator } from "@/components/tools/KitchenCostCalculator";
 import { RenovationROICalculator } from "@/components/tools/RenovationROICalculator";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
+import { PortableTextContent } from "@/components/content/PortableTextContent";
 import type { ToolPageContent } from "@/lib/template-tools";
 
 interface ToolPageClientProps {
@@ -21,7 +22,15 @@ function categoryLabel(category: string) {
 }
 
 export function ToolPageClient({ page }: ToolPageClientProps) {
-  const seoContent = (
+  // Prefer body PortableText (tool-specific sections with H2 headings) over generic SEOContentSkeleton.
+  // SEOContentSkeleton is only used as a fallback when no body content exists from Sanity.
+  const hasBody = page.body && Array.isArray(page.body) && page.body.length > 0;
+
+  const seoContent = hasBody ? (
+    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary">
+      <PortableTextContent blocks={page.body!} />
+    </div>
+  ) : (
     <SEOContentSkeleton
       seoTitle={page.seoTitle}
       seoDescription={page.seoDescription}

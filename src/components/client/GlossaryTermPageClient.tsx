@@ -99,6 +99,7 @@ export function GlossaryTermPageClient({ term }: { term: GlossaryTerm }) {
               </div>
             </div>
 
+            {/* Pro Tip CTA — matches original SPA design */}
             <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
               <div className="relative z-10">

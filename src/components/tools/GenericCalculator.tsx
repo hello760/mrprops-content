@@ -39,9 +39,10 @@ export function GenericCalculator({
   benefits,
   body,
 }: GenericCalculatorProps) {
-  // Render article body as seoContent if no seoContent was explicitly passed
+  // Render article body directly — calculator pages should NOT use blog-style SEO wrappers.
+  // Body content contains tool-specific sections (benefits, how it works, CTA) as H2 headings.
   const resolvedSeoContent = seoContent || (body && Array.isArray(body) && body.length > 0 ? (
-    <div className="prose prose-lg dark:prose-invert max-w-none">
+    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary">
       <PortableTextContent blocks={body} />
     </div>
   ) : null);
