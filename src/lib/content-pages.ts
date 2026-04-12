@@ -113,6 +113,22 @@ export interface DirectoryEntry {
   resources?: Array<{ href: string; label: string; meta?: string }>;
 }
 
+export interface StatItemConfig {
+  value: string;
+  label: string;
+}
+
+export interface StepItemConfig {
+  title: string;
+  description: string;
+}
+
+export interface TestimonialConfig {
+  quote: string;
+  name: string;
+  role?: string;
+}
+
 export interface LandingContent {
   id: string;
   slug: string;
@@ -137,6 +153,15 @@ export interface LandingContent {
   featuresTitle?: string;
   featuresDescription?: string;
   features?: FeatureCardConfig[];
+  statsBar?: StatItemConfig[];
+  howItWorksTitle?: string;
+  howItWorksSteps?: StepItemConfig[];
+  comparisonTitle?: string;
+  comparisonDescription?: string;
+  comparisonPros?: string[];
+  comparisonCons?: string[];
+  testimonialsTitle?: string;
+  testimonials?: TestimonialConfig[];
   faqTitle?: string;
   faqDescription?: string;
   faqs?: FAQItemConfig[];
@@ -250,6 +275,15 @@ interface SanityDoc {
   featuresTitle?: string;
   featuresDescription?: string;
   features?: FeatureCardConfig[];
+  statsBar?: Array<{ value?: string; label?: string }>;
+  howItWorksTitle?: string;
+  howItWorksSteps?: Array<{ title?: string; description?: string }>;
+  comparisonTitle?: string;
+  comparisonDescription?: string;
+  comparisonPros?: string[];
+  comparisonCons?: string[];
+  testimonialsTitle?: string;
+  testimonials?: Array<{ quote?: string; name?: string; role?: string }>;
 }
 
 const DEFAULT_IMAGE = "/assets/MrProps_main_screen_1768972680323.png";
@@ -274,6 +308,8 @@ const BASE_PROJECTION = `{
   faqTitle, faqDescription, faqs, ctaTitle, ctaText, ctaPrimaryButton, ctaSecondaryButton,
   primaryCtaButton, secondaryCtaButton, trustBarLabel, trustBarLogos, spotlightTitle,
   spotlightDescription, spotlightApps, featuresTitle, featuresDescription, features,
+  statsBar, howItWorksTitle, howItWorksSteps, comparisonTitle, comparisonDescription,
+  comparisonPros, comparisonCons, testimonialsTitle, testimonials,
   badge, description, trustItems, previewTitle, previewMeta, previewBody,
   gateTitle, gateDescription, formPlaceholder, formButtonLabel, formDisclaimer,
   whatIsTitle, whatIsText, useCasesTitle, useCases, customizeTitle, customizeText,
@@ -465,6 +501,15 @@ function normalizeLandingDoc(doc: SanityDoc): LandingContent {
     featuresTitle: doc.featuresTitle,
     featuresDescription: doc.featuresDescription,
     features: doc.features,
+    statsBar: (doc.statsBar || []).filter((s) => s?.value && s?.label).map((s) => ({ value: s.value!, label: s.label! })),
+    howItWorksTitle: doc.howItWorksTitle,
+    howItWorksSteps: (doc.howItWorksSteps || []).filter((s) => s?.title).map((s) => ({ title: s.title!, description: s.description || "" })),
+    comparisonTitle: doc.comparisonTitle,
+    comparisonDescription: doc.comparisonDescription,
+    comparisonPros: (doc.comparisonPros || []).filter(Boolean) as string[],
+    comparisonCons: (doc.comparisonCons || []).filter(Boolean) as string[],
+    testimonialsTitle: doc.testimonialsTitle,
+    testimonials: (doc.testimonials || []).filter((t) => t?.quote).map((t) => ({ quote: t.quote!, name: t.name || "", role: t.role || "" })),
     faqTitle: doc.faqTitle,
     faqDescription: doc.faqDescription,
     faqs: normalizeFaqs(doc.faqs),

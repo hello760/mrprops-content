@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowRight, Calendar, Check, Globe, Mail, MessageSquare, Phone, PlayCircle, ShieldCheck, Star, TrendingUp, Zap } from "lucide-react";
+import { ArrowRight, Calendar, Check, CheckCircle2, Globe, Mail, MessageSquare, Phone, PlayCircle, Quote, ShieldCheck, Star, TrendingUp, XCircle, Zap } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,9 +102,101 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
 
         <section className="py-20 bg-background"><div className="container mx-auto px-4 max-w-7xl"><div className="text-center max-w-3xl mx-auto mb-16"><h2 className="font-display text-3xl md:text-5xl font-bold mb-6">{page.featuresTitle || "Why Mr. Props?"}</h2><p className="text-xl text-muted-foreground">{page.featuresDescription || "Everything you need to master your property operations in one place."}</p></div><div className="grid md:grid-cols-3 gap-8">{features.map((feature, i) => <div key={i} className="group p-8 rounded-2xl border border-border bg-card hover:shadow-xl hover:border-primary/30 transition-all duration-300"><div className="h-14 w-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform"><feature.icon className="h-7 w-7" /></div><h3 className="text-xl font-bold mb-3">{feature.title}</h3><p className="text-muted-foreground leading-relaxed">{feature.description}</p></div>)}</div></div></section>
 
+        {page.statsBar?.length ? (
+          <section className="py-16 bg-secondary/30 border-y border-border/50">
+            <div className="container mx-auto px-4 max-w-5xl">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-8 text-center">
+                {page.statsBar.map((stat, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="text-4xl md:text-5xl font-extrabold text-primary font-display">{stat.value}</div>
+                    <div className="text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {page.howItWorksSteps?.length ? (
+          <section className="py-20 bg-background">
+            <div className="container mx-auto px-4 max-w-5xl">
+              <div className="text-center max-w-3xl mx-auto mb-16">
+                <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{page.howItWorksTitle || "How It Works"}</h2>
+              </div>
+              <div className="grid md:grid-cols-3 gap-8">
+                {page.howItWorksSteps.map((step, i) => (
+                  <div key={i} className="relative text-center p-8">
+                    <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary text-2xl font-bold mx-auto mb-6 ring-4 ring-primary/5">{i + 1}</div>
+                    <h3 className="text-xl font-bold mb-3 text-foreground">{step.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{step.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {(page.comparisonPros?.length || page.comparisonCons?.length) ? (
+          <section className="py-20 bg-secondary/20">
+            <div className="container mx-auto px-4 max-w-5xl">
+              <div className="text-center max-w-3xl mx-auto mb-16">
+                <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{page.comparisonTitle || "Why Switch to Mr. Props?"}</h2>
+                {page.comparisonDescription ? <p className="text-xl text-muted-foreground">{page.comparisonDescription}</p> : null}
+              </div>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="bg-card border border-border rounded-2xl p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-10 w-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><CheckCircle2 className="h-5 w-5" /></div>
+                    <h3 className="text-xl font-bold text-foreground">Mr. Props</h3>
+                  </div>
+                  <ul className="space-y-3">
+                    {(page.comparisonPros || []).map((pro, i) => (
+                      <li key={i} className="flex items-start gap-3 text-foreground"><Check className="h-5 w-5 text-green-500 mt-0.5 shrink-0" /><span>{pro}</span></li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-card border border-border rounded-2xl p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-10 w-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center"><XCircle className="h-5 w-5" /></div>
+                    <h3 className="text-xl font-bold text-foreground">Traditional Tools</h3>
+                  </div>
+                  <ul className="space-y-3">
+                    {(page.comparisonCons || []).map((con, i) => (
+                      <li key={i} className="flex items-start gap-3 text-muted-foreground"><XCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" /><span>{con}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {page.testimonials?.length ? (
+          <section className="py-20 bg-background">
+            <div className="container mx-auto px-4 max-w-6xl">
+              <div className="text-center max-w-3xl mx-auto mb-16">
+                <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{page.testimonialsTitle || "What Hosts Say"}</h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-8">
+                {page.testimonials.map((t, i) => (
+                  <div key={i} className="bg-card border border-border rounded-2xl p-8 relative">
+                    <Quote className="h-8 w-8 text-primary/20 absolute top-6 right-6" />
+                    <div className="flex gap-1 mb-4">{[...Array(5)].map((_, j) => <Star key={j} className="h-4 w-4 fill-yellow-400 text-yellow-400" />)}</div>
+                    <p className="text-foreground leading-relaxed mb-6 italic">&ldquo;{t.quote}&rdquo;</p>
+                    <div>
+                      <div className="font-bold text-foreground">{t.name}</div>
+                      {t.role ? <div className="text-sm text-muted-foreground">{t.role}</div> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {page.body?.length ? (
           <section className="py-20 bg-secondary/30 border-y border-border/50">
-            <div className="container mx-auto px-4 max-w-4xl prose prose-lg dark:prose-invert prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl">
+            <div className="container mx-auto px-4 max-w-4xl prose prose-lg">
               <PortableTextContent blocks={page.body} />
             </div>
           </section>
