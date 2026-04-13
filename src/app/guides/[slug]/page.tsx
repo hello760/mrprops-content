@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { JsonLd } from "@/components/content/PageBits";
-import { GuidePostClient } from "@/components/client/GuidePostClient";
-import { fetchGuideBySlug, fetchGuides } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createArticleSchema, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
+import { fetchGuideBySlug, fetchGuides } from "@/lib/content-pages";
+import { GuidePostClient } from "@/components/client/GuidePostClient";
+import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 
 export const revalidate = 3600;
 
@@ -16,8 +16,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const guide = await fetchGuideBySlug(slug);
-  if (!guide) notFound();
-  return buildMetadata(guide.seoTitle || guide.title, guide.seoDescription || guide.excerpt, `/guides/${guide.slug}`);
+  return buildMetadata(guide?.seoTitle || "Guides", guide?.seoDescription || "Property management guides.", `/guides/${slug}`);
 }
 
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -25,24 +24,26 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   const guide = await fetchGuideBySlug(slug);
   if (!guide) notFound();
 
-  const guides = await fetchGuides();
-  const relatedGuides = guides.filter((item) => item.slug !== guide.slug).slice(0, 3);
-  const path = `/guides/${guide.slug}`;
+  const allGuides = await fetchGuides();
+  const relatedGuides = allGuides.filter((item) => item.slug !== guide.slug).slice(0, 3);
+  const faqs = guide.faqs?.length ? guide.faqs : [
+    { question: `How do I apply ${guide.title}?`, answer: "Start with the workflow that creates the most operational friction, then layer in the next improvement after it is stable." },
+    { question: "Is this relevant for smaller portfolios?", answer: "Yes. Most of these systems matter even more when a small team is wearing every hat." },
+  ];
+
   const structuredData = buildStructuredData(
-    createBreadcrumbSchema([
-      { name: "Home", path: "/" },
-      { name: "Guides", path: "/guides" },
-      { name: guide.title },
-    ]),
-    createArticleSchema({
-      headline: guide.title,
-      description: guide.excerpt,
-      path,
-      datePublished: guide.publishedAt,
-      dateModified: guide.updatedAt,
-    }),
-    createFaqSchema(guide.faqs),
+    createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Guides", path: "/guides" }, { name: guide.title }]),
+    createArticleSchema({ headline: guide.title, description: guide.excerpt, path: `/guides/${guide.slug}`, datePublished: guide.publishedAt, dateModified: guide.updatedAt }),
+    createFaqSchema(faqs),
   );
 
-  return <><GuidePostClient guide={guide} relatedGuides={relatedGuides} /><JsonLd data={structuredData} /></>;
+  return (
+    <>
+      <GuidePostClient guide={guide} relatedGuides={relatedGuides} />
+      <div className="container mx-auto px-4 max-w-screen-xl pb-20">
+        <SEOContentSkeleton seoTitle={guide.seoTitle} seoDescription={guide.seoDescription} slug={`/guides/${guide.slug}`} mainTitle="" introText="" faqTitle={guide.faqTitle} faqs={faqs} ctaTitle={guide.ctaTitle} ctaText={guide.ctaText} ctaButtonText={guide.ctaPrimaryButton?.label} ctaButtonHref={guide.ctaPrimaryButton?.href} />
+      </div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+    </>
+  );
 }

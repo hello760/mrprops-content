@@ -1,9 +1,11 @@
 import { ArrowRight, Calculator, BookOpen, Zap, MessageCircle, Home as HomeIcon, CheckCircle2, PlayCircle } from "lucide-react";
 import Link from "next/link";
+import { Benefits } from "@/components/sections/Benefits";
 import { CTA } from "@/components/sections/CTA";
 import { FAQ } from "@/components/sections/FAQ";
 import { HowItWorks } from "@/components/sections/HowItWorks";
 import { Team } from "@/components/sections/Team";
+import { Testimonials } from "@/components/sections/Testimonials";
 import { WhyUs } from "@/components/sections/WhyUs";
 import { Button } from "@/components/ui/button";
 
@@ -68,6 +70,8 @@ export default function HomePage() {
       <WhyUs />
       <section className="bg-secondary/30 py-24 border-y border-border/50"><div className="container mx-auto px-4 text-center"><div className="max-w-3xl mx-auto mb-12"><h2 className="text-3xl md:text-5xl font-display font-bold mb-6">See the Platform in Action</h2><p className="text-muted-foreground text-lg mb-8">Experience the full power of Mr. Props without signing up. Try our interactive demo environment.</p><div className="flex justify-center"><a href="https://app.mrprops.io/" target="_blank" rel="noopener noreferrer"><Button size="lg" className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-xl shadow-primary/30"><PlayCircle className="mr-2 h-5 w-5" /> View Live Demo</Button></a></div></div><div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 max-w-4xl mx-auto group"><div className="absolute inset-0 bg-primary/10 group-hover:bg-transparent transition-colors z-10 pointer-events-none" /><div className="bg-background/80 backdrop-blur p-2 border-b border-border flex items-center gap-2 px-4"><div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500/80" /><div className="w-3 h-3 rounded-full bg-yellow-500/80" /><div className="w-3 h-3 rounded-full bg-green-500/80" /></div><div className="mx-auto bg-background/50 px-3 py-1 rounded-md text-xs text-muted-foreground font-mono flex items-center gap-2"><span className="text-green-500">🔒</span> app.mrprops.io/dashboard</div></div><img src={dashboardPreview} alt="Mr. Props Dashboard Interface" className="w-full h-auto opacity-100" /><div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity"><a href="https://app.mrprops.io/" target="_blank" rel="noopener noreferrer" className="bg-background/80 backdrop-blur-md text-foreground px-6 py-3 rounded-full font-bold shadow-2xl border border-white/20 hover:scale-105 transition-transform flex items-center gap-2"><PlayCircle className="h-5 w-5 text-primary" /> Launch Demo</a></div></div></div></section>
       <section className="bg-card border-y border-border/50 py-24"><div className="container mx-auto px-4"><div className="flex items-end justify-between mb-12"><div><div className="text-primary font-bold uppercase tracking-wider text-sm mb-2">From the Blog</div><h2 className="font-display text-3xl md:text-4xl font-bold">Latest Strategies</h2></div><Link href="/guides"><Button variant="ghost" className="text-primary hover:text-primary hover:bg-primary/10">View all articles <ArrowRight className="ml-2 h-4 w-4" /></Button></Link></div><div className="grid gap-8 md:grid-cols-3">{blogPosts.map((post, i) => <div key={i} className={post.wrapper}><div className={post.imageWrap}><div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />{post.imageBg ? <div className={post.imageBg}><img src={post.image} alt={post.title} className={post.imageClass} /></div> : <img src={post.image} alt={post.title} className={post.imageClass} />}<div className="absolute top-4 left-4 z-20"><span className={post.badgeClass}>{post.badge}</span></div></div><h3 className="font-display text-xl font-bold mb-2 group-hover:text-primary transition-colors">{post.title}</h3><p className="text-muted-foreground text-sm line-clamp-2">{post.text}</p></div>)}</div></div></section>
+      <Benefits />
+      <Testimonials />
       <Team />
       <FAQ />
       <CTA />

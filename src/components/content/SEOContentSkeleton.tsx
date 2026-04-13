@@ -61,7 +61,7 @@ export function SEOContentSkeleton({
   ctaTitle,
   ctaText,
   ctaButtonText = "Get Started",
-  ctaButtonHref = "https://app.mrprops.io/register",
+  ctaButtonHref = "https://app.mrprops.io/register"
 }: SEOContentSkeletonProps) {
   return (
     <div className="bg-background pb-20">
@@ -73,9 +73,14 @@ export function SEOContentSkeleton({
       {bannerImage && (
         <div className="relative h-[40vh] w-full overflow-hidden">
           <div className="absolute inset-0 bg-black/40 z-10" />
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bannerImage})` }} />
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${bannerImage})` }}
+          />
           <div className="relative z-20 container mx-auto h-full flex flex-col justify-end pb-12 px-4">
-            <h1 className="font-display text-4xl md:text-6xl font-bold text-white drop-shadow-lg max-w-4xl">{mainTitle}</h1>
+             <h1 className="font-display text-4xl md:text-6xl font-bold text-white drop-shadow-lg max-w-4xl">
+               {mainTitle}
+             </h1>
           </div>
         </div>
       )}
@@ -83,7 +88,9 @@ export function SEOContentSkeleton({
       {!bannerImage && mainTitle && (
         <div className="bg-secondary/20 py-20">
           <div className="container mx-auto px-4">
-            <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground max-w-4xl">{mainTitle}</h1>
+            <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground max-w-4xl">
+               {mainTitle}
+            </h1>
           </div>
         </div>
       )}
@@ -98,23 +105,23 @@ export function SEOContentSkeleton({
         {whatItIsContent && (
           <section className="space-y-6">
             <h2 className="font-display text-3xl font-bold">{whatItIsTitle}</h2>
-            <div className="prose prose-lg dark:prose-invert max-w-4xl">{whatItIsContent}</div>
+            <div className="prose prose-lg dark:prose-invert max-w-4xl">
+              {whatItIsContent}
+            </div>
           </section>
         )}
 
         {benefits.length > 0 && (
-          <section>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-10">{benefitsTitle}</h2>
+          <section className="space-y-8">
+            <h2 className="font-display text-3xl font-bold">{benefitsTitle}</h2>
             <div className="grid md:grid-cols-3 gap-6">
-              {benefits.map((benefit) => (
-                <div key={benefit.title} className="bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Check className="h-5 w-5 text-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl">{benefit.title}</h3>
+              {benefits.map((benefit, i) => (
+                <div key={i} className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <Check className="h-5 w-5 text-primary" />
                   </div>
-                  <p className="text-muted-foreground">{benefit.description}</p>
+                  <h3 className="font-bold text-lg mb-2">{benefit.title}</h3>
+                  <p className="text-muted-foreground text-sm">{benefit.description}</p>
                 </div>
               ))}
             </div>
@@ -139,42 +146,46 @@ export function SEOContentSkeleton({
         {reviews.length > 0 && (
           <section className="bg-secondary/10 -mx-4 px-4 py-16 rounded-3xl">
             <div className="max-w-4xl mx-auto">
-              <h2 className="font-display text-3xl font-bold text-center mb-12">{reviewsTitle}</h2>
-              <div className="grid md:grid-cols-2 gap-8">
-                {reviews.map((review, i) => (
-                  <div key={i} className="bg-background p-8 rounded-2xl shadow-sm border border-border">
-                    <div className="flex gap-1 mb-4 text-accent">
-                      {[...Array(5)].map((_, j) => (
-                        <Star key={j} className={`h-4 w-4 ${j < review.rating ? 'fill-current' : 'text-muted/20'}`} />
-                      ))}
-                    </div>
-                    <p className="italic text-muted-foreground mb-6">&quot;{review.text}&quot;</p>
-                    <div className="font-bold text-sm">{review.name}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {services.length > 0 && (
-          <section>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-10">{servicesTitle}</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {services.map((service) => (
-                <Link key={service.title} href={service.href} className="group flex items-center justify-between p-5 bg-card border border-border rounded-xl hover:border-primary/50 hover:bg-primary/5 transition-all">
-                  <span className="font-medium text-lg">{service.title}</span>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </Link>
-              ))}
+               <h2 className="font-display text-3xl font-bold text-center mb-12">{reviewsTitle}</h2>
+               <div className="grid md:grid-cols-2 gap-8">
+                 {reviews.map((review, i) => (
+                   <div key={i} className="bg-background p-8 rounded-2xl shadow-sm border border-border">
+                     <div className="flex gap-1 mb-4 text-accent">
+                       {[...Array(5)].map((_, j) => (
+                         <Star key={j} className={`h-4 w-4 ${j < review.rating ? 'fill-current' : 'text-muted/20'}`} />
+                       ))}
+                     </div>
+                     <p className="italic text-muted-foreground mb-6">"{review.text}"</p>
+                     <div className="font-bold text-sm">{review.name}</div>
+                   </div>
+                 ))}
+               </div>
             </div>
           </section>
         )}
 
         {pricingContent && (
-          <section>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-10">{pricingTitle}</h2>
-            <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">{pricingContent}</div>
+          <section className="space-y-8">
+             <h2 className="font-display text-3xl font-bold">{pricingTitle}</h2>
+             <div className="prose prose-lg dark:prose-invert max-w-4xl">
+               {pricingContent}
+             </div>
+          </section>
+        )}
+
+        {services.length > 0 && (
+          <section className="space-y-8">
+             <h2 className="font-display text-3xl font-bold">{servicesTitle}</h2>
+             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+               {services.map((service, i) => (
+                 <Link key={i} href={service.href}>
+                   <div className="group border border-border p-4 rounded-xl hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-between">
+                     <span className="font-medium">{service.title}</span>
+                     <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transform group-hover:translate-x-1 transition-transform" />
+                   </div>
+                 </Link>
+               ))}
+             </div>
           </section>
         )}
 
@@ -210,13 +221,13 @@ export function SEOContentSkeleton({
             {locations.length > 0 && (
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-muted-foreground">Locations</h3>
-                <div className="flex flex-wrap gap-3">
-                  {locations.map((loc, i) => (
-                    <Badge key={i} variant="secondary" className="px-3 py-1 text-sm">
-                      <MapPin className="h-3 w-3 mr-1" /> {loc}
-                    </Badge>
-                  ))}
-                </div>
+                 <div className="flex flex-wrap gap-3">
+                   {locations.map((loc, i) => (
+                     <Badge key={i} variant="secondary" className="px-3 py-1 text-sm">
+                       <MapPin className="h-3 w-3 mr-1" /> {loc}
+                     </Badge>
+                   ))}
+                 </div>
               </div>
             )}
 
@@ -233,12 +244,12 @@ export function SEOContentSkeleton({
         {faqs.length > 0 && (
           <section className="space-y-8 max-w-3xl mx-auto pt-12">
             <div className="text-center mb-12">
-              <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{faqTitle}</h2>
-              {mainTitle && <p className="text-muted-foreground text-lg">Common questions about {mainTitle}.</p>}
+               <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{faqTitle}</h2>
+               {mainTitle && <p className="text-muted-foreground text-lg">Common questions about {mainTitle}.</p>}
             </div>
             <Accordion type="single" collapsible className="w-full space-y-4">
-              {faqs.map((faq, index) => (
-                <AccordionItem key={faq.question} value={`item-${index}`} className="border border-border bg-card rounded-xl px-6 shadow-sm">
+              {faqs.map((faq, i) => (
+                <AccordionItem key={i} value={`item-${i}`} className="border border-border bg-card rounded-xl px-6 shadow-sm">
                   <AccordionTrigger className="text-left font-display font-semibold text-lg hover:text-primary hover:no-underline py-6">{faq.question}</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground text-base pb-6 leading-relaxed">{faq.answer}</AccordionContent>
                 </AccordionItem>
@@ -249,30 +260,31 @@ export function SEOContentSkeleton({
       </div>
 
       {ctaTitle && (
-        <section className="py-24 bg-background relative overflow-hidden border-t border-border">
-          <div className="absolute inset-0 bg-primary/5 -skew-y-3 transform origin-top-left scale-110" />
+      <section className="py-24 bg-background relative overflow-hidden border-t border-border">
+        <div className="absolute inset-0 bg-primary/5 -skew-y-3 transform origin-top-left scale-110" />
 
-          <div className="container mx-auto px-4 relative z-10 text-center">
-            <h2 className="font-display text-4xl md:text-6xl font-bold mb-6 tracking-tight max-w-3xl mx-auto">
-              {ctaTitle}
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              {ctaText}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-xl shadow-primary/30 w-full sm:w-auto" asChild>
-                <a href={ctaButtonHref}>{ctaButtonText} <ArrowRight className="ml-2 h-5 w-5" /></a>
-              </Button>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-border bg-background hover:bg-muted w-full sm:w-auto">
-                Talk to Sales
-              </Button>
-            </div>
-            <p className="mt-6 text-sm text-muted-foreground">
-              No credit card required. Cancel anytime.
-            </p>
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <h2 className="font-display text-4xl md:text-6xl font-bold mb-6 tracking-tight max-w-3xl mx-auto">
+            {ctaTitle}
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+            {ctaText}
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-xl shadow-primary/30 w-full sm:w-auto" asChild>
+              <a href={ctaButtonHref}>{ctaButtonText} <ArrowRight className="ml-2 h-5 w-5" /></a>
+            </Button>
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-border bg-background hover:bg-muted w-full sm:w-auto">
+              Talk to Sales
+            </Button>
           </div>
-        </section>
+          <p className="mt-6 text-sm text-muted-foreground">
+            No credit card required. Cancel anytime.
+          </p>
+        </div>
+      </section>
       )}
+
     </div>
   );
 }

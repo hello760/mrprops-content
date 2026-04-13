@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
 import { Lock, FileText, CheckCircle2, Home, ChevronRight } from "lucide-react";
-import type { DirectoryEntry } from "@/lib/content-pages";
+import type { TemplatePageContent } from "@/lib/template-tools";
 
-interface TemplatePage extends DirectoryEntry {
-  category: string;
-}
+type TemplatePage = TemplatePageContent;
 
 export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   const [email, setEmail] = useState("");
@@ -35,15 +33,12 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   const resources = page.resources || [];
   const faqs = page.faqs || [];
 
-  // Deduplicate: if the first H2 in body also appears in previewBody, strip it
-  // to avoid rendering the same heading twice (once in preview mockup, once in body)
   const deduplicatedBody = useMemo(() => {
     if (!page.body?.length || !previewBody?.length) return page.body || [];
     const firstH2Idx = page.body.findIndex((b: any) => b.style === "h2");
     if (firstH2Idx === -1) return page.body;
     const h2Text = (page.body[firstH2Idx] as any).children?.map((c: any) => c.text).join("").toLowerCase().trim();
     if (!h2Text) return page.body;
-    // Check if any H2 in previewBody matches the first H2 in body
     const previewH2s = previewBody
       .filter((b: any) => b.style === "h2")
       .map((b: any) => (b.children?.map((c: any) => c.text).join("") || "").toLowerCase().trim());
@@ -106,13 +101,11 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
             </div>
 
             <div className="space-y-12 max-w-4xl mx-auto pt-12">
-              {/* Primary content: render body PortableText which contains all article sections with H2 headings */}
               {deduplicatedBody?.length ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
                   <PortableTextContent blocks={deduplicatedBody} />
                 </div>
               ) : (
-                /* Fallback: structured fields when body is empty */
                 <div className="prose prose-lg dark:prose-invert max-w-none">
                   {page.whatIsTitle && <><h2 className="font-display font-bold text-3xl mb-6">{page.whatIsTitle}</h2><p className="lead">{page.whatIsText}</p></>}
                   {useCases.length > 0 && (

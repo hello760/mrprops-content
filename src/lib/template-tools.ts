@@ -2,6 +2,43 @@ import { sanityFetch } from "@/lib/sanity";
 import type { PortableTextBlock } from "@/lib/content-helpers";
 import type { CalculatorUiCopy } from "@/components/tools/calculatorCopy";
 
+export interface LinkItem {
+  label: string;
+  href: string;
+  meta?: string;
+}
+
+export interface TemplatePageContent {
+  id: string;
+  category: string;
+  slug: string;
+  title: string;
+  badge: string;
+  description: string;
+  trustItems: string[];
+  previewTitle: string;
+  previewMeta: string;
+  previewBody: PortableTextBlock[];
+  gateTitle: string;
+  gateDescription: string;
+  formPlaceholder: string;
+  formButtonLabel: string;
+  formDisclaimer: string;
+  whatIsTitle: string;
+  whatIsText: string;
+  useCasesTitle: string;
+  useCases: string[];
+  customizeTitle: string;
+  customizeText: string;
+  faqTitle: string;
+  faqs: Array<{ question: string; answer: string }>;
+  resourcesTitle: string;
+  resources: LinkItem[];
+  seoTitle: string;
+  seoDescription: string;
+  body?: PortableTextBlock[];
+}
+
 export interface ToolPageContent {
   id: string;
   category: string;
@@ -16,6 +53,37 @@ export interface ToolPageContent {
   faqs: Array<{ question: string; answer: string }>;
   body?: PortableTextBlock[];
   calculatorUi?: CalculatorUiCopy;
+}
+
+interface SanityTemplateDoc {
+  _id: string;
+  category?: string;
+  slug?: { current?: string };
+  title?: string;
+  badge?: string;
+  description?: string;
+  trustItems?: string[];
+  previewTitle?: string;
+  previewMeta?: string;
+  previewBody?: PortableTextBlock[];
+  gateTitle?: string;
+  gateDescription?: string;
+  formPlaceholder?: string;
+  formButtonLabel?: string;
+  formDisclaimer?: string;
+  whatIsTitle?: string;
+  whatIsText?: string;
+  useCasesTitle?: string;
+  useCases?: string[];
+  customizeTitle?: string;
+  customizeText?: string;
+  faqTitle?: string;
+  faqs?: Array<{ question: string; answer: string }>;
+  resourcesTitle?: string;
+  resources?: LinkItem[];
+  seoTitle?: string;
+  seoDescription?: string;
+  body?: PortableTextBlock[];
 }
 
 interface SanityToolDoc {
@@ -34,8 +102,71 @@ interface SanityToolDoc {
   calculatorUi?: CalculatorUiCopy;
 }
 
+const block = (text: string): PortableTextBlock => ({
+  _key: text.slice(0, 24).replace(/\s+/g, "-").toLowerCase(),
+  _type: "block",
+  style: "normal",
+  children: [{ _type: "span", text }],
+});
+
+const templateSeeds = [
+  ["guest-experience", "airbnb-welcome-book", "Airbnb Welcome Book", ["Downloaded 542 times this week", "By Alex, Superhost", "PDF, Word, Notion"]],
+  ["legal", "house-rules-template", "House Rules Template", ["Downloaded 542 times this week", "By Alex, Superhost", "PDF, Notion"]],
+  ["operations", "cleaning-checklist", "Cleaning Checklist", ["Downloaded 542 times this week", "By Alex, Superhost", "Excel, PDF"]],
+  ["operations", "inventory-tracker", "Inventory Tracker", ["Downloaded 542 times this week", "By Alex, Superhost", "Excel, Sheets"]],
+  ["guest-experience", "guest-message-scripts", "Guest Message Scripts", ["Downloaded 542 times this week", "By Alex, Superhost", "Notion, PDF"]],
+  ["legal", "rental-agreement", "Short-Term Rental Agreement", ["Downloaded 542 times this week", "By Alex, Superhost", "Word, PDF"]],
+  ["marketing", "listing-optimization-guide", "Listing Optimization Guide", ["Downloaded 542 times this week", "By Alex, Superhost", "PDF"]],
+  ["legal", "co-host-contract", "Co-Hosting Contract", ["Downloaded 542 times this week", "By Alex, Superhost", "Word"]],
+  ["operations", "pricing-strategy-calculator", "Pricing Strategy Calculator", ["Downloaded 542 times this week", "By Alex, Superhost", "Excel"]],
+  ["guest-experience", "amenities-checklist", "Essential Amenities List", ["Downloaded 542 times this week", "By Alex, Superhost", "PDF"]],
+] as const;
+
 const createField = (key: string, label: string, helpText?: string) => ({ key, label, ...(helpText ? { helpText } : {}) });
 const createResult = (key: string, label: string, helpText?: string) => ({ key, label, ...(helpText ? { helpText } : {}) });
+
+export const templateFallbacks: TemplatePageContent[] = templateSeeds.map(([category, slug, title, trustItems]) => ({
+  id: `template-${slug}`,
+  category,
+  slug,
+  title,
+  badge: `Free ${category.replace(/-/g, " ")} Template`,
+  description: `Stop starting from scratch. Join 5,000+ hosts using this battle-tested ${title.toLowerCase()} to save time and impress guests.`,
+  trustItems: [...trustItems],
+  previewTitle: title,
+  previewMeta: "Version 2.4 • Updated Oct 2025",
+  previewBody: [
+    block("Welcome to your home away from home! We are thrilled to have you stay with us. This guide contains everything you need to know to make your stay comfortable and enjoyable."),
+    block("1. Arrival & Check-in — Check-in time is after 3:00 PM. If you need to drop off luggage earlier, please let us know at least 24 hours in advance."),
+    block("2. WiFi & Connectivity — Network Name: The_Hideaway_Guest. Password: Welcome2025!"),
+    block("3. House Rules — No smoking inside the property. Quiet hours are from 10:00 PM to 7:00 AM. Please remove shoes upon entry."),
+  ],
+  gateTitle: "Unlock the full template",
+  gateDescription: "Join 5,000+ hosts using this template to streamline their operations.",
+  formPlaceholder: "Enter your email address",
+  formButtonLabel: "Send me the Template",
+  formDisclaimer: "No spam. Unsubscribe anytime.",
+  whatIsTitle: "What is this template?",
+  whatIsText: `This ${title.toLowerCase()} is designed to help short-term rental hosts provide a professional experience without the headache of creating documents from scratch. Based on industry best practices and feedback from Superhosts.`,
+  useCasesTitle: "When to use it?",
+  useCases: ["New listing launches", "Standardizing multi-unit operations", "Improving guest review scores", "Reducing repeat questions"],
+  customizeTitle: "How to customize it?",
+  customizeText: "The template comes in multiple formats (Word, PDF, Notion). We've highlighted the sections you need to change in [brackets], such as property name, wifi passwords, and local emergency contacts.",
+  faqTitle: "Frequently Asked Questions",
+  faqs: [
+    { question: "Is this template legally binding?", answer: "While drafted by professionals, this is a general template. We recommend having a local attorney review it to ensure compliance with your specific local regulations." },
+    { question: "Can I share this with my co-host?", answer: "Yes! Once you download it, the file is yours to keep, edit, and share with your team." },
+    { question: "Do you have a Notion version?", answer: "Yes, the download link includes a direct link to duplicate the Notion template to your workspace." },
+  ],
+  resourcesTitle: "More Free Resources",
+  resources: [
+    { label: "Cleaning Checklist", href: "/templates/operations/cleaning-checklist", meta: "Download" },
+    { label: "Inventory Tracker", href: "/templates/operations/inventory-tracker", meta: "Download" },
+    { label: "Profit Calculator", href: "/tools/booking/airbnb-profit-calculator", meta: "Calculate" },
+  ],
+  seoTitle: `${title} | Mr. Props`,
+  seoDescription: `Download the ${title.toLowerCase()} and customize it for your short-term rental operation.`,
+}));
 
 export const toolFallbacks: ToolPageContent[] = [
   {
@@ -58,18 +189,8 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "How do I estimate occupancy?", answer: "Market average is typically around 65%, but prime locations can reach 80%+. Use a conservative 60% for safe planning." },
     ],
     calculatorUi: {
-      fields: [
-        createField("adr", "Average Daily Rate (ADR)"),
-        createField("occupancy", "Occupancy Rate"),
-        createField("rent", "Monthly Rent / Mortgage ($)"),
-        createField("cleaning", "Cleaning Fee per Stay ($)"),
-        createField("management", "Management Fee (%)"),
-      ],
-      results: [
-        createResult("monthlyProfit", "Estimated Monthly Profit"),
-        createResult("annualProfit", "Annual Profit"),
-        createResult("profitMargin", "Profit Margin"),
-      ],
+      fields: [createField("adr", "Average Daily Rate (ADR)"), createField("occupancy", "Occupancy Rate"), createField("rent", "Monthly Rent / Mortgage ($)"), createField("cleaning", "Cleaning Fee per Stay ($)"), createField("management", "Management Fee (%)")],
+      results: [createResult("monthlyProfit", "Estimated Monthly Profit"), createResult("annualProfit", "Annual Profit"), createResult("profitMargin", "Profit Margin")],
       layout: {
         reportButtonLabel: "Email me this detailed report",
         primaryCtaLabel: "Start Free Trial",
@@ -106,68 +227,61 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "How often should I review my fee?", answer: "Review quarterly or whenever vendor rates, linen costs, or stay length patterns change." },
     ],
     calculatorUi: {
-      fields: [
-        createField("cleanerRate", "Cleaner hourly rate ($)"),
-        createField("supplies", "Supplies & linen per turn ($)"),
-        createField("hours", "Cleaning hours"),
-        createField("buffer", "Operator buffer", "Use a small buffer to cover coordination, consumables, and surprise resets."),
-      ],
-      results: [
-        createResult("recommendedFee", "Recommended Guest Cleaning Fee"),
-        createResult("baseTurnCost", "Base Turn Cost"),
-        createResult("bufferAdded", "Buffer Added"),
-      ],
+      fields: [createField("cleanerRate", "Cleaner hourly rate ($)"), createField("supplies", "Supplies & linen per turn ($)"), createField("hours", "Cleaning hours"), createField("buffer", "Operator buffer", "Use a small buffer to cover coordination, consumables, and surprise resets.")],
+      results: [createResult("recommendedFee", "Recommended Guest Cleaning Fee"), createResult("baseTurnCost", "Base Turn Cost"), createResult("bufferAdded", "Buffer Added")],
+      layout: {
+        reportButtonLabel: "Email me this detailed report",
+        primaryCtaLabel: "Start Free Trial",
+        primaryCtaHref: "https://app.mrprops.io/register",
+        trustBadgeText: "Based on 2026 Market Data",
+        reportModalTitle: "Get Your {title} Report",
+        helpfulHeading: "How is {toolName} helpful?",
+        helpfulText: "Most hosts guess their numbers. Pros use data. This tool helps you make unemotional, data-driven decisions about your property portfolio, ensuring every dollar you invest yields a measurable return.",
+        benefitStripItems: [
+          { icon: "accuracy", title: "Accuracy", description: "Based on real-time market data from 50+ cities." },
+          { icon: "speed", title: "Speed", description: "Get answers in seconds, not hours of spreadsheet work." },
+          { icon: "confidence", title: "Confidence", description: "Bank-grade formulas used by institutional investors." },
+        ],
+      },
     },
   },
   {
     id: "tool-renovation-roi-calculator",
-    category: "renovations",
+    category: "booking",
     slug: "renovation-roi-calculator",
     title: "Renovation ROI Calculator",
     description: "Should you upgrade that kitchen? Find out if the investment pays off.",
-    seoTitle: "Renovation ROI Calculator | Mr. Props",
-    seoDescription: "Estimate payback period and first-year ROI for your next short-term rental renovation.",
-    mainTitle: "Know when the upgrade pays back",
-    introText: "Renovations should increase nightly rate, occupancy, or both. Use this calculator to estimate how fast a project earns its way back.",
+    seoTitle: "Renovation ROI Calculator for Airbnb | Mr. Props",
+    seoDescription: "Calculate the return on investment for property renovations.",
+    mainTitle: "Invest smart, not hard",
+    introText: "Not all renovations are created equal. Adding a hot tub might cost $5,000 but could increase your nightly rate by $30, paying for itself in less than a year. Use this tool to weigh the costs versus potential gains.",
     benefits: [
-      { title: "Faster Decisions", description: "Quickly compare renovation options before spending capital." },
-      { title: "Clear Break-even", description: "See how many months it takes to recover your budget." },
-      { title: "Better Rate Strategy", description: "Tie renovation scope directly to achievable ADR lift." },
+      { title: "Hot Tubs & Pools", description: "Highest ROI upgrades in most markets." },
+      { title: "Interior Design", description: "Professional staging can increase booking conversion by 40%." },
+      { title: "Kitchen Upgrades", description: "Essential for capturing longer-term stays." },
     ],
     faqs: [
-      { question: "What occupancy does this assume?", answer: "The default model assumes a 65% occupancy rate as a conservative baseline for many markets." },
-      { question: "Can I use this for cosmetic upgrades?", answer: "Yes. It works for anything from paint and furniture to full kitchen or bathroom remodels." },
+      { question: "What occupancy assumption is used?", answer: "The calculator uses a conservative 65% occupancy assumption for break-even modelling." },
+      { question: "Should I include financing costs?", answer: "Yes, if you are borrowing for the renovation, include financing in your total project cost." },
     ],
     calculatorUi: {
-      fields: [
-        createField("cost", "Total Renovation Cost ($)", "Include materials and labor."),
-        createField("rateIncrease", "Expected Nightly Rate Increase", "How much more can you charge per night?"),
-      ],
-      results: [
-        createResult("monthsToBreakEven", "Months to Break Even"),
-        createResult("roiFirstYear", "1-Year ROI"),
-        createResult("annualRevenueIncrease", "Annual Revenue Increase"),
-      ],
+      fields: [createField("cost", "Total Renovation Cost ($)", "Include materials and labor."), createField("rateIncrease", "Expected Nightly Rate Increase", "How much more can you charge per night?")],
+      results: [createResult("monthsToBreakEven", "Months to Break Even"), createResult("roiFirstYear", "1-Year ROI"), createResult("annualRevenueIncrease", "Annual Revenue Increase")],
+      layout: {
+        reportButtonLabel: "Email me this detailed report",
+        primaryCtaLabel: "Start Free Trial",
+        primaryCtaHref: "https://app.mrprops.io/register",
+        trustBadgeText: "Based on 2026 Market Data",
+        reportModalTitle: "Get Your {title} Report",
+        helpfulHeading: "How is {toolName} helpful?",
+        helpfulText: "Most hosts guess their numbers. Pros use data. This tool helps you make unemotional, data-driven decisions about your property portfolio, ensuring every dollar you invest yields a measurable return.",
+        benefitStripItems: [
+          { icon: "accuracy", title: "Accuracy", description: "Based on real-time market data from 50+ cities." },
+          { icon: "speed", title: "Speed", description: "Get answers in seconds, not hours of spreadsheet work." },
+          { icon: "confidence", title: "Confidence", description: "Bank-grade formulas used by institutional investors." },
+        ],
+      },
     },
-  },
-  {
-    id: "tool-roi-calculator",
-    category: "renovations",
-    slug: "roi-calculator",
-    title: "ROI Calculator",
-    description: "Quickly estimate the payoff of your next renovation or revenue lift.",
-    seoTitle: "ROI Calculator | Mr. Props",
-    seoDescription: "Estimate renovation payback and first-year ROI for short-term rental upgrades.",
-    mainTitle: "Estimate ROI before you spend",
-    introText: "Use a simple revenue-lift model to see whether a renovation or upgrade is worth the cash outlay.",
-    benefits: [
-      { title: "Simple Model", description: "Fast first-pass ROI analysis without complex spreadsheets." },
-      { title: "Break-even Clarity", description: "Know exactly how long payback may take." },
-      { title: "Budget Discipline", description: "Prioritize projects with the highest potential return." },
-    ],
-    faqs: [
-      { question: "Is this different from the renovation ROI calculator?", answer: "It uses the same interactive calculator and is kept as an alternate slug for content compatibility." },
-    ],
   },
   {
     id: "tool-kitchen-cost-calculator",
@@ -175,25 +289,36 @@ export const toolFallbacks: ToolPageContent[] = [
     slug: "kitchen-cost-calculator",
     title: "Kitchen Cost Calculator",
     description: "Full gut renovation estimates including cabinets, countertops, and appliances.",
-    seoTitle: "Kitchen Cost Calculator | Mr. Props",
-    seoDescription: "Estimate a kitchen renovation budget by size and finish tier.",
-    mainTitle: "Budget the kitchen before demo day",
-    introText: "Cabinetry, countertops, labor, and appliances add up quickly. Use this estimator to set a realistic renovation budget.",
+    seoTitle: "Kitchen Renovation Cost Calculator | Mr. Props",
+    seoDescription: "Estimate the cost of a full kitchen remodel for your rental property.",
+    mainTitle: "Kitchens sell rentals",
+    introText: "The kitchen is often the deciding factor for guests. Use this calculator to budget for a renovation that pays for itself in higher nightly rates.",
     benefits: [
-      { title: "Range Planning", description: "Model economy, mid-range, and luxury renovation scopes." },
-      { title: "Faster Budgeting", description: "Get a fast directional estimate before collecting contractor quotes." },
-      { title: "Capital Allocation", description: "Avoid over-investing relative to expected rental upside." },
+      { title: "Cabinetry", description: "The biggest cost, but also the biggest visual impact." },
+      { title: "Appliances", description: "Stainless steel is the standard for modern rentals." },
+      { title: "Labor", description: "Don't forget to budget for demolition and installation." },
     ],
     faqs: [
-      { question: "Does this include labor?", answer: "Yes. The estimate is intended to represent all-in project cost, not just materials." },
-      { question: "Can I use metric dimensions?", answer: "Convert to square feet first for the current version of the calculator." },
+      { question: "Does this include layout changes?", answer: "No. Structural work, plumbing moves, and layout reconfiguration should be added separately." },
+      { question: "Which tier should I choose?", answer: "Mid-tier is typically right for most urban STRs. Luxury only makes sense where ADR supports it." },
     ],
     calculatorUi: {
-      fields: [
-        createField("kitchenSize", "Kitchen Size (sq ft)"),
-        createField("applianceTier", "Appliance Tier"),
-      ],
+      fields: [createField("kitchenSize", "Kitchen Size (sq ft)"), createField("applianceTier", "Appliance Tier")],
       results: [createResult("estimatedCost", "Estimated Cost", "Includes cabinetry, countertops, labor, and {applianceTier} appliances.")],
+      layout: {
+        reportButtonLabel: "Email me this detailed report",
+        primaryCtaLabel: "Start Free Trial",
+        primaryCtaHref: "https://app.mrprops.io/register",
+        trustBadgeText: "Based on 2026 Market Data",
+        reportModalTitle: "Get Your {title} Report",
+        helpfulHeading: "How is {toolName} helpful?",
+        helpfulText: "Most hosts guess their numbers. Pros use data. This tool helps you make unemotional, data-driven decisions about your property portfolio, ensuring every dollar you invest yields a measurable return.",
+        benefitStripItems: [
+          { icon: "accuracy", title: "Accuracy", description: "Based on real-time market data from 50+ cities." },
+          { icon: "speed", title: "Speed", description: "Get answers in seconds, not hours of spreadsheet work." },
+          { icon: "confidence", title: "Confidence", description: "Bank-grade formulas used by institutional investors." },
+        ],
+      },
     },
   },
   {
@@ -202,24 +327,36 @@ export const toolFallbacks: ToolPageContent[] = [
     slug: "bedroom-reno-calculator",
     title: "Bedroom Renovation Estimator",
     description: "Calculate flooring, paint, and furnishing costs based on square footage.",
-    seoTitle: "Bedroom Renovation Calculator | Mr. Props",
-    seoDescription: "Estimate bedroom renovation costs by room size and finish quality.",
-    mainTitle: "Estimate bedroom upgrade costs in minutes",
-    introText: "Use this bedroom estimator to scope flooring, paint, furnishing, and finish upgrades without a spreadsheet.",
+    seoTitle: "Bedroom Renovation Cost Calculator | Mr. Props",
+    seoDescription: "Estimate the cost of upgrading bedrooms for your short-term rental.",
+    mainTitle: "Comfort equals reviews",
+    introText: "Guests spend 8 hours a night in the bedroom. Investing in quality mattresses, blackout curtains, and noise reduction pays off in 5-star sleep reviews.",
     benefits: [
-      { title: "Quick Budget Range", description: "Set expectations before you start pricing furniture and trades." },
-      { title: "Finish Comparison", description: "See how quality level changes the total budget." },
-      { title: "Portfolio Planning", description: "Standardize bedroom refreshes across multiple units." },
+      { title: "Flooring", description: "Hardwood or luxury vinyl plank is durable and easy to clean." },
+      { title: "Paint", description: "A fresh coat of paint is the highest ROI upgrade you can make." },
+      { title: "Furnishings", description: "Don't skimp on the mattress. It's the most important item." },
     ],
     faqs: [
-      { question: "What does finish quality mean?", answer: "It represents the overall material and furnishing tier, from basic refreshes to premium makeovers." },
+      { question: "Does this include ensuite bathrooms?", answer: "No. This estimate is for the bedroom only, not bathrooms or closet builds." },
+      { question: "What finish level is typical for STRs?", answer: "Standard to premium usually performs best: durable, clean, and visually elevated without overbuilding." },
     ],
     calculatorUi: {
-      fields: [
-        createField("roomSize", "Room Size (sq ft)"),
-        createField("materialQuality", "Finish Quality", "Economy to Luxury"),
-      ],
+      fields: [createField("roomSize", "Room Size (sq ft)"), createField("materialQuality", "Finish Quality", "Economy to Luxury")],
       results: [createResult("estimatedCost", "Estimated Cost", "Includes flooring, paint, furnishings, and labor based on national averages.")],
+      layout: {
+        reportButtonLabel: "Email me this detailed report",
+        primaryCtaLabel: "Start Free Trial",
+        primaryCtaHref: "https://app.mrprops.io/register",
+        trustBadgeText: "Based on 2026 Market Data",
+        reportModalTitle: "Get Your {title} Report",
+        helpfulHeading: "How is {toolName} helpful?",
+        helpfulText: "Most hosts guess their numbers. Pros use data. This tool helps you make unemotional, data-driven decisions about your property portfolio, ensuring every dollar you invest yields a measurable return.",
+        benefitStripItems: [
+          { icon: "accuracy", title: "Accuracy", description: "Based on real-time market data from 50+ cities." },
+          { icon: "speed", title: "Speed", description: "Get answers in seconds, not hours of spreadsheet work." },
+          { icon: "confidence", title: "Confidence", description: "Bank-grade formulas used by institutional investors." },
+        ],
+      },
     },
   },
   {
@@ -257,19 +394,12 @@ export const toolFallbacks: ToolPageContent[] = [
   },
 ];
 
+const TEMPLATE_QUERY = `*[_type == "leadGenTemplatePage" && category == $category && slug.current == $slug][0]{
+  _id,category,slug,title,badge,description,trustItems,previewTitle,previewMeta,previewBody,gateTitle,gateDescription,formPlaceholder,formButtonLabel,formDisclaimer,whatIsTitle,whatIsText,useCasesTitle,useCases,customizeTitle,customizeText,faqTitle,faqs,resourcesTitle,resources,seoTitle,seoDescription,body
+}`;
+
 const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && slug.current == $slug][0]{
-  _id,
-  category,
-  slug,
-  title,
-  description,
-  seoTitle,
-  seoDescription,
-  mainTitle,
-  introText,
-  benefits[]{title,description},
-  faqs[]{question,answer},
-  body,
+  _id,category,slug,title,description,seoTitle,seoDescription,mainTitle,introText,benefits,faqs,body,
   calculatorUi{
     fields[]{key,label,helpText},
     results[]{key,label,helpText},
@@ -277,10 +407,51 @@ const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && 
   }
 }`;
 
+export async function fetchTemplatePage(category: string, slug: string) {
+  const doc = await sanityFetch<SanityTemplateDoc | null>(TEMPLATE_QUERY, { category, slug });
+  if (!doc) return null;
+  return normalizeTemplateDoc(doc);
+}
+
 export async function fetchToolPage(category: string, slug: string) {
   const doc = await sanityFetch<SanityToolDoc | null>(TOOL_QUERY, { category, slug });
   if (!doc) return null;
   return normalizeToolDoc(doc);
+}
+
+function normalizeTemplateDoc(doc: SanityTemplateDoc): TemplatePageContent {
+  const fallback = getTemplateFallback(doc.category, doc.slug?.current) || templateFallbacks[0];
+  return {
+    ...fallback,
+    id: doc._id,
+    category: doc.category || fallback.category,
+    slug: doc.slug?.current || fallback.slug,
+    title: doc.title || fallback.title,
+    badge: doc.badge || fallback.badge,
+    description: doc.description || fallback.description,
+    trustItems: doc.trustItems?.length ? doc.trustItems : fallback.trustItems,
+    previewTitle: doc.previewTitle || fallback.previewTitle,
+    previewMeta: doc.previewMeta || fallback.previewMeta,
+    previewBody: doc.previewBody?.length ? doc.previewBody : fallback.previewBody,
+    gateTitle: doc.gateTitle || fallback.gateTitle,
+    gateDescription: doc.gateDescription || fallback.gateDescription,
+    formPlaceholder: doc.formPlaceholder || fallback.formPlaceholder,
+    formButtonLabel: doc.formButtonLabel || fallback.formButtonLabel,
+    formDisclaimer: doc.formDisclaimer || fallback.formDisclaimer,
+    whatIsTitle: doc.whatIsTitle || fallback.whatIsTitle,
+    whatIsText: doc.whatIsText || fallback.whatIsText,
+    useCasesTitle: doc.useCasesTitle || fallback.useCasesTitle,
+    useCases: doc.useCases?.length ? doc.useCases : fallback.useCases,
+    customizeTitle: doc.customizeTitle || fallback.customizeTitle,
+    customizeText: doc.customizeText || fallback.customizeText,
+    faqTitle: doc.faqTitle || fallback.faqTitle,
+    faqs: doc.faqs?.length ? doc.faqs : fallback.faqs,
+    resourcesTitle: doc.resourcesTitle || fallback.resourcesTitle,
+    resources: doc.resources?.length ? doc.resources : fallback.resources,
+    seoTitle: doc.seoTitle || fallback.seoTitle,
+    seoDescription: doc.seoDescription || fallback.seoDescription,
+    body: doc.body?.length ? doc.body : fallback.body,
+  };
 }
 
 function normalizeToolDoc(doc: SanityToolDoc): ToolPageContent {
@@ -308,6 +479,10 @@ function normalizeToolDoc(doc: SanityToolDoc): ToolPageContent {
       },
     },
   };
+}
+
+export function getTemplateFallback(category?: string | null, slug?: string | null) {
+  return templateFallbacks.find((item) => item.category === category && item.slug === slug) || null;
 }
 
 export function getToolFallback(category?: string | null, slug?: string | null) {
