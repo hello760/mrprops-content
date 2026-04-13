@@ -194,7 +194,9 @@ export default async function FeaturePage({ params }: { params: Promise<{ slug: 
           </section>
         ) : null}
 
-        {page.body?.length ? (
+        {/* Only render body when structured fields are sparse — otherwise body
+            duplicates the content already shown via statsBar, howItWorks, comparison, etc. */}
+        {page.body?.length && !(page.statsBar?.length && page.howItWorksSteps?.length && (page.comparisonPros?.length || page.comparisonCons?.length)) ? (
           <section className="py-20 bg-secondary/30 border-y border-border/50">
             <div className="container mx-auto px-4 max-w-4xl prose prose-lg">
               <PortableTextContent blocks={page.body} />
