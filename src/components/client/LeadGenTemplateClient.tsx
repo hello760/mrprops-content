@@ -35,22 +35,23 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   const resources = page.resources || [];
   const faqs = page.faqs || [];
 
-  // Deduplicate: if the first H2 in body matches the previewTitle, strip it
+  // Deduplicate: if the first H2 in body also appears in previewBody, strip it
   // to avoid rendering the same heading twice (once in preview mockup, once in body)
   const deduplicatedBody = useMemo(() => {
-    if (!page.body?.length || !page.previewTitle) return page.body || [];
+    if (!page.body?.length || !previewBody?.length) return page.body || [];
     const firstH2Idx = page.body.findIndex((b: any) => b.style === "h2");
     if (firstH2Idx === -1) return page.body;
-    const h2Text = (page.body[firstH2Idx] as any).children?.map((c: any) => c.text).join("") || "";
-    // Match if the body H2 text is contained in previewTitle or vice versa
-    if (h2Text && page.previewTitle && (
-      h2Text.toLowerCase().includes(page.previewTitle.toLowerCase().substring(0, 20)) ||
-      page.previewTitle.toLowerCase().includes(h2Text.toLowerCase().substring(0, 20))
-    )) {
+    const h2Text = (page.body[firstH2Idx] as any).children?.map((c: any) => c.text).join("").toLowerCase().trim();
+    if (!h2Text) return page.body;
+    // Check if any H2 in previewBody matches the first H2 in body
+    const previewH2s = previewBody
+      .filter((b: any) => b.style === "h2")
+      .map((b: any) => (b.children?.map((c: any) => c.text).join("") || "").toLowerCase().trim());
+    if (previewH2s.some((ph: string) => ph === h2Text || ph.includes(h2Text.substring(0, 20)) || h2Text.includes(ph.substring(0, 20)))) {
       return [...page.body.slice(0, firstH2Idx), ...page.body.slice(firstH2Idx + 1)];
     }
     return page.body;
-  }, [page.body, page.previewTitle]);
+  }, [page.body, previewBody]);
 
   return (
     <div className="min-h-screen bg-secondary/30 pt-4 md:pt-8 pb-20">
