@@ -99,14 +99,13 @@ export function GlossaryTermPageClient({ term }: { term: GlossaryTerm }) {
               </div>
             </div>
 
-            {/* Pro Tip CTA — matches original SPA design */}
+            {/* CTA card — clean product CTA without "Pro Tip" framing per glossary spec */}
             <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
               <div className="relative z-10">
-                <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold mb-4 backdrop-blur-sm">{term.proTipBadge || "Pro Tip"}</div>
-                <h3 className="font-display text-2xl font-bold mb-3 leading-tight">{term.proTipTitle || `Stop tracking ${term.term} manually.`}</h3>
-                <p className="text-primary-foreground/90 text-sm mb-6 leading-relaxed">{term.proTipDescription || `Mr. Props automatically tracks ${term.term} alongside the other metrics that actually drive profit.`}</p>
-                <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12">{term.proTipButtonLabel || "Try Mr. Props Free"}</Button>
+                <h3 className="font-display text-2xl font-bold mb-3 leading-tight">{`Automate your ${term.term} tracking.`}</h3>
+                <p className="text-primary-foreground/90 text-sm mb-6 leading-relaxed">{`Mr. Props automatically tracks ${term.term} alongside the other metrics that actually drive profit for STR hosts.`}</p>
+                <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12">Try Mr. Props Free</Button>
                 <p className="text-xs text-center mt-3 opacity-70">No credit card required</p>
               </div>
             </div>
