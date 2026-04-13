@@ -88,7 +88,7 @@ export const toolFallbacks: ToolPageContent[] = [
   },
   {
     id: "tool-cleaning-fee-calculator",
-    category: "operations",
+    category: "booking",
     slug: "cleaning-fee-calculator",
     title: "Cleaning Fee Calculator",
     description: "Set a profitable cleaning fee without hurting conversion.",
@@ -222,6 +222,39 @@ export const toolFallbacks: ToolPageContent[] = [
       results: [createResult("estimatedCost", "Estimated Cost", "Includes flooring, paint, furnishings, and labor based on national averages.")],
     },
   },
+  {
+    id: "tool-rental-yield-calculator",
+    category: "finance",
+    slug: "rental-yield-calculator",
+    title: "Rental Yield Calculator",
+    description: "Calculate gross and net rental yields for your investment property.",
+    seoTitle: "Rental Yield Calculator 2026 | Mr. Props",
+    seoDescription: "Free rental yield calculator. Instantly compute gross and net yield to compare short-term rental investments.",
+    mainTitle: "Know your real rental yield",
+    introText: "Rental yield is the single most important number when comparing investment properties. This calculator shows both gross and net yield so you can make apples-to-apples comparisons across markets, property types, and price points.",
+    benefits: [
+      { title: "Gross vs Net Clarity", description: "See the headline yield and the after-expense reality side by side." },
+      { title: "Quick Comparisons", description: "Run multiple properties in minutes to find the strongest performer." },
+      { title: "Investor-Grade Output", description: "Use the same yield metrics that institutional buyers rely on." },
+    ],
+    faqs: [
+      { question: "What is a good rental yield?", answer: "For short-term rentals, a gross yield above 8% is strong. Net yields above 5% after all operating costs are considered excellent." },
+      { question: "What's the difference between gross and net yield?", answer: "Gross yield uses total income divided by property value. Net yield subtracts all operating expenses first, giving a more realistic picture of return." },
+      { question: "Should I use purchase price or current value?", answer: "Use current market value for ongoing portfolio analysis. Use purchase price when evaluating the original investment decision." },
+    ],
+    calculatorUi: {
+      fields: [
+        createField("propertyValue", "Property Value ($)"),
+        createField("monthlyRent", "Monthly Rental Income ($)"),
+        createField("annualExpenses", "Annual Expenses ($)", "Insurance, maintenance, management, taxes, etc."),
+      ],
+      results: [
+        createResult("grossYield", "Gross Yield"),
+        createResult("netYield", "Net Yield"),
+        createResult("annualIncome", "Annual Rental Income"),
+      ],
+    },
+  },
 ];
 
 const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && slug.current == $slug][0]{
@@ -279,4 +312,22 @@ function normalizeToolDoc(doc: SanityToolDoc): ToolPageContent {
 
 export function getToolFallback(category?: string | null, slug?: string | null) {
   return toolFallbacks.find((item) => item.category === category && item.slug === slug) || null;
+}
+
+/* ── slug / category aliases for backward-compat with old SPA routes ── */
+const SLUG_ALIASES: Record<string, { category: string; slug: string }> = {
+  "renovation-calculator": { category: "renovations", slug: "renovation-roi-calculator" },
+};
+
+/**
+ * Resolves a (category, slug) pair through aliases so that old SPA routes
+ * still resolve.  The dynamic route should call this instead of
+ * getToolFallback directly.
+ */
+export function resolveToolFallback(category: string, slug: string): ToolPageContent | null {
+  const direct = getToolFallback(category, slug);
+  if (direct) return direct;
+  const alias = SLUG_ALIASES[slug];
+  if (alias) return getToolFallback(alias.category, alias.slug);
+  return null;
 }

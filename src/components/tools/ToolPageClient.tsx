@@ -27,7 +27,7 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
   const hasBody = page.body && Array.isArray(page.body) && page.body.length > 0;
 
   const seoContent = hasBody ? (
-    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary">
+    <div className="prose prose-lg max-w-none">
       <PortableTextContent blocks={page.body!} />
     </div>
   ) : (
@@ -57,6 +57,7 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
     case "cleaning-fee-calculator":
       return <CleaningFeeEstimator {...sharedProps} />;
     case "renovation-roi-calculator":
+    case "renovation-calculator":
     case "roi-calculator":
       return <RenovationROICalculator {...sharedProps} />;
     case "kitchen-cost-calculator":
