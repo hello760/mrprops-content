@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,23 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   const useCases = page.useCases || [];
   const resources = page.resources || [];
   const faqs = page.faqs || [];
+
+  // Deduplicate: if the first H2 in body matches the previewTitle, strip it
+  // to avoid rendering the same heading twice (once in preview mockup, once in body)
+  const deduplicatedBody = useMemo(() => {
+    if (!page.body?.length || !page.previewTitle) return page.body || [];
+    const firstH2Idx = page.body.findIndex((b: any) => b.style === "h2");
+    if (firstH2Idx === -1) return page.body;
+    const h2Text = (page.body[firstH2Idx] as any).children?.map((c: any) => c.text).join("") || "";
+    // Match if the body H2 text is contained in previewTitle or vice versa
+    if (h2Text && page.previewTitle && (
+      h2Text.toLowerCase().includes(page.previewTitle.toLowerCase().substring(0, 20)) ||
+      page.previewTitle.toLowerCase().includes(h2Text.toLowerCase().substring(0, 20))
+    )) {
+      return [...page.body.slice(0, firstH2Idx), ...page.body.slice(firstH2Idx + 1)];
+    }
+    return page.body;
+  }, [page.body, page.previewTitle]);
 
   return (
     <div className="min-h-screen bg-secondary/30 pt-4 md:pt-8 pb-20">
@@ -89,9 +106,9 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
 
             <div className="space-y-12 max-w-4xl mx-auto pt-12">
               {/* Primary content: render body PortableText which contains all article sections with H2 headings */}
-              {page.body?.length ? (
+              {deduplicatedBody?.length ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
-                  <PortableTextContent blocks={page.body} />
+                  <PortableTextContent blocks={deduplicatedBody} />
                 </div>
               ) : (
                 /* Fallback: structured fields when body is empty */
