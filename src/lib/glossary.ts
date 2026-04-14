@@ -25,7 +25,7 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
   const whatIsSlug = `what-is-${baseSlug}`;
   const glossaryWhatIs = `glossary/${whatIsSlug}`;
 
-  const { data, error } = await sb
+  const { data: rawData, error } = await sb
     .from('content_pieces')
     .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at')
     .eq('client_id', clientId)
@@ -34,10 +34,11 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
     .or(`custom_slug.eq.${glossaryWhatIs},custom_slug.eq.glossary/${baseSlug},custom_slug.eq.${whatIsSlug},custom_slug.eq.${baseSlug}`)
     .single();
 
+  const data = rawData as Record<string, any> | null;
   if (error || !data || !data.structured_data) return null;
 
   const sd = data.structured_data as Record<string, any>;
-  const bodyHtml = data.content_body || '';
+  const bodyHtml = (data.content_body || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   // Map structured_data to GlossaryTerm interface (field-by-field)
