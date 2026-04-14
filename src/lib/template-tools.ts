@@ -2,6 +2,102 @@ import { sanityFetch } from "@/lib/sanity";
 import type { PortableTextBlock } from "@/lib/content-helpers";
 import type { CalculatorUiCopy } from "@/components/tools/calculatorCopy";
 
+// ─── Supabase dual-source (Phase 4E) ─────────────────────────────────────────
+let _sbClient: any = null;
+async function getSB() {
+  if (_sbClient) return _sbClient;
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) return null;
+  const { createClient } = await import('@supabase/supabase-js');
+  _sbClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  return _sbClient;
+}
+
+async function fetchTemplateFromSupabase(category: string, slug: string): Promise<TemplatePageContent | null> {
+  const sb = await getSB();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
+
+  const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .in('custom_slug', slugVariants)
+    .single();
+
+  if (error || !data?.structured_data) return null;
+  const sd = data.structured_data as Record<string, any>;
+  const fallback = getTemplateFallback(category, slug) || templateFallbacks[0];
+
+  return {
+    ...fallback,
+    id: data.id,
+    category: data.category || category,
+    slug: slug,
+    title: sd.hero?.previewTitle || data.title || fallback.title,
+    badge: sd.hero?.badge || fallback.badge,
+    description: sd.gate?.description || fallback.description,
+    trustItems: sd.trustItems || fallback.trustItems,
+    previewTitle: sd.hero?.previewTitle || fallback.previewTitle,
+    previewMeta: sd.hero?.previewMeta || fallback.previewMeta,
+    previewBody: [],
+    gateTitle: sd.gate?.title || fallback.gateTitle,
+    gateDescription: sd.gate?.description || fallback.gateDescription,
+    formPlaceholder: sd.gate?.formPlaceholder || fallback.formPlaceholder,
+    formButtonLabel: sd.gate?.buttonLabel || fallback.formButtonLabel,
+    formDisclaimer: sd.gate?.disclaimer || fallback.formDisclaimer,
+    whatIsTitle: sd.whatIsTitle || fallback.whatIsTitle,
+    whatIsText: sd.whatIsText || fallback.whatIsText,
+    useCasesTitle: sd.useCasesTitle || fallback.useCasesTitle,
+    useCases: sd.useCases || fallback.useCases,
+    customizeTitle: sd.customizeTitle || fallback.customizeTitle,
+    customizeText: sd.customizeText || fallback.customizeText,
+    faqTitle: 'Frequently Asked Questions',
+    faqs: sd.faqs || fallback.faqs,
+    resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
+    resources: sd.resources || fallback.resources,
+    seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
+    seoDescription: sd.seoDescription || data.seo_description || fallback.seoDescription,
+    body: [],
+  };
+}
+
+async function fetchToolFromSupabase(category: string, slug: string): Promise<ToolPageContent | null> {
+  const sb = await getSB();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
+
+  const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .in('custom_slug', slugVariants)
+    .single();
+
+  if (error || !data?.structured_data) return null;
+  const sd = data.structured_data as Record<string, any>;
+  const fallback = resolveToolFallback(category, slug);
+
+  return {
+    id: data.id,
+    category: data.category || category,
+    slug: slug,
+    title: sd.mainTitle || data.title || fallback?.title || '',
+    description: sd.introText || fallback?.description || '',
+    seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
+    seoDescription: sd.seoDescription || data.seo_description || fallback?.seoDescription || '',
+    mainTitle: sd.mainTitle || data.title || '',
+    introText: sd.introText || '',
+    benefits: sd.benefits || fallback?.benefits || [],
+    faqs: sd.faqs || fallback?.faqs || [],
+    body: [],
+    calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
+  };
+}
+
 export interface LinkItem {
   label: string;
   href: string;
@@ -408,12 +504,22 @@ const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && 
 }`;
 
 export async function fetchTemplatePage(category: string, slug: string) {
+  // Try Supabase first (direct structured_data, no lossy extraction)
+  const supabaseResult = await fetchTemplateFromSupabase(category, slug);
+  if (supabaseResult) return supabaseResult;
+
+  // Fall back to Sanity for content not yet migrated
   const doc = await sanityFetch<SanityTemplateDoc | null>(TEMPLATE_QUERY, { category, slug });
   if (!doc) return null;
   return normalizeTemplateDoc(doc);
 }
 
 export async function fetchToolPage(category: string, slug: string) {
+  // Try Supabase first (direct structured_data, no lossy extraction)
+  const supabaseResult = await fetchToolFromSupabase(category, slug);
+  if (supabaseResult) return supabaseResult;
+
+  // Fall back to Sanity for content not yet migrated
   const doc = await sanityFetch<SanityToolDoc | null>(TOOL_QUERY, { category, slug });
   if (!doc) return null;
   return normalizeToolDoc(doc);
