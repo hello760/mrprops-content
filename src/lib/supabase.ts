@@ -131,7 +131,7 @@ export async function fetchContentList(
     return [];
   }
 
-  return data || [];
+  return (data || []) as ContentPiece[];
 }
 
 /**
