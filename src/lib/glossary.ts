@@ -2,6 +2,75 @@ import { cache } from "react";
 import { calculateReadTime, formatDisplayDate, portableTextToPlainText, startCaseSlug, stripPrefix, type PortableTextBlock } from "@/lib/content-helpers";
 import { sanityFetch } from "@/lib/sanity";
 
+// ─── Supabase direct-read (Sanity replacement, Phase 4E) ─────────────────────
+// Only active when SUPABASE_URL is configured. Falls back to Sanity otherwise.
+let supabaseClient: ReturnType<typeof import('@supabase/supabase-js').createClient> | null = null;
+async function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) return null;
+  const { createClient } = await import('@supabase/supabase-js');
+  supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  return supabaseClient;
+}
+
+async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | null> {
+  const sb = await getSupabaseClient();
+  if (!sb) return null; // Supabase not configured, fall back to Sanity
+
+  const clientId = process.env.MR_PROPS_CLIENT_ID;
+  if (!clientId) return null;
+
+  // Normalize slug for matching
+  const baseSlug = slug.replace(/^(glossary\/)?/, '').replace(/^what-is-/, '');
+  const whatIsSlug = `what-is-${baseSlug}`;
+  const glossaryWhatIs = `glossary/${whatIsSlug}`;
+
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at')
+    .eq('client_id', clientId)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .or(`custom_slug.eq.${glossaryWhatIs},custom_slug.eq.glossary/${baseSlug},custom_slug.eq.${whatIsSlug},custom_slug.eq.${baseSlug}`)
+    .single();
+
+  if (error || !data || !data.structured_data) return null;
+
+  const sd = data.structured_data as Record<string, any>;
+  const bodyHtml = data.content_body || '';
+  const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // Map structured_data to GlossaryTerm interface (field-by-field)
+  return {
+    id: data.id,
+    slug: normalizeGlossarySlug(data.custom_slug) || whatIsSlug,
+    term: sd.term || data.title || 'Term',
+    definition: sd.definition || '',
+    body: bodyHtml
+      ? [{ _key: 'html-body', _type: 'block', style: 'normal', children: [{ _type: 'span', text: bodyHtml }], _html: bodyHtml } as unknown as PortableTextBlock]
+      : [],
+    relatedTerms: sd.relatedTerms || [],
+    seoTitle: sd.seoTitle || data.seo_title || `What is ${sd.term}? | Mr. Props`,
+    seoDescription: sd.seoDescription || data.seo_description || sd.definition || '',
+    publishedAt: data.published_at || undefined,
+    updatedAt: data.published_at || undefined,
+    date: formatDisplayDate(data.published_at),
+    readTime: calculateReadTime(plainText),
+    definitionPrefix: sd.definitionPrefix || undefined,
+    conceptImageUrl: sd.conceptImage?.url || undefined,
+    conceptImageAlt: sd.conceptImage?.alt || undefined,
+    proTipBadge: sd.proTip?.badge || undefined,
+    proTipTitle: sd.proTip?.title || undefined,
+    proTipDescription: sd.proTip?.description || undefined,
+    proTipButtonLabel: sd.proTip?.buttonLabel || undefined,
+    faqTitle: `Frequently Asked Questions about ${sd.term || data.title}`,
+    faqs: (sd.faqs || []).map((f: any) => ({ question: f.question, answer: f.answer })),
+    ctaTitle: sd.cta?.title || undefined,
+    ctaText: sd.cta?.text || undefined,
+    ctaPrimaryButton: sd.cta?.primaryButton || undefined,
+  };
+}
+
 export interface GlossaryTerm {
   id: string;
   slug: string;
@@ -126,6 +195,11 @@ export const fetchGlossaryTerms = cache(async () => {
 });
 
 export const fetchGlossaryTermBySlug = cache(async (slug: string) => {
+  // Try Supabase first (direct structured_data, no lossy extraction)
+  const supabaseResult = await fetchGlossaryFromSupabase(slug);
+  if (supabaseResult) return supabaseResult;
+
+  // Fall back to Sanity for content not yet migrated
   const normalized = normalizeGlossarySlug(slug);
   const baseSlug = glossarySlugBase(slug);
   const whatIsSlug = baseSlug ? `what-is-${baseSlug}` : normalized;
