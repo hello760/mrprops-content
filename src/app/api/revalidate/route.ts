@@ -1,28 +1,38 @@
-import { revalidatePath } from "next/cache";
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * ISR Revalidation API for mrprops.io
+ * Called by MMG Command Center after publishing content.
+ *
+ * Usage: POST /api/revalidate?secret=xxx&path=/glossary/dynamic-pricing
+ */
+
+import { revalidatePath } from 'next/cache';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const secret = body.secret || request.nextUrl.searchParams.get("secret");
-  const paths = body.paths || (body.path ? [body.path] : []);
+  const secret = request.nextUrl.searchParams.get('secret');
+  const path = request.nextUrl.searchParams.get('path');
 
-  if (secret !== process.env.REVALIDATION_SECRET) {
-    return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
+  // Validate secret
+  if (secret !== process.env.REVALIDATE_SECRET) {
+    return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
   }
 
-  if (!paths.length) {
-    return NextResponse.json({ error: "No paths provided" }, { status: 400 });
+  if (!path) {
+    return NextResponse.json({ error: 'Missing path parameter' }, { status: 400 });
   }
 
-  const results: { path: string; revalidated: boolean }[] = [];
-  for (const path of paths) {
-    try {
-      revalidatePath(path);
-      results.push({ path, revalidated: true });
-    } catch (err) {
-      results.push({ path, revalidated: false });
-    }
+  try {
+    revalidatePath(path);
+    return NextResponse.json({ revalidated: true, path });
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'Revalidation failed', message: (err as Error).message },
+      { status: 500 }
+    );
   }
+}
 
-  return NextResponse.json({ results, revalidatedAt: Date.now() });
+// Also support GET for simpler integration
+export async function GET(request: NextRequest) {
+  return POST(request);
 }
