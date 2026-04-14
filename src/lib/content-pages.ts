@@ -2,6 +2,71 @@ import { cache } from "react";
 import { calculateReadTime, formatDisplayDate, portableTextToPlainText, startCaseSlug, stripPrefix, type PortableTextBlock } from "@/lib/content-helpers";
 import { sanityFetch } from "@/lib/sanity";
 
+// ─── Supabase dual-source (Phase 4E) ─────────────────────────────────────────
+let _sbClient: any = null;
+async function getSB() {
+  if (_sbClient) return _sbClient;
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) return null;
+  const { createClient } = await import('@supabase/supabase-js');
+  _sbClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  return _sbClient;
+}
+
+async function fetchLandingFromSupabase(pageType: "features" | "services", slug: string): Promise<LandingContent | null> {
+  const sb = await getSB();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
+
+  const slugVariants = [`${pageType}/${slug}`, `features/${slug}`, `services/${slug}`, slug];
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at')
+    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .in('custom_slug', slugVariants)
+    .single();
+
+  if (error || !data?.structured_data) return null;
+  const sd = data.structured_data as Record<string, any>;
+
+  return {
+    id: data.id,
+    slug,
+    pageType,
+    title: sd.hero?.headline || data.title || '',
+    headline: sd.hero?.headline || data.title || '',
+    subheadline: sd.hero?.subheadline || '',
+    body: [],
+    image: '',
+    seoTitle: sd.seoTitle || data.seo_title || '',
+    seoDescription: sd.seoDescription || data.seo_description || '',
+    publishedAt: data.published_at || undefined,
+    heroBadge: sd.hero?.badge,
+    primaryCtaButton: sd.hero?.primaryCta,
+    secondaryCtaButton: sd.hero?.secondaryCta,
+    trustBarLabel: sd.trustBar?.label,
+    trustBarLogos: sd.trustBar?.logos?.map((l: string) => ({ label: l })),
+    spotlightTitle: sd.spotlight?.title,
+    spotlightDescription: sd.spotlight?.description,
+    featuresTitle: 'Why Choose Mr. Props?',
+    features: sd.features,
+    statsBar: sd.statsBar,
+    howItWorksTitle: 'How It Works',
+    howItWorksSteps: sd.howItWorks,
+    comparisonTitle: sd.comparison?.title,
+    comparisonPros: sd.comparison?.mrProps?.pros,
+    comparisonCons: sd.comparison?.traditional?.cons,
+    testimonialsTitle: 'What Our Customers Say',
+    testimonials: sd.testimonials,
+    faqTitle: 'Frequently Asked Questions',
+    faqs: sd.faqs,
+    ctaTitle: sd.finalCta?.headline,
+    ctaText: sd.finalCta?.sentence,
+    ctaPrimaryButton: sd.finalCta?.primaryCta,
+    ctaSecondaryButton: sd.finalCta?.secondaryCta,
+  };
+}
+
 export interface LinkButtonConfig {
   label: string;
   href?: string;
@@ -775,6 +840,11 @@ export const fetchLandingPages = cache(async (pageType: "features" | "services")
 });
 
 export const fetchLandingPageBySlug = cache(async (pageType: "features" | "services", slug: string) => {
+  // Try Supabase first (direct structured_data, no lossy extraction)
+  const supabaseResult = await fetchLandingFromSupabase(pageType, slug);
+  if (supabaseResult) return supabaseResult;
+
+  // Fall back to Sanity for content not yet migrated
   const pages = await fetchLandingPages(pageType);
   return pages.find((item) => item.slug === slug) || landingFallbacks.find((item) => item.pageType === pageType) || null;
 });
