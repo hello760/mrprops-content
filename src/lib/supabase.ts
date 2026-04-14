@@ -6,12 +6,22 @@
  * Replaces Sanity client for all content fetching.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Lazy initialization — only create client when both URL and key are available
+let _client: SupabaseClient | null = null;
+export function getSupabase(): SupabaseClient | null {
+  if (_client) return _client;
+  if (!supabaseUrl || !supabaseKey) return null;
+  _client = createClient(supabaseUrl, supabaseKey);
+  return _client;
+}
+
+// Backward compat export (returns null-safe client)
+export const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,7 +59,10 @@ const MR_PROPS_CLIENT_ID = process.env.MR_PROPS_CLIENT_ID || '';
 async function getMrPropsClientId(): Promise<string> {
   if (MR_PROPS_CLIENT_ID) return MR_PROPS_CLIENT_ID;
 
-  const { data } = await supabase
+  const sb = getSupabase();
+  if (!sb) return '';
+
+  const { data } = await sb
     .from('clients')
     .select('id')
     .or('slug.eq.mr-props,slug.eq.mrprops')
@@ -68,19 +81,16 @@ export async function fetchContentBySlug(
   urlType: string,
   slug: string
 ): Promise<ContentPiece | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+
   const clientId = await getMrPropsClientId();
-  if (!clientId) {
-    console.error('[supabase] Mr Props client ID not found');
-    return null;
-  }
+  if (!clientId) return null;
 
   const dbTypes = CONTENT_TYPE_MAP[urlType];
-  if (!dbTypes) {
-    console.error(`[supabase] Unknown URL type: ${urlType}`);
-    return null;
-  }
+  if (!dbTypes) return null;
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('content_pieces')
     .select('id, client_id, custom_slug, title, content_type, content_body, structured_data, writing_status, published_at, seo_title, seo_description, primary_keyword, category')
     .eq('client_id', clientId)
@@ -111,7 +121,10 @@ export async function fetchContentList(
   const dbTypes = CONTENT_TYPE_MAP[urlType];
   if (!dbTypes) return [];
 
-  let query = supabase
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  let query = sb
     .from('content_pieces')
     .select('id, custom_slug, title, content_type, structured_data, writing_status, published_at, seo_title, seo_description, category')
     .eq('client_id', clientId)
@@ -144,7 +157,10 @@ export async function fetchCategories(urlType: string): Promise<string[]> {
   const dbTypes = CONTENT_TYPE_MAP[urlType];
   if (!dbTypes) return [];
 
-  const { data, error } = await supabase
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
     .from('content_pieces')
     .select('category')
     .eq('client_id', clientId)
