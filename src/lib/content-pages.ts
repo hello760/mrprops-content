@@ -19,7 +19,7 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
   const slugVariants = [`${pageType}/${slug}`, `features/${slug}`, `services/${slug}`, slug];
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
@@ -80,7 +80,7 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
 
   const { data: rawData, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
