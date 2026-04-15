@@ -27,7 +27,7 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
 
   const { data: rawData, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at')
     .eq('client_id', clientId)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
