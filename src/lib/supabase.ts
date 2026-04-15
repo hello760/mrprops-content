@@ -36,7 +36,7 @@ export interface ContentPiece {
   client_id: string;
   custom_slug: string;
   title: string;
-  content_type: string;
+  type_of_work: string; // DB column is type_of_work, not content_type
   content_body: string;
   structured_data: Record<string, unknown> | null;
   writing_status: string;
@@ -98,10 +98,10 @@ export async function fetchContentBySlug(
 
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, client_id, custom_slug, title, content_type, content_body, structured_data, writing_status, published_at, seo_title, seo_description, primary_keyword, category')
+    .select('id, client_id, custom_slug, title, type_of_work, content_body, structured_data, writing_status, published_at, seo_title, seo_description, primary_keyword, category')
     .eq('client_id', clientId)
     .eq('custom_slug', slug)
-    .in('content_type', dbTypes)
+    .in('type_of_work', dbTypes)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
     .single();
@@ -132,9 +132,9 @@ export async function fetchContentList(
 
   let query = sb
     .from('content_pieces')
-    .select('id, custom_slug, title, content_type, structured_data, writing_status, published_at, seo_title, seo_description, category')
+    .select('id, custom_slug, title, type_of_work, structured_data, writing_status, published_at, seo_title, seo_description, category')
     .eq('client_id', clientId)
-    .in('content_type', dbTypes)
+    .in('type_of_work', dbTypes)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
     .order('published_at', { ascending: false });
@@ -170,7 +170,7 @@ export async function fetchCategories(urlType: string): Promise<string[]> {
     .from('content_pieces')
     .select('category')
     .eq('client_id', clientId)
-    .in('content_type', dbTypes)
+    .in('type_of_work', dbTypes)
     .eq('writing_status', 'published')
     .not('category', 'is', null);
 
