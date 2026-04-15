@@ -113,13 +113,49 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
   //   4. FAQ (4-6 tool-specific questions)
   const seoContent = (
     <div className="space-y-20">
-      {hasBody && (
+      {/* Body content — bodyHtml (Supabase) or PortableText (Sanity) */}
+      {page.bodyHtml ? (
+        <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
+      ) : hasBody ? (
         <div className="prose prose-lg max-w-none">
           <PortableTextContent blocks={page.body!} />
         </div>
+      ) : null}
+
+      {/* How It Works — from structured_data if available, else static fallback */}
+      {page.howItWorks?.length ? (
+        <div className="space-y-6">
+          <h2 className="font-display text-2xl md:text-3xl font-bold">How the {toolName} Works</h2>
+          <p className="text-muted-foreground">This calculator breaks down your estimate using key inputs. Each one refines the output.</p>
+          <div className="grid gap-6">
+            {page.howItWorks.map((item, i) => (
+              <div key={i} className="bg-card border border-border rounded-xl p-6">
+                <h3 className="font-bold text-lg mb-2">{item.fieldName}</h3>
+                <p className="text-muted-foreground text-sm mb-1">{item.measures}</p>
+                <p className="text-sm">{item.whyItMatters}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <HowItWorksSection toolName={toolName} />
       )}
-      <HowItWorksSection toolName={toolName} />
-      <ToolCTA />
+
+      {/* CTA — from structured_data if available, else static fallback */}
+      {page.cta ? (
+        <div className="bg-gradient-to-br from-primary to-purple-600 text-primary-foreground rounded-2xl p-12 text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">{page.cta.headline}</h2>
+          <p className="text-lg mb-8 opacity-90">{page.cta.sentence}</p>
+          <div className="flex justify-center gap-4 flex-wrap">
+            <a href={page.cta.primaryButton?.href || "/register"} className="bg-white text-primary font-bold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors">{page.cta.primaryButton?.label || "Get Started Free"}</a>
+            <a href={page.cta.secondaryButton?.href || "/contact"} className="border-2 border-white/50 text-white font-bold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">{page.cta.secondaryButton?.label || "Talk to Sales"}</a>
+          </div>
+          <p className="text-sm mt-4 opacity-70">{page.cta.trustMicrocopy || "No credit card required. Cancel anytime."}</p>
+        </div>
+      ) : (
+        <ToolCTA />
+      )}
+
       <ToolFAQSection faqs={page.faqs} toolName={toolName} />
     </div>
   );
