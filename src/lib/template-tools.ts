@@ -6,15 +6,16 @@ import type { CalculatorUiCopy } from "@/components/tools/calculatorCopy";
 let _sbClient: any = null;
 async function getSB() {
   if (_sbClient) return _sbClient;
-  if (!process.env.SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '')) return null;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
   const { createClient } = await import('@supabase/supabase-js');
-  _sbClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '');
+  _sbClient = createClient(url, key);
   return _sbClient;
 }
 
 async function fetchTemplateFromSupabase(category: string, slug: string): Promise<TemplatePageContent | null> {
-  const { getSupabase } = await import('@/lib/supabase');
-  const sb = getSupabase();
+  const sb = await getSB();
   if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
 
   const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
@@ -66,9 +67,8 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
 }
 
 async function fetchToolFromSupabase(category: string, slug: string): Promise<ToolPageContent | null> {
-  // Use centralized Supabase client
-  const { getSupabase } = await import('@/lib/supabase');
-  const sb = getSupabase();
+  // Use local getSB() — don't import from supabase.ts (dynamic imports can fail in page components)
+  const sb = await getSB();
   if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
 
   const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
@@ -530,13 +530,51 @@ export async function fetchTemplatePage(category: string, slug: string) {
 }
 
 export async function fetchToolPage(category: string, slug: string) {
-  // Try Supabase first (direct structured_data, no lossy extraction)
+  // Try INLINE Supabase query first (simplified — no helper function, no caching)
   try {
-    const supabaseResult = await fetchToolFromSupabase(category, slug);
-    if (supabaseResult) return supabaseResult;
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+    const clientId = process.env.MR_PROPS_CLIENT_ID;
+
+    if (url && key && clientId) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const sb = createClient(url, key);
+      const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
+
+      const { data, error } = await sb
+        .from('content_pieces')
+        .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
+        .eq('client_id', clientId)
+        .eq('writing_status', 'published')
+        .not('structured_data', 'is', null)
+        .in('custom_slug', slugVariants)
+        .single();
+
+      if (!error && data?.structured_data) {
+        const sd = data.structured_data as Record<string, any>;
+        const fallback = resolveToolFallback(category, slug);
+        return {
+          id: data.id,
+          category: data.category || category,
+          slug: slug,
+          title: sd.mainTitle || data.title || fallback?.title || '',
+          description: sd.introText || fallback?.description || '',
+          seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
+          seoDescription: sd.seoDescription || data.seo_description || fallback?.seoDescription || '',
+          mainTitle: sd.mainTitle || data.title || '',
+          introText: sd.introText || '',
+          benefits: sd.benefits || fallback?.benefits || [],
+          faqs: sd.faqs || fallback?.faqs || [],
+          body: [],
+          bodyHtml: data.content_body || undefined,
+          calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
+          howItWorks: sd.howItWorks || undefined,
+          cta: sd.cta || undefined,
+        } as ToolPageContent;
+      }
+    }
   } catch (sbErr) {
-    console.error('[fetchToolPage] Supabase fetch error:', sbErr);
-    // Continue to Sanity fallback
+    console.error('[fetchToolPage] Supabase inline fetch error:', sbErr);
   }
 
   // Fall back to Sanity for content not yet migrated
