@@ -5,7 +5,7 @@ import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
-import { fetchRegulations, splitNestedSlug } from "@/lib/content-pages";
+import { fetchRegulations, fetchRegulationBySlug, splitNestedSlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 
@@ -21,19 +21,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ platform: string; location: string }> }): Promise<Metadata> {
   const { platform, location } = await params;
-  const page = (await fetchRegulations()).find((item) => {
-    const [p, l] = splitNestedSlug(item.slug, "regulations", 2);
-    return p === platform && l === location;
-  });
+  const page = await fetchRegulationBySlug(platform, location);
   return buildMetadata(page?.seoTitle || "Regulations", page?.seoDescription || "Regulation guide.", `/regulations/${platform}/${location}`);
 }
 
 export default async function RegulationPage({ params }: { params: Promise<{ platform: string; location: string }> }) {
   const { platform, location } = await params;
-  const regulation = (await fetchRegulations()).find((item) => {
-    const [p, l] = splitNestedSlug(item.slug, "regulations", 2);
-    return p === platform && l === location;
-  });
+  const regulation = await fetchRegulationBySlug(platform, location);
   if (!regulation) notFound();
 
   const locName = regulation.location || location.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
