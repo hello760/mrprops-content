@@ -13,11 +13,9 @@ async function getSB() {
 }
 
 async function fetchTemplateFromSupabase(category: string, slug: string): Promise<TemplatePageContent | null> {
-  const sbUrl = process.env.SUPABASE_URL;
-  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!sbUrl || !sbKey || !process.env.MR_PROPS_CLIENT_ID) return null;
-  const { createClient } = await import('@supabase/supabase-js');
-  const sb = createClient(sbUrl, sbKey);
+  const { getSupabase } = await import('@/lib/supabase');
+  const sb = getSupabase();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
 
   const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
   const { data, error } = await sb
@@ -68,12 +66,10 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
 }
 
 async function fetchToolFromSupabase(category: string, slug: string): Promise<ToolPageContent | null> {
-  // Create fresh client (don't use cached _sbClient which may have wrong key)
-  const sbUrl = process.env.SUPABASE_URL;
-  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!sbUrl || !sbKey || !process.env.MR_PROPS_CLIENT_ID) return null;
-  const { createClient } = await import('@supabase/supabase-js');
-  const sb = createClient(sbUrl, sbKey);
+  // Use centralized Supabase client
+  const { getSupabase } = await import('@/lib/supabase');
+  const sb = getSupabase();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
 
   const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
   const { data, error } = await sb
