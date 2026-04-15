@@ -516,8 +516,12 @@ const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && 
 
 export async function fetchTemplatePage(category: string, slug: string) {
   // Try Supabase first (direct structured_data, no lossy extraction)
-  const supabaseResult = await fetchTemplateFromSupabase(category, slug);
-  if (supabaseResult) return supabaseResult;
+  try {
+    const supabaseResult = await fetchTemplateFromSupabase(category, slug);
+    if (supabaseResult) return supabaseResult;
+  } catch (sbErr) {
+    console.error('[fetchTemplatePage] Supabase fetch error:', sbErr);
+  }
 
   // Fall back to Sanity for content not yet migrated
   const doc = await sanityFetch<SanityTemplateDoc | null>(TEMPLATE_QUERY, { category, slug });
@@ -527,8 +531,13 @@ export async function fetchTemplatePage(category: string, slug: string) {
 
 export async function fetchToolPage(category: string, slug: string) {
   // Try Supabase first (direct structured_data, no lossy extraction)
-  const supabaseResult = await fetchToolFromSupabase(category, slug);
-  if (supabaseResult) return supabaseResult;
+  try {
+    const supabaseResult = await fetchToolFromSupabase(category, slug);
+    if (supabaseResult) return supabaseResult;
+  } catch (sbErr) {
+    console.error('[fetchToolPage] Supabase fetch error:', sbErr);
+    // Continue to Sanity fallback
+  }
 
   // Fall back to Sanity for content not yet migrated
   const doc = await sanityFetch<SanityToolDoc | null>(TOOL_QUERY, { category, slug });
