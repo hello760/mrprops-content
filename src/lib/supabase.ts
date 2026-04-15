@@ -44,7 +44,6 @@ export interface ContentPiece {
   seo_title: string | null;
   meta_description: string | null;
   primary_keyword: string | null;
-  category: string | null;
 }
 
 // ─── Content Type Mapping ────────────────────────────────────────────────────
@@ -98,7 +97,7 @@ export async function fetchContentBySlug(
 
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, client_id, custom_slug, title, type_of_work, content_body, structured_data, writing_status, published_at, seo_title, meta_description, primary_keyword, category')
+    .select('id, client_id, custom_slug, title, type_of_work, content_body, structured_data, writing_status, published_at, seo_title, meta_description, primary_keyword')
     .eq('client_id', clientId)
     .eq('custom_slug', slug)
     .in('type_of_work', dbTypes)
@@ -132,7 +131,7 @@ export async function fetchContentList(
 
   let query = sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, structured_data, writing_status, published_at, seo_title, meta_description, category')
+    .select('id, custom_slug, title, type_of_work, structured_data, writing_status, published_at, seo_title, meta_description')
     .eq('client_id', clientId)
     .in('type_of_work', dbTypes)
     .eq('writing_status', 'published')
