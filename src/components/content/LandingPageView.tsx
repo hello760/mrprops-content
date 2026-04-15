@@ -142,7 +142,98 @@ export function LandingPageView({ page, pageType, slug }: { page: LandingContent
         </div>
       </section>
 
-      {page.body?.length ? (
+      {/* Stats Bar — 3 credibility metrics */}
+      {page.statsBar?.length ? (
+        <section className="border-y border-border/50 bg-secondary/10 py-16">
+          <div className="container mx-auto max-w-7xl px-4">
+            <div className="grid grid-cols-3 gap-8 text-center">
+              {page.statsBar.map((stat, i) => (
+                <div key={i}>
+                  <div className="font-display text-4xl md:text-5xl font-extrabold text-primary">{stat.value}</div>
+                  <div className="mt-2 text-muted-foreground font-medium">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* How It Works — 3 numbered steps */}
+      {page.howItWorksSteps?.length ? (
+        <section className="py-20 bg-background">
+          <div className="container mx-auto max-w-7xl px-4 text-center">
+            <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{page.howItWorksTitle || "How It Works"}</h2>
+            <p className="text-xl text-muted-foreground mb-12">Three simple steps to property nirvana.</p>
+            <div className="grid md:grid-cols-3 gap-8">
+              {page.howItWorksSteps.map((step, i) => (
+                <div key={i} className="text-center space-y-4">
+                  <div className="mx-auto h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">{i + 1}</div>
+                  <h3 className="font-display text-xl font-bold">{step.title}</h3>
+                  <p className="text-muted-foreground">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Comparison Table — Mr Props vs Traditional */}
+      {(page.comparisonPros?.length || page.comparisonCons?.length) ? (
+        <section className="py-20 bg-secondary/5">
+          <div className="container mx-auto max-w-7xl px-4">
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-center mb-4">{page.comparisonTitle || "Mr. Props vs. Traditional Software"}</h2>
+            <p className="text-center text-muted-foreground mb-12">{page.comparisonDescription || "See how we stack up against traditional property management software."}</p>
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-8">
+                <h3 className="font-bold text-lg mb-1 flex items-center gap-2">🎩 Mr. Props</h3>
+                <p className="text-sm text-muted-foreground mb-4">Built for modern hosts who want to scale without the complexity.</p>
+                <ul className="space-y-3">
+                  {page.comparisonPros?.map((pro, i) => (
+                    <li key={i} className="flex gap-2 text-sm"><span className="text-green-500 flex-shrink-0">✓</span> <span>{pro}</span></li>
+                  ))}
+                </ul>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 rounded-2xl p-8">
+                <h3 className="font-bold text-lg mb-1">Traditional PM Software</h3>
+                <p className="text-sm text-muted-foreground mb-4">(based on reviews and customer feedback)</p>
+                <ul className="space-y-3">
+                  {page.comparisonCons?.map((con, i) => (
+                    <li key={i} className="flex gap-2 text-sm"><span className="text-orange-500 flex-shrink-0">⚠</span> <span>{con}</span></li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Testimonials — customer reviews carousel */}
+      {page.testimonials?.length ? (
+        <section className="py-20 bg-background">
+          <div className="container mx-auto max-w-7xl px-4">
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-center mb-12">{page.testimonialsTitle || "What Our Customers Say"}</h2>
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              {page.testimonials.map((t, i) => (
+                <div key={i} className="bg-card border border-border rounded-2xl p-8 shadow-sm">
+                  <div className="text-yellow-400 text-lg mb-4">★★★★★</div>
+                  <p className="text-foreground mb-6 italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+                  <div className="font-bold text-sm">{t.name}</div>
+                  {t.role && <div className="text-xs text-muted-foreground">{t.role}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Body content — article HTML for SEO */}
+      {page.bodyHtml ? (
+        <section className="border-y border-border/50 bg-secondary/30 py-20">
+          <div className="container mx-auto max-w-4xl px-4 prose prose-lg dark:prose-invert">
+            <div dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
+          </div>
+        </section>
+      ) : page.body?.length ? (
         <section className="border-y border-border/50 bg-secondary/30 py-20">
           <div className="container mx-auto max-w-4xl px-4 prose prose-lg dark:prose-invert">
             <PortableTextContent blocks={page.body} />
