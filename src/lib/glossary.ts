@@ -47,9 +47,8 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
     slug: normalizeGlossarySlug(data.custom_slug) || whatIsSlug,
     term: sd.term || data.title || 'Term',
     definition: sd.definition || '',
-    body: bodyHtml
-      ? [{ _key: 'html-body', _type: 'block', style: 'normal', children: [{ _type: 'span', text: bodyHtml }], _html: bodyHtml } as unknown as PortableTextBlock]
-      : [],
+    body: [],
+    bodyHtml: bodyHtml || undefined,
     relatedTerms: sd.relatedTerms || [],
     seoTitle: sd.seoTitle || data.seo_title || `What is ${sd.term}? | Mr. Props`,
     seoDescription: sd.seoDescription || data.seo_description || sd.definition || '',
@@ -97,6 +96,7 @@ export interface GlossaryTerm {
   ctaTitle?: string;
   ctaText?: string;
   ctaPrimaryButton?: { label: string; href?: string };
+  bodyHtml?: string;
 }
 
 interface SanityGlossaryDocument {
