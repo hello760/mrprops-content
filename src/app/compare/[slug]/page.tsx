@@ -3,7 +3,7 @@ import { Check, Trophy, Minus, ArrowRight, Star } from "lucide-react";
 import { notFound } from "next/navigation";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
 import { FAQAndCTA, JsonLd } from "@/components/content/PageBits";
-import { fetchComparisons } from "@/lib/content-pages";
+import { fetchComparisons, fetchComparisonBySlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 
@@ -20,13 +20,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const page = (await fetchComparisons()).find((item) => item.slug === slug);
+  const page = await fetchComparisonBySlug(slug);
   return buildMetadata(page?.seoTitle || "Compare", page?.seoDescription || "Comparison page.", `/compare/${slug}`);
 }
 
 export default async function ComparePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const comparison = (await fetchComparisons()).find((item) => item.slug === slug);
+  const comparison = await fetchComparisonBySlug(slug);
   if (!comparison) notFound();
 
   const slugParts = (slug || "").split("-vs-");
