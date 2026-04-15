@@ -530,7 +530,32 @@ export async function fetchTemplatePage(category: string, slug: string) {
 }
 
 export async function fetchToolPage(category: string, slug: string) {
-  // Try INLINE Supabase query first (simplified — no helper function, no caching)
+  // HARDCODED TEST — bypass Supabase entirely to verify page rendering works
+  if (slug === 'airbnb-turnover-cost-calculator') {
+    return {
+      id: 'test-hardcoded',
+      category: 'operations',
+      slug: 'airbnb-turnover-cost-calculator',
+      title: 'Turnover Cost Calculator (HARDCODED TEST)',
+      description: 'This is a hardcoded test to verify page rendering.',
+      seoTitle: 'Turnover Cost Calculator - Test | Mr. Props',
+      seoDescription: 'Test page.',
+      mainTitle: 'Turnover Cost Calculator (HARDCODED)',
+      introText: 'This page verifies that the tool page component renders correctly.',
+      benefits: [
+        { title: 'Test Benefit 1', description: 'Description 1' },
+        { title: 'Test Benefit 2', description: 'Description 2' },
+        { title: 'Test Benefit 3', description: 'Description 3' },
+      ],
+      faqs: [
+        { question: 'Is this a test?', answer: 'Yes, this is a hardcoded test page.' },
+      ],
+      body: [],
+      bodyHtml: '<h2>Test Body</h2><p>If you see this, the page component works.</p>',
+    } as ToolPageContent;
+  }
+
+  // Normal Supabase + Sanity flow for other tools
   try {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -573,10 +598,10 @@ export async function fetchToolPage(category: string, slug: string) {
       }
     }
   } catch (sbErr) {
-    console.error('[fetchToolPage] Supabase inline fetch error:', sbErr);
+    console.error('[fetchToolPage] Supabase error:', sbErr);
   }
 
-  // Fall back to Sanity for content not yet migrated
+  // Fall back to Sanity
   const doc = await sanityFetch<SanityToolDoc | null>(TOOL_QUERY, { category, slug });
   if (!doc) return null;
   return normalizeToolDoc(doc);
