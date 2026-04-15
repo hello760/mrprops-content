@@ -37,6 +37,7 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     headline: sd.hero?.headline || data.title || '',
     subheadline: sd.hero?.subheadline || '',
     body: [],
+    bodyHtml: data.content_body || undefined,
     image: '',
     seoTitle: sd.seoTitle || data.seo_title || '',
     seoDescription: sd.seoDescription || data.seo_description || '',
@@ -156,6 +157,7 @@ export interface DirectoryEntry {
   ctaText?: string;
   ctaPrimaryButton?: LinkButtonConfig;
   ctaSecondaryButton?: LinkButtonConfig;
+  bodyHtml?: string;
   // Template-specific fields (leadGenTemplatePage)
   badge?: string;
   description?: string;
@@ -234,6 +236,7 @@ export interface LandingContent {
   ctaText?: string;
   ctaPrimaryButton?: LinkButtonConfig;
   ctaSecondaryButton?: LinkButtonConfig;
+  bodyHtml?: string;
 }
 
 interface SanityDoc {
