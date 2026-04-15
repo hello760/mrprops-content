@@ -20,7 +20,7 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
   const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
@@ -74,7 +74,7 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
   const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
