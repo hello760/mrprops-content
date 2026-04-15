@@ -68,6 +68,134 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
   };
 }
 
+// ─── Phase 10: Supabase dual-source for ALL remaining content types ──────────
+
+async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string): Promise<DirectoryEntry | null> {
+  const sb = await getSB();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
+
+  // Build slug variants to match different storage patterns
+  const cleanSlug = slug.replace(new RegExp(`^${urlPrefix}/`), '');
+  const slugVariants = [`${urlPrefix}/${cleanSlug}`, cleanSlug, slug];
+
+  const { data: rawData, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, content_type, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .in('custom_slug', slugVariants)
+    .single();
+
+  const data = rawData as Record<string, any> | null;
+  if (error || !data || !data.structured_data) return null;
+
+  const sd = data.structured_data as Record<string, any>;
+  const bodyHtml = (data.content_body || '') as string;
+  const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  return {
+    id: data.id,
+    slug: cleanSlug,
+    title: sd.heroTitle || sd.title || data.title || '',
+    excerpt: sd.seoDescription || data.seo_description || '',
+    body: [],
+    bodyHtml: bodyHtml || undefined,
+    seoTitle: sd.seoTitle || data.seo_title || '',
+    seoDescription: sd.seoDescription || data.seo_description || '',
+    publishedAt: data.published_at || undefined,
+    updatedAt: data.published_at || undefined,
+    updated: formatDisplayDate(data.published_at),
+    image: sd.featuredImage || undefined,
+    // Type-specific fields from structured_data
+    platform: sd.platform || undefined,
+    location: sd.location || undefined,
+    region: sd.region || undefined,
+    competitorName: sd.competitorName || undefined,
+    primaryItem: sd.primaryItem || undefined,
+    secondaryItem: sd.secondaryItem || undefined,
+    heroBadge: sd.heroBadge || sd.hero?.badge || undefined,
+    heroTitle: sd.heroTitle || sd.hero?.headline || undefined,
+    heroDescription: sd.heroDescription || sd.hero?.subheadline || undefined,
+    // Comparison fields
+    comparisonSnapshotTitle: sd.comparisonSnapshotTitle || undefined,
+    showdownBadge: sd.showdownBadge || undefined,
+    showdownTitle: sd.showdownTitle || undefined,
+    showdownDescription: sd.showdownDescription || undefined,
+    showdownButtonLabel: sd.showdownButtonLabel || undefined,
+    comparisonTableRows: sd.comparisonTableRows || undefined,
+    alternativeCards: sd.alternativeCards || undefined,
+    primaryCtaLabel: sd.primaryCtaLabel || undefined,
+    secondaryCtaLabel: sd.secondaryCtaLabel || undefined,
+    migrationTitle: sd.migrationTitle || undefined,
+    migrationDescription: sd.migrationDescription || undefined,
+    migrationButtonLabel: sd.migrationButtonLabel || undefined,
+    // Tax fields
+    taxChecklistTitle: sd.taxChecklistTitle || undefined,
+    taxChecklistDescription: sd.taxChecklistDescription || undefined,
+    taxChecklistButtonLabel: sd.taxChecklistButtonLabel || undefined,
+    taxIntroTitle: sd.taxIntroTitle || undefined,
+    taxIntroDescription: sd.taxIntroDescription || undefined,
+    alertText: sd.alertText || undefined,
+    statusLabel: sd.statusLabel || undefined,
+    importantDatesTitle: sd.importantDatesTitle || undefined,
+    importantDates: sd.importantDates || undefined,
+    // Regulation fields
+    overviewTitle: sd.overviewTitle || undefined,
+    checklistTitle: sd.checklistTitle || undefined,
+    checklistItems: sd.checklistItems || undefined,
+    // Sidebar CTA
+    sidebarCtaTitle: sd.sidebarCtaTitle || undefined,
+    sidebarCtaDescription: sd.sidebarCtaDescription || undefined,
+    sidebarCtaButtonLabel: sd.sidebarCtaButtonLabel || undefined,
+    // FAQ
+    faqTitle: sd.faqTitle || 'Frequently Asked Questions',
+    faqs: sd.faqs || [],
+    ctaTitle: sd.ctaTitle || sd.finalCta?.headline || undefined,
+    ctaText: sd.ctaText || sd.finalCta?.sentence || undefined,
+  } as DirectoryEntry;
+}
+
+// Dedicated fetch-by-slug functions that check Supabase first
+export async function fetchTaxBySlug(platform: string, region: string): Promise<DirectoryEntry | null> {
+  const supabaseResult = await fetchDirectoryEntryFromSupabase('taxes', `${platform}/${region}`);
+  if (supabaseResult) return { ...supabaseResult, platform, region };
+  // Fallback to Sanity list + find
+  const pages = await fetchTaxes();
+  return pages.find((item) => {
+    const p = item.platform?.toLowerCase() || '';
+    const r = item.region?.toLowerCase() || '';
+    return (p === platform.toLowerCase() && r === region.toLowerCase()) || item.slug === `${platform}/${region}`;
+  }) || null;
+}
+
+export async function fetchComparisonBySlug(slug: string): Promise<DirectoryEntry | null> {
+  const supabaseResult = await fetchDirectoryEntryFromSupabase('compare', slug);
+  if (supabaseResult) return supabaseResult;
+  const pages = await fetchComparisons();
+  return pages.find((item) => item.slug === slug) || null;
+}
+
+export async function fetchAlternativeBySlug(competitor: string): Promise<DirectoryEntry | null> {
+  const supabaseResult = await fetchDirectoryEntryFromSupabase('alternatives', competitor);
+  if (supabaseResult) return supabaseResult;
+  const pages = await fetchAlternatives();
+  return pages.find((item) => item.slug === competitor) || null;
+}
+
+export async function fetchRegulationBySlug(platform: string, location: string): Promise<DirectoryEntry | null> {
+  const supabaseResult = await fetchDirectoryEntryFromSupabase('regulations', `${platform}/${location}`);
+  if (supabaseResult) return { ...supabaseResult, platform, location };
+  const pages = await fetchRegulations();
+  return pages.find((item) => {
+    const p = item.platform?.toLowerCase() || '';
+    const l = item.location?.toLowerCase()?.replace(/\s+/g, '-') || '';
+    return (p === platform.toLowerCase() && l === location.toLowerCase()) || item.slug === `${platform}/${location}`;
+  }) || null;
+}
+
+// fetchGuideBySlug already exists — add Supabase check to it (done below in the function)
+
 export interface LinkButtonConfig {
   label: string;
   href?: string;
@@ -906,6 +1034,20 @@ export const fetchGuides = cache(async () => {
 });
 
 export const fetchGuideBySlug = cache(async (slug: string) => {
+  // Try Supabase first (direct structured_data)
+  const supabaseResult = await fetchDirectoryEntryFromSupabase('guides', slug);
+  if (supabaseResult) {
+    const sd = supabaseResult as any;
+    return {
+      ...supabaseResult,
+      authorName: sd.authorName || "Mr. Props Team",
+      category: sd.category || "Operations",
+      date: formatDisplayDate(supabaseResult.publishedAt),
+      readTime: calculateReadTime(supabaseResult.bodyHtml?.replace(/<[^>]+>/g, ' ') || supabaseResult.excerpt),
+    };
+  }
+
+  // Fallback to Sanity
   const cleanSlug = stripPrefix(slug, "guides");
   const doc = await sanityFetch<SanityDoc | null>(`*[_type in ["guide", "post"] && defined(slug.current) && slug.current in [$slug, $prefixedSlug, $baseSlug, $prefixedBaseSlug]][0]{
     ${BASE_PROJECTION.slice(1, -1)},
