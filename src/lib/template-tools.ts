@@ -601,29 +601,26 @@ export async function fetchToolPage(category: string, slug: string) {
       } as ToolPageContent;
     }
 
-    if (data?.structured_data) {
-        const sd = data.structured_data as Record<string, any>;
-        const fallback = resolveToolFallback(category, slug);
-        return {
-          id: data.id,
-          category: data.category || category,
-          slug: slug,
-          title: sd.mainTitle || data.title || fallback?.title || '',
-          description: sd.introText || fallback?.description || '',
-          seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
-          seoDescription: sd.seoDescription || data.seo_description || fallback?.seoDescription || '',
-          mainTitle: sd.mainTitle || data.title || '',
-          introText: sd.introText || '',
-          benefits: sd.benefits || fallback?.benefits || [],
-          faqs: sd.faqs || fallback?.faqs || [],
-          body: [],
-          bodyHtml: data.content_body || undefined,
-          calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
-          howItWorks: sd.howItWorks || undefined,
-          cta: sd.cta || undefined,
-        } as ToolPageContent;
-      }
-    }
+    const sd = data.structured_data as Record<string, any>;
+    const fallback = resolveToolFallback(category, slug);
+    return {
+      id: data.id,
+      category: data.category || category,
+      slug: slug,
+      title: sd.mainTitle || data.title || fallback?.title || '',
+      description: sd.introText || fallback?.description || '',
+      seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
+      seoDescription: sd.seoDescription || data.seo_description || fallback?.seoDescription || '',
+      mainTitle: sd.mainTitle || data.title || '',
+      introText: sd.introText || '',
+      benefits: sd.benefits || fallback?.benefits || [],
+      faqs: sd.faqs || fallback?.faqs || [],
+      body: [],
+      bodyHtml: data.content_body || undefined,
+      calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
+      howItWorks: sd.howItWorks || undefined,
+      cta: sd.cta || undefined,
+    } as ToolPageContent;
   } catch (sbErr) {
     console.error('[fetchToolPage] Supabase error:', sbErr);
   }
