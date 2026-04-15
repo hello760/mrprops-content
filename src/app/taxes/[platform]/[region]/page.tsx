@@ -5,7 +5,7 @@ import { AlertCircle, Calculator, ChevronRight, Download, FileCheck, Home } from
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
-import { fetchTaxes, splitNestedSlug } from "@/lib/content-pages";
+import { fetchTaxes, fetchTaxBySlug, splitNestedSlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 
@@ -21,19 +21,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ platform: string; region: string }> }): Promise<Metadata> {
   const { platform, region } = await params;
-  const page = (await fetchTaxes()).find((item) => {
-    const [p, r] = splitNestedSlug(item.slug, "taxes", 2);
-    return p === platform && r === region;
-  });
+  const page = await fetchTaxBySlug(platform, region);
   return buildMetadata(page?.seoTitle || "Taxes", page?.seoDescription || "Tax guide.", `/taxes/${platform}/${region}`);
 }
 
 export default async function TaxPage({ params }: { params: Promise<{ platform: string; region: string }> }) {
   const { platform, region } = await params;
-  const taxPage = (await fetchTaxes()).find((item) => {
-    const [p, r] = splitNestedSlug(item.slug, "taxes", 2);
-    return p === platform && r === region;
-  });
+  const taxPage = await fetchTaxBySlug(platform, region);
   if (!taxPage) notFound();
 
   const regionName = taxPage.location || region.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
