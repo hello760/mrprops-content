@@ -8,21 +8,26 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-// Use service role key first (bypasses RLS — safe for server-side Next.js)
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
-
-// Lazy initialization — only create client when both URL and key are available
+// Lazy initialization — read env vars at CALL TIME (not module load time)
+// to avoid build-time evaluation returning empty strings
 let _client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient | null {
   if (_client) return _client;
-  if (!supabaseUrl || !supabaseKey) return null;
-  _client = createClient(supabaseUrl, supabaseKey);
+  const url = process.env.SUPABASE_URL || '';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  _client = createClient(url, key);
   return _client;
 }
 
-// Backward compat export (returns null-safe client)
-export const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+// Backward compat export — also reads at call time via getter
+export const supabase = {
+  from: (...args: Parameters<SupabaseClient['from']>) => {
+    const client = getSupabase();
+    if (!client) throw new Error('Supabase not configured');
+    return client.from(...args);
+  }
+} as unknown as SupabaseClient;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
