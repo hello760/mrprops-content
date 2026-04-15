@@ -21,7 +21,7 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
   const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, category')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
@@ -60,7 +60,7 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
     resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
     resources: sd.resources || fallback.resources,
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
-    seoDescription: sd.seoDescription || data.seo_description || fallback.seoDescription,
+    seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
     body: [],
     bodyHtml: data.content_body || undefined,
   };
@@ -74,7 +74,7 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
   const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, category')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
@@ -92,7 +92,7 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     title: sd.mainTitle || data.title || fallback?.title || '',
     description: sd.introText || fallback?.description || '',
     seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
-    seoDescription: sd.seoDescription || data.seo_description || fallback?.seoDescription || '',
+    seoDescription: sd.seoDescription || data.meta_description || fallback?.seoDescription || '',
     mainTitle: sd.mainTitle || data.title || '',
     introText: sd.introText || '',
     benefits: sd.benefits || fallback?.benefits || [],
@@ -559,7 +559,7 @@ export async function fetchToolPage(category: string, slug: string) {
 
     const { data, error } = await sb
       .from('content_pieces')
-      .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
+      .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, category')
       .eq('client_id', clientId)
       .eq('writing_status', 'published')
       .not('structured_data', 'is', null)
@@ -610,7 +610,7 @@ export async function fetchToolPage(category: string, slug: string) {
       title: sd.mainTitle || data.title || fallback?.title || '',
       description: sd.introText || fallback?.description || '',
       seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
-      seoDescription: sd.seoDescription || data.seo_description || fallback?.seoDescription || '',
+      seoDescription: sd.seoDescription || data.meta_description || fallback?.seoDescription || '',
       mainTitle: sd.mainTitle || data.title || '',
       introText: sd.introText || '',
       benefits: sd.benefits || fallback?.benefits || [],
