@@ -101,7 +101,10 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
             </div>
 
             <div className="space-y-12 max-w-4xl mx-auto pt-12">
-              {deduplicatedBody?.length ? (
+              {page.bodyHtml ? (
+                <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary"
+                     dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
+              ) : deduplicatedBody?.length ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
                   <PortableTextContent blocks={deduplicatedBody} />
                 </div>
