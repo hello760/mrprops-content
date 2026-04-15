@@ -4,7 +4,7 @@ import { AlertCircle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
-import { fetchAlternatives } from "@/lib/content-pages";
+import { fetchAlternatives, fetchAlternativeBySlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 
@@ -17,13 +17,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ competitor: string }> }): Promise<Metadata> {
   const { competitor } = await params;
-  const page = (await fetchAlternatives()).find((item) => item.slug === competitor);
+  const page = await fetchAlternativeBySlug(competitor);
   return buildMetadata(page?.seoTitle || "Alternatives", page?.seoDescription || "Alternative page.", `/alternatives/${competitor}`);
 }
 
 export default async function AlternativePage({ params }: { params: Promise<{ competitor: string }> }) {
   const { competitor } = await params;
-  const alternative = (await fetchAlternatives()).find((item) => item.slug === competitor);
+  const alternative = await fetchAlternativeBySlug(competitor);
   if (!alternative) notFound();
 
   const competitorName = alternative.competitorName || alternative.title.replace(/ Alternative$/i, "") || competitor.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
