@@ -530,51 +530,78 @@ export async function fetchTemplatePage(category: string, slug: string) {
 }
 
 export async function fetchToolPage(category: string, slug: string) {
-  // HARDCODED TEST — bypass Supabase entirely to verify page rendering works
-  if (slug === 'airbnb-turnover-cost-calculator') {
-    return {
-      id: 'test-hardcoded',
-      category: 'operations',
-      slug: 'airbnb-turnover-cost-calculator',
-      title: 'Turnover Cost Calculator (HARDCODED TEST)',
-      description: 'This is a hardcoded test to verify page rendering.',
-      seoTitle: 'Turnover Cost Calculator - Test | Mr. Props',
-      seoDescription: 'Test page.',
-      mainTitle: 'Turnover Cost Calculator (HARDCODED)',
-      introText: 'This page verifies that the tool page component renders correctly.',
-      benefits: [
-        { title: 'Test Benefit 1', description: 'Description 1' },
-        { title: 'Test Benefit 2', description: 'Description 2' },
-        { title: 'Test Benefit 3', description: 'Description 3' },
-      ],
-      faqs: [
-        { question: 'Is this a test?', answer: 'Yes, this is a hardcoded test page.' },
-      ],
-      body: [],
-      bodyHtml: '<h2>Test Body</h2><p>If you see this, the page component works.</p>',
-    } as ToolPageContent;
-  }
-
-  // Normal Supabase + Sanity flow for other tools
+  // Supabase direct query with diagnostic
   try {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
     const clientId = process.env.MR_PROPS_CLIENT_ID;
 
-    if (url && key && clientId) {
-      const sb = createClient(url, key);
-      const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
+    // Diagnostic: if env vars missing, return a page that shows which ones
+    if (!url || !key || !clientId) {
+      return {
+        id: 'diag-env-missing',
+        category,
+        slug,
+        title: `ENV MISSING: url=${!!url} key=${!!key} clientId=${clientId || 'NONE'}`,
+        description: 'Environment variables not available in page component context.',
+        seoTitle: 'ENV DEBUG',
+        seoDescription: '',
+        mainTitle: `ENV DEBUG: url=${!!url} key=${!!key} clientId=${clientId || 'NONE'}`,
+        introText: `SUPABASE_URL=${url ? 'SET' : 'MISSING'}, KEY=${key ? key.substring(0,10)+'...' : 'MISSING'}, CLIENT_ID=${clientId || 'MISSING'}`,
+        benefits: [],
+        faqs: [],
+        body: [],
+      } as ToolPageContent;
+    }
 
-      const { data, error } = await sb
-        .from('content_pieces')
-        .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
-        .eq('client_id', clientId)
-        .eq('writing_status', 'published')
-        .not('structured_data', 'is', null)
-        .in('custom_slug', slugVariants)
-        .single();
+    const sb = createClient(url, key);
+    const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
 
-      if (!error && data?.structured_data) {
+    const { data, error } = await sb
+      .from('content_pieces')
+      .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
+      .eq('client_id', clientId)
+      .eq('writing_status', 'published')
+      .not('structured_data', 'is', null)
+      .in('custom_slug', slugVariants)
+      .single();
+
+    // Diagnostic: if query fails, return page showing the error
+    if (error) {
+      return {
+        id: 'diag-query-error',
+        category,
+        slug,
+        title: `QUERY ERROR: ${error.message}`,
+        description: `Code: ${error.code}, Details: ${error.details}`,
+        seoTitle: 'QUERY DEBUG',
+        seoDescription: '',
+        mainTitle: `QUERY ERROR: ${error.message}`,
+        introText: `Slug variants: ${slugVariants.join(', ')}`,
+        benefits: [],
+        faqs: [],
+        body: [],
+      } as ToolPageContent;
+    }
+
+    if (!data?.structured_data) {
+      return {
+        id: 'diag-no-sd',
+        category,
+        slug,
+        title: `NO DATA: data=${!!data} sd=${!!data?.structured_data}`,
+        description: 'Query returned but no structured_data.',
+        seoTitle: 'NO DATA DEBUG',
+        seoDescription: '',
+        mainTitle: `NO DATA: data=${!!data}`,
+        introText: data ? `Found: ${data.custom_slug} but sd is null` : 'No matching piece found',
+        benefits: [],
+        faqs: [],
+        body: [],
+      } as ToolPageContent;
+    }
+
+    if (data?.structured_data) {
         const sd = data.structured_data as Record<string, any>;
         const fallback = resolveToolFallback(category, slug);
         return {
