@@ -29,7 +29,7 @@ export async function GET(
     contentBody: piece.content_body,
     structuredData: piece.structured_data,
     seoTitle: piece.seo_title,
-    seoDescription: piece.seo_description,
+    seoDescription: piece.meta_description,
     publishedAt: piece.published_at,
   });
 }
