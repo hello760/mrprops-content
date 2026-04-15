@@ -7,9 +7,9 @@ import { sanityFetch } from "@/lib/sanity";
 let supabaseClient: ReturnType<typeof import('@supabase/supabase-js').createClient> | null = null;
 async function getSupabaseClient() {
   if (supabaseClient) return supabaseClient;
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) return null;
+  if (!process.env.SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '')) return null;
   const { createClient } = await import('@supabase/supabase-js');
-  supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '');
   return supabaseClient;
 }
 
