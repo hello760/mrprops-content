@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Printer, Search, Share2 } from "lucide-react";
@@ -75,8 +76,24 @@ export default async function GlossaryTermPage({ params }: { params: Promise<{ s
                 </p>
               </div>
 
+              {term.conceptImageUrl && (
+                <div className="mb-12 overflow-hidden rounded-xl border border-border shadow-md">
+                  <Image
+                    src={term.conceptImageUrl}
+                    alt={term.conceptImageAlt || `Visual explanation of ${term.term}`}
+                    width={800}
+                    height={450}
+                    className="w-full object-cover"
+                  />
+                </div>
+              )}
+
               <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl">
-                <PortableTextContent blocks={term.body} />
+                {term.bodyHtml ? (
+                  <div dangerouslySetInnerHTML={{ __html: term.bodyHtml }} />
+                ) : (
+                  <PortableTextContent blocks={term.body} />
+                )}
               </div>
 
               <div className="flex items-center gap-4 mt-12 pt-8 border-t border-border">
