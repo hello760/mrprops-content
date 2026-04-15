@@ -60,6 +60,7 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
     seoDescription: sd.seoDescription || data.seo_description || fallback.seoDescription,
     body: [],
+    bodyHtml: data.content_body || undefined,
   };
 }
 
@@ -94,7 +95,10 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     benefits: sd.benefits || fallback?.benefits || [],
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
+    bodyHtml: data.content_body || undefined,
     calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
+    howItWorks: sd.howItWorks || undefined,
+    cta: sd.cta || undefined,
   };
 }
 
@@ -133,6 +137,7 @@ export interface TemplatePageContent {
   seoTitle: string;
   seoDescription: string;
   body?: PortableTextBlock[];
+  bodyHtml?: string;
 }
 
 export interface ToolPageContent {
@@ -148,7 +153,10 @@ export interface ToolPageContent {
   benefits: Array<{ title: string; description: string }>;
   faqs: Array<{ question: string; answer: string }>;
   body?: PortableTextBlock[];
+  bodyHtml?: string;
   calculatorUi?: CalculatorUiCopy;
+  howItWorks?: Array<{ fieldName: string; measures: string; whyItMatters: string }>;
+  cta?: { headline: string; sentence: string; primaryButton: { label: string; href: string }; secondaryButton: { label: string; href: string }; trustMicrocopy: string };
 }
 
 interface SanityTemplateDoc {
