@@ -515,15 +515,67 @@ const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && 
 }`;
 
 export async function fetchTemplatePage(category: string, slug: string) {
-  // Try Supabase first (direct structured_data, no lossy extraction)
+  // Inline Supabase query (same pattern as working fetchToolPage)
   try {
-    const supabaseResult = await fetchTemplateFromSupabase(category, slug);
-    if (supabaseResult) return supabaseResult;
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+    const clientId = process.env.MR_PROPS_CLIENT_ID;
+
+    if (url && key && clientId) {
+      const sb = createClient(url, key);
+      const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
+
+      const { data, error } = await sb
+        .from('content_pieces')
+        .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at')
+        .eq('client_id', clientId)
+        .eq('writing_status', 'published')
+        .not('structured_data', 'is', null)
+        .in('custom_slug', slugVariants)
+        .single();
+
+      if (!error && data?.structured_data) {
+        const sd = data.structured_data as Record<string, any>;
+        const fallback = getTemplateFallback(category, slug) || templateFallbacks[0];
+        return {
+          ...fallback,
+          id: data.id,
+          category: category,
+          slug: slug,
+          title: sd.hero?.previewTitle || data.title || fallback.title,
+          badge: sd.hero?.badge || fallback.badge,
+          description: sd.gate?.description || fallback.description,
+          trustItems: sd.trustItems || fallback.trustItems,
+          previewTitle: sd.hero?.previewTitle || fallback.previewTitle,
+          previewMeta: sd.hero?.previewMeta || fallback.previewMeta,
+          previewBody: [],
+          gateTitle: sd.gate?.title || fallback.gateTitle,
+          gateDescription: sd.gate?.description || fallback.gateDescription,
+          formPlaceholder: sd.gate?.formPlaceholder || fallback.formPlaceholder,
+          formButtonLabel: sd.gate?.buttonLabel || fallback.formButtonLabel,
+          formDisclaimer: sd.gate?.disclaimer || fallback.formDisclaimer,
+          whatIsTitle: sd.whatIsTitle || fallback.whatIsTitle,
+          whatIsText: sd.whatIsText || fallback.whatIsText,
+          useCasesTitle: sd.useCasesTitle || fallback.useCasesTitle,
+          useCases: sd.useCases || fallback.useCases,
+          customizeTitle: sd.customizeTitle || fallback.customizeTitle,
+          customizeText: sd.customizeText || fallback.customizeText,
+          faqTitle: 'Frequently Asked Questions',
+          faqs: sd.faqs || fallback.faqs,
+          resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
+          resources: sd.resources || fallback.resources,
+          seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
+          seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
+          body: [],
+          bodyHtml: data.content_body || undefined,
+        } as TemplatePageContent;
+      }
+    }
   } catch (sbErr) {
-    console.error('[fetchTemplatePage] Supabase fetch error:', sbErr);
+    console.error('[fetchTemplatePage] Supabase error:', sbErr);
   }
 
-  // Fall back to Sanity for content not yet migrated
+  // Fall back to Sanity
   const doc = await sanityFetch<SanityTemplateDoc | null>(TEMPLATE_QUERY, { category, slug });
   if (!doc) return null;
   return normalizeTemplateDoc(doc);
