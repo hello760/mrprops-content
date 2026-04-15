@@ -1,21 +1,21 @@
 import { sanityFetch } from "@/lib/sanity";
 import type { PortableTextBlock } from "@/lib/content-helpers";
 import type { CalculatorUiCopy } from "@/components/tools/calculatorCopy";
+import { createClient } from "@supabase/supabase-js";
 
 // ─── Supabase dual-source (Phase 4E) ─────────────────────────────────────────
 let _sbClient: any = null;
-async function getSB() {
+function getSBSync() {
   if (_sbClient) return _sbClient;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) return null;
-  const { createClient } = await import('@supabase/supabase-js');
   _sbClient = createClient(url, key);
   return _sbClient;
 }
 
 async function fetchTemplateFromSupabase(category: string, slug: string): Promise<TemplatePageContent | null> {
-  const sb = await getSB();
+  const sb = getSBSync();
   if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
 
   const slugVariants = [`templates/${category}/${slug}`, `templates/${slug}`, slug];
@@ -68,7 +68,7 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
 
 async function fetchToolFromSupabase(category: string, slug: string): Promise<ToolPageContent | null> {
   // Use local getSB() — don't import from supabase.ts (dynamic imports can fail in page components)
-  const sb = await getSB();
+  const sb = getSBSync();
   if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
 
   const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
@@ -537,7 +537,6 @@ export async function fetchToolPage(category: string, slug: string) {
     const clientId = process.env.MR_PROPS_CLIENT_ID;
 
     if (url && key && clientId) {
-      const { createClient } = await import('@supabase/supabase-js');
       const sb = createClient(url, key);
       const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
 
