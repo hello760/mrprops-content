@@ -19,7 +19,7 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
   const slugVariants = [`${pageType}/${slug}`, `features/${slug}`, `services/${slug}`, slug];
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
@@ -40,7 +40,7 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     bodyHtml: data.content_body || undefined,
     image: '',
     seoTitle: sd.seoTitle || data.seo_title || '',
-    seoDescription: sd.seoDescription || data.seo_description || '',
+    seoDescription: sd.seoDescription || data.meta_description || '',
     publishedAt: data.published_at || undefined,
     heroBadge: sd.hero?.badge,
     primaryCtaButton: sd.hero?.primaryCta,
@@ -80,7 +80,7 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
 
   const { data: rawData, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, seo_description, published_at, category')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, category')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
@@ -98,11 +98,11 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
     id: data.id,
     slug: cleanSlug,
     title: sd.heroTitle || sd.title || data.title || '',
-    excerpt: sd.seoDescription || data.seo_description || '',
+    excerpt: sd.seoDescription || data.meta_description || '',
     body: [],
     bodyHtml: bodyHtml || undefined,
     seoTitle: sd.seoTitle || data.seo_title || '',
-    seoDescription: sd.seoDescription || data.seo_description || '',
+    seoDescription: sd.seoDescription || data.meta_description || '',
     publishedAt: data.published_at || undefined,
     updatedAt: data.published_at || undefined,
     updated: formatDisplayDate(data.published_at),
