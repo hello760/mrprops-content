@@ -82,7 +82,7 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
               </div>
 
               <div className="font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-300 space-y-6">
-                <PortableTextContent blocks={previewBody} />
+                <PortableTextContent blocks={previewBody} html={page.previewBodyHtml} />
               </div>
 
               <div className="absolute inset-0 top-0 bg-gradient-to-b from-transparent from-60% via-white/90 to-white dark:from-transparent dark:from-60% dark:via-card/95 dark:to-card z-10 flex items-end justify-center pb-20">
@@ -106,7 +106,7 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
                      dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
               ) : deduplicatedBody?.length ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
-                  <PortableTextContent blocks={deduplicatedBody} />
+                  <PortableTextContent blocks={deduplicatedBody} html={page.bodyHtml} />
                 </div>
               ) : (
                 <div className="prose prose-lg dark:prose-invert max-w-none">
