@@ -118,7 +118,7 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
         <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
       ) : hasBody ? (
         <div className="prose prose-lg max-w-none">
-          <PortableTextContent blocks={page.body!} />
+          <PortableTextContent blocks={page.body!} html={page.bodyHtml} />
         </div>
       ) : null}
 
