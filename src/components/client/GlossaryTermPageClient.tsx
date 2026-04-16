@@ -65,7 +65,7 @@ export function GlossaryTermPageClient({ term }: { term: GlossaryTerm }) {
             )}
 
             <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl">
-              <PortableTextContent blocks={term.body} />
+              <PortableTextContent blocks={term.body} html={term.bodyHtml} />
             </div>
 
             <div className="flex items-center gap-4 mt-12 pt-8 border-t border-border">
