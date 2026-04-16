@@ -168,7 +168,7 @@ export default async function AlternativePage({ params }: { params: Promise<{ co
           {/* Body Content */}
           {alternative.body?.length ? (
             <div className="prose prose-lg dark:prose-invert max-w-4xl mb-16">
-              <PortableTextContent blocks={alternative.body} />
+              <PortableTextContent blocks={alternative.body} html={alternative.bodyHtml} />
             </div>
           ) : null}
 
