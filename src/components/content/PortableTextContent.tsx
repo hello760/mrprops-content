@@ -62,36 +62,71 @@ function renderBlock(block: PortableTextBlock, key: string) {
   return <p key={key}>{children}</p>;
 }
 
-export function PortableTextContent({ blocks }: { blocks?: PortableTextBlock[] }) {
+/**
+ * Renders content from either Sanity PortableText blocks or raw HTML.
+ * - When `blocks` has content → renders via PortableText
+ * - When `blocks` is empty and `html` is provided → renders HTML directly
+ * This supports the Supabase-first content flow where body content is stored as HTML.
+ */
+export function PortableTextContent({ blocks, html }: { blocks?: PortableTextBlock[]; html?: string }) {
   const content = blocks || [];
-  const result: React.ReactNode[] = [];
-  let i = 0;
-  while (i < content.length) {
-    const block = content[i];
-    const key = block._key || `${block._type}-${i}`;
-    if (block.listItem) {
-      const listType = block.listItem;
-      const items: PortableTextBlock[] = [];
-      while (i < content.length && content[i].listItem === listType) {
-        items.push(content[i]);
-        i++;
+
+  // If we have PortableText blocks, render them
+  if (content.length > 0) {
+    const result: React.ReactNode[] = [];
+    let i = 0;
+    while (i < content.length) {
+      const block = content[i];
+      const key = block._key || `${block._type}-${i}`;
+      if (block.listItem) {
+        const listType = block.listItem;
+        const items: PortableTextBlock[] = [];
+        while (i < content.length && content[i].listItem === listType) {
+          items.push(content[i]);
+          i++;
+        }
+        const Tag = listType === "number" ? "ol" : "ul";
+        result.push(<Tag key={`list-${key}`}>{items.map((item, idx) => renderBlock(item, item._key || `${key}-${idx}`))}</Tag>);
+        continue;
       }
-      const Tag = listType === "number" ? "ol" : "ul";
-      result.push(<Tag key={`list-${key}`}>{items.map((item, idx) => renderBlock(item, item._key || `${key}-${idx}`))}</Tag>);
-      continue;
+      result.push(renderBlock(block, key));
+      i++;
     }
-    result.push(renderBlock(block, key));
-    i++;
+    return <>{result}</>;
   }
-  return <>{result}</>;
+
+  // Fallback: render HTML content directly (Supabase flow)
+  if (html) {
+    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  }
+
+  return null;
 }
 
-export function portableTextHeadings(blocks?: PortableTextBlock[]) {
-  return (blocks || [])
-    .filter((block) => block.style === "h2")
-    .map((block) => {
-      const text = blockText(block);
-      return { id: headingId(text), label: text };
-    })
-    .filter((item) => item.label);
+export function portableTextHeadings(blocks?: PortableTextBlock[], html?: string) {
+  // Extract headings from PortableText blocks
+  if (blocks && blocks.length > 0) {
+    return blocks
+      .filter((block) => block.style === "h2")
+      .map((block) => {
+        const text = blockText(block);
+        return { id: headingId(text), label: text };
+      })
+      .filter((item) => item.label);
+  }
+
+  // Extract headings from HTML content (Supabase flow)
+  if (html) {
+    const headings: { id: string; label: string }[] = [];
+    const regex = /<h2[^>]*(?:id="([^"]*)")?[^>]*>(.*?)<\/h2>/gi;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      const text = match[2].replace(/<[^>]+>/g, '').trim();
+      const id = match[1] || headingId(text);
+      if (text) headings.push({ id, label: text });
+    }
+    return headings;
+  }
+
+  return [];
 }
