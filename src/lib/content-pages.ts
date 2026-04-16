@@ -118,6 +118,67 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
   };
 }
 
+// ─── Supabase landing page listing helper ──────────────────────────────────
+async function fetchLandingListFromSupabase(pageType: "features" | "services"): Promise<LandingContent[]> {
+  const sb = await getSB();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return [];
+
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at')
+    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .like('custom_slug', `${pageType}/%`)
+    .order('published_at', { ascending: false });
+
+  if (error || !data) return [];
+
+  return data
+    .filter((r: any) => r.custom_slug && r.structured_data && !/-\d{8,}$/.test(r.custom_slug))
+    .map((r: any) => {
+      const sd = (r.structured_data || {}) as Record<string, any>;
+      const slug = r.custom_slug.replace(new RegExp(`^${pageType}/`), '');
+      return {
+        id: r.id,
+        slug,
+        pageType,
+        title: sd.hero?.headline || r.title || '',
+        headline: sd.hero?.headline || r.title || '',
+        subheadline: sd.hero?.subheadline || '',
+        body: [],
+        bodyHtml: r.content_body || undefined,
+        image: '',
+        seoTitle: sd.seoTitle || r.seo_title || '',
+        seoDescription: sd.seoDescription || r.meta_description || '',
+        publishedAt: r.published_at || undefined,
+        heroBadge: sd.hero?.badge,
+        primaryCtaButton: sd.hero?.primaryCta,
+        secondaryCtaButton: sd.hero?.secondaryCta,
+        trustBarLabel: sd.trustBar?.label,
+        trustBarLogos: sd.trustBar?.logos?.map((l: string) => ({ label: l })),
+        spotlightTitle: sd.spotlight?.title,
+        spotlightDescription: sd.spotlight?.description,
+        featuresTitle: 'Why Choose Mr. Props?',
+        features: sd.features,
+        statsBar: sd.statsBar,
+        howItWorksTitle: 'How It Works',
+        howItWorksSteps: sd.howItWorks,
+        comparisonTitle: sd.comparison?.title,
+        comparisonPros: sd.comparison?.mrProps?.pros,
+        comparisonCons: sd.comparison?.traditional?.cons,
+        testimonialsTitle: 'What Our Customers Say',
+        testimonials: sd.testimonials,
+        faqTitle: 'Frequently Asked Questions',
+        faqs: sd.faqs,
+        ctaTitle: sd.finalCta?.headline,
+        ctaText: sd.finalCta?.sentence,
+        ctaPrimaryButton: sd.finalCta?.primaryCta,
+        ctaSecondaryButton: sd.finalCta?.secondaryCta,
+      } as LandingContent;
+    });
+}
+
 // ─── Phase 10: Supabase dual-source for ALL remaining content types ──────────
 
 async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string): Promise<DirectoryEntry | null> {
@@ -1005,8 +1066,17 @@ const landingFallbacks: LandingContent[] = [
 ];
 
 export const fetchLandingPages = cache(async (pageType: "features" | "services") => {
-  // All landing page content from Supabase — fallbacks for pages not yet generated
-  return landingFallbacks.filter((item) => item.pageType === pageType);
+  const sbPages = await fetchLandingListFromSupabase(pageType);
+  const fallbacks = landingFallbacks.filter((item) => item.pageType === pageType);
+  // Deduplicate: Supabase wins over fallbacks
+  const seen = new Set<string>();
+  const result: LandingContent[] = [];
+  for (const page of [...sbPages, ...fallbacks]) {
+    if (seen.has(page.slug)) continue;
+    seen.add(page.slug);
+    result.push(page);
+  }
+  return result;
 });
 
 export const fetchLandingPageBySlug = cache(async (pageType: "features" | "services", slug: string) => {
