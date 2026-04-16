@@ -321,6 +321,7 @@ export interface FeatureCardConfig {
   icon?: string;
   title: string;
   description: string;
+  features?: string[];
 }
 
 export interface ComparisonTableRowConfig {
