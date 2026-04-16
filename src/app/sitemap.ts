@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { sanityFetch } from "@/lib/sanity";
 import { getSupabase } from "@/lib/supabase";
 
+export const revalidate = 3600; // Regenerate sitemap every hour
+
 const BASE_URL = "https://mrprops.io";
 
 type SitemapDoc = {
