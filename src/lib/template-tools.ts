@@ -99,7 +99,7 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
     bodyHtml: data.content_body || undefined,
-    calculatorUi: fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
+    calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
   };
@@ -560,7 +560,7 @@ export async function fetchToolPage(category: string, slug: string) {
       faqs: sd.faqs || fallback?.faqs || [],
       body: [],
       bodyHtml: data.content_body || undefined,
-      calculatorUi: fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
+      calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
       howItWorks: sd.howItWorks || undefined,
       cta: sd.cta || undefined,
     } as ToolPageContent;
