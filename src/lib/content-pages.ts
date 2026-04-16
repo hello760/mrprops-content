@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { calculateReadTime, formatDisplayDate, portableTextToPlainText, startCaseSlug, stripPrefix, type PortableTextBlock } from "@/lib/content-helpers";
-import { sanityFetch } from "@/lib/sanity";
+// Sanity removed — all content served from Supabase
 
 // ─── Supabase dual-source (Phase 4E) ─────────────────────────────────────────
 let _sbClient: any = null;
@@ -210,7 +210,7 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
 export async function fetchTaxBySlug(platform: string, region: string): Promise<DirectoryEntry | null> {
   const supabaseResult = await fetchDirectoryEntryFromSupabase('taxes', `${platform}/${region}`);
   if (supabaseResult) return { ...supabaseResult, platform, region };
-  // Fallback to Sanity list + find
+  // Fallback: search full listing
   const pages = await fetchTaxes();
   return pages.find((item) => {
     const p = item.platform?.toLowerCase() || '';
@@ -1004,107 +1004,49 @@ const landingFallbacks: LandingContent[] = [
   },
 ];
 
-const fetchByType = cache(async (types: string[]) => {
-  const typeFilter = types.map((t) => `_type == "${t}"`).join(" || ");
-  return sanityFetch<SanityDoc[]>(`*[(${typeFilter}) && defined(slug.current)]|order(coalesce(publishedAt, _updatedAt) desc){
-    ${BASE_PROJECTION.slice(1, -1)},
-    _updatedAt
-  }`);
-});
-
 export const fetchLandingPages = cache(async (pageType: "features" | "services") => {
-  const docs = await fetchByType(["landingPage", "contentPage", "featurePage", "servicePage"]);
-  const sanityPages = docs
-    .filter((doc) => (doc.pageType || (doc.slug?.current?.startsWith("services/") ? "services" : "features")) === pageType)
-    .map(normalizeLandingDoc);
-  return dedupeBySlug([...sanityPages, ...landingFallbacks.filter((item) => item.pageType === pageType)]);
+  // All landing page content from Supabase — fallbacks for pages not yet generated
+  return landingFallbacks.filter((item) => item.pageType === pageType);
 });
 
 export const fetchLandingPageBySlug = cache(async (pageType: "features" | "services", slug: string) => {
-  // Try Supabase first (direct structured_data, no lossy extraction)
   const supabaseResult = await fetchLandingFromSupabase(pageType, slug);
   if (supabaseResult) return supabaseResult;
-
-  // Fall back to Sanity for content not yet migrated
-  const pages = await fetchLandingPages(pageType);
-  return pages.find((item) => item.slug === slug) || landingFallbacks.find((item) => item.pageType === pageType) || null;
+  return landingFallbacks.find((item) => item.pageType === pageType && item.slug === slug) || null;
 });
 
 export const fetchComparisons = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["competitorComparison", "comparisonPage", "comparison"]),
-    fetchSupabaseListings("compare"),
-  ]);
-  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "compare"));
-  return dedupeBySlug([...sbEntries, ...sanityPages]);
+  const sbEntries = await fetchSupabaseListings("compare");
+  return dedupeBySlug(sbEntries);
 });
 
 export const fetchAlternatives = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["competitorAlternative", "alternativePage", "alternative"]),
-    fetchSupabaseListings("alternatives"),
-  ]);
-  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "alternatives"));
-  return dedupeBySlug([...sbEntries, ...sanityPages]);
+  const sbEntries = await fetchSupabaseListings("alternatives");
+  return dedupeBySlug(sbEntries);
 });
 
 export const fetchRegulations = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["regulationPage", "regulation", "regulations"]),
-    fetchSupabaseListings("regulations"),
-  ]);
-  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "regulations"));
-  return dedupeBySlug([...sbEntries, ...sanityPages]);
+  const sbEntries = await fetchSupabaseListings("regulations");
+  return dedupeBySlug(sbEntries);
 });
 
 export const fetchTaxes = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["taxPage", "taxGuide", "taxes"]),
-    fetchSupabaseListings("taxes"),
-  ]);
-  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "taxes"));
-  return dedupeBySlug([...sbEntries, ...sanityPages]);
+  const sbEntries = await fetchSupabaseListings("taxes");
+  return dedupeBySlug(sbEntries);
 });
 
 export const fetchTemplates = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["leadGenTemplatePage", "leadGenTemplate", "templatePage", "template"]),
-    fetchSupabaseListings("templates"),
-  ]);
-  const sanityPages = docs.map((doc) => normalizeDirectoryDoc({
-    ...doc,
-    slug: { current: `templates/${doc.category || "general"}/${stripPrefix(doc.slug?.current || doc._id, "templates")}` },
-  }, "templates"));
-  return dedupeBySlug([...sbEntries, ...sanityPages, ...templateFallbacks]);
+  const sbEntries = await fetchSupabaseListings("templates");
+  return dedupeBySlug([...sbEntries, ...templateFallbacks]);
 });
 
 export const fetchTools = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["calculatorToolPage", "calculatorTool", "toolPage", "tool"]),
-    fetchSupabaseListings("tools"),
-  ]);
-  const sanityPages = docs.map((doc) => normalizeDirectoryDoc({
-    ...doc,
-    slug: { current: `tools/${doc.category || "general"}/${stripPrefix(doc.slug?.current || doc._id, "tools")}` },
-  }, "tools"));
-  return dedupeBySlug([...sbEntries, ...sanityPages, ...toolFallbacks]);
+  const sbEntries = await fetchSupabaseListings("tools");
+  return dedupeBySlug([...sbEntries, ...toolFallbacks]);
 });
 
 export const fetchGuides = cache(async () => {
-  const [docs, sbEntries] = await Promise.all([
-    fetchByType(["guide", "post"]),
-    fetchSupabaseListings("guides"),
-  ]);
-  const sanityGuides = docs.map((doc) => {
-    const item = normalizeDirectoryDoc(doc, "guides");
-    return {
-      ...item,
-      authorName: doc.title ? (doc as any).authorName || "Mr. Props Team" : "Mr. Props Team",
-      category: doc.category || "Operations",
-      date: formatDisplayDate(doc.publishedAt),
-      readTime: calculateReadTime(portableTextToPlainText(item.body) || item.excerpt),
-    };
-  });
+  const sbEntries = await fetchSupabaseListings("guides");
   const sbGuides = sbEntries.map((entry) => ({
     ...entry,
     authorName: "Mr. Props Team",
@@ -1112,11 +1054,10 @@ export const fetchGuides = cache(async () => {
     date: formatDisplayDate(entry.publishedAt),
     readTime: calculateReadTime(entry.excerpt || ''),
   }));
-  return dedupeBySlug([...sbGuides, ...sanityGuides, ...fallbackGuides]);
+  return dedupeBySlug([...sbGuides, ...fallbackGuides]);
 });
 
 export const fetchGuideBySlug = cache(async (slug: string) => {
-  // Try Supabase first (direct structured_data)
   const supabaseResult = await fetchDirectoryEntryFromSupabase('guides', slug);
   if (supabaseResult) {
     const sd = supabaseResult as any;
@@ -1128,29 +1069,8 @@ export const fetchGuideBySlug = cache(async (slug: string) => {
       readTime: calculateReadTime(supabaseResult.bodyHtml?.replace(/<[^>]+>/g, ' ') || supabaseResult.excerpt),
     };
   }
-
-  // Fallback to Sanity
   const cleanSlug = stripPrefix(slug, "guides");
-  const doc = await sanityFetch<SanityDoc | null>(`*[_type in ["guide", "post"] && defined(slug.current) && slug.current in [$slug, $prefixedSlug, $baseSlug, $prefixedBaseSlug]][0]{
-    ${BASE_PROJECTION.slice(1, -1)},
-    _updatedAt
-  }`, {
-    slug,
-    prefixedSlug: `guides/${cleanSlug}`,
-    baseSlug: cleanSlug,
-    prefixedBaseSlug: `guides/${stripPrefix(cleanSlug, "guides")}`,
-  });
-
-  if (!doc) return fallbackGuides.find((guide) => guide.slug === cleanSlug) || null;
-
-  const item = normalizeDirectoryDoc(doc, "guides");
-  return {
-    ...item,
-    authorName: (doc as any).authorName || "Mr. Props Team",
-    category: doc.category || "Operations",
-    date: formatDisplayDate(doc.publishedAt),
-    readTime: calculateReadTime(portableTextToPlainText(item.body) || item.excerpt),
-  };
+  return fallbackGuides.find((guide) => guide.slug === cleanSlug) || null;
 });
 
 export function splitNestedSlug(fullSlug: string, prefix: string, expectedDepth: number) {

@@ -1,4 +1,4 @@
-import { sanityFetch } from "@/lib/sanity";
+// Sanity removed — all content served from Supabase
 import type { PortableTextBlock } from "@/lib/content-helpers";
 import type { CalculatorUiCopy } from "@/components/tools/calculatorCopy";
 import { createClient } from "@supabase/supabase-js";
@@ -162,52 +162,7 @@ export interface ToolPageContent {
   cta?: { headline: string; sentence: string; primaryButton: { label: string; href: string }; secondaryButton: { label: string; href: string }; trustMicrocopy: string };
 }
 
-interface SanityTemplateDoc {
-  _id: string;
-  category?: string;
-  slug?: { current?: string };
-  title?: string;
-  badge?: string;
-  description?: string;
-  trustItems?: string[];
-  previewTitle?: string;
-  previewMeta?: string;
-  previewBody?: PortableTextBlock[];
-  gateTitle?: string;
-  gateDescription?: string;
-  formPlaceholder?: string;
-  formButtonLabel?: string;
-  formDisclaimer?: string;
-  whatIsTitle?: string;
-  whatIsText?: string;
-  useCasesTitle?: string;
-  useCases?: string[];
-  customizeTitle?: string;
-  customizeText?: string;
-  faqTitle?: string;
-  faqs?: Array<{ question: string; answer: string }>;
-  resourcesTitle?: string;
-  resources?: LinkItem[];
-  seoTitle?: string;
-  seoDescription?: string;
-  body?: PortableTextBlock[];
-}
-
-interface SanityToolDoc {
-  _id: string;
-  category?: string;
-  slug?: { current?: string };
-  title?: string;
-  description?: string;
-  seoTitle?: string;
-  seoDescription?: string;
-  mainTitle?: string;
-  introText?: string;
-  benefits?: Array<{ title: string; description: string }>;
-  faqs?: Array<{ question: string; answer: string }>;
-  body?: PortableTextBlock[];
-  calculatorUi?: CalculatorUiCopy;
-}
+// Sanity interfaces removed — all content from Supabase
 
 const block = (text: string): PortableTextBlock => ({
   _key: text.slice(0, 24).replace(/\s+/g, "-").toLowerCase(),
@@ -501,18 +456,7 @@ export const toolFallbacks: ToolPageContent[] = [
   },
 ];
 
-const TEMPLATE_QUERY = `*[_type == "leadGenTemplatePage" && category == $category && slug.current == $slug][0]{
-  _id,category,slug,title,badge,description,trustItems,previewTitle,previewMeta,previewBody,gateTitle,gateDescription,formPlaceholder,formButtonLabel,formDisclaimer,whatIsTitle,whatIsText,useCasesTitle,useCases,customizeTitle,customizeText,faqTitle,faqs,resourcesTitle,resources,seoTitle,seoDescription,body
-}`;
-
-const TOOL_QUERY = `*[_type == "calculatorToolPage" && category == $category && slug.current == $slug][0]{
-  _id,category,slug,title,description,seoTitle,seoDescription,mainTitle,introText,benefits,faqs,body,
-  calculatorUi{
-    fields[]{key,label,helpText},
-    results[]{key,label,helpText},
-    layout{reportButtonLabel,primaryCtaLabel,primaryCtaHref,trustBadgeText,helpfulHeading,helpfulText,reportModalTitle,benefitStripItems[]{icon,title,description}}
-  }
-}`;
+// Sanity GROQ queries removed
 
 export async function fetchTemplatePage(category: string, slug: string) {
   // Inline Supabase query (same pattern as working fetchToolPage)
@@ -575,10 +519,8 @@ export async function fetchTemplatePage(category: string, slug: string) {
     console.error('[fetchTemplatePage] Supabase error:', sbErr);
   }
 
-  // Fall back to Sanity
-  const doc = await sanityFetch<SanityTemplateDoc | null>(TEMPLATE_QUERY, { category, slug });
-  if (!doc) return null;
-  return normalizeTemplateDoc(doc);
+  // No Supabase match — return hardcoded fallback
+  return getTemplateFallback(category, slug);
 }
 
 export async function fetchToolPage(category: string, slug: string) {
@@ -628,73 +570,11 @@ export async function fetchToolPage(category: string, slug: string) {
     console.error('[fetchToolPage] Supabase error:', sbErr);
   }
 
-  // Fall back to Sanity
-  const doc = await sanityFetch<SanityToolDoc | null>(TOOL_QUERY, { category, slug });
-  if (!doc) return null;
-  return normalizeToolDoc(doc);
+  // No Supabase match — return hardcoded fallback
+  return resolveToolFallback(category, slug);
 }
 
-function normalizeTemplateDoc(doc: SanityTemplateDoc): TemplatePageContent {
-  const fallback = getTemplateFallback(doc.category, doc.slug?.current) || templateFallbacks[0];
-  return {
-    ...fallback,
-    id: doc._id,
-    category: doc.category || fallback.category,
-    slug: doc.slug?.current || fallback.slug,
-    title: doc.title || fallback.title,
-    badge: doc.badge || fallback.badge,
-    description: doc.description || fallback.description,
-    trustItems: doc.trustItems?.length ? doc.trustItems : fallback.trustItems,
-    previewTitle: doc.previewTitle || fallback.previewTitle,
-    previewMeta: doc.previewMeta || fallback.previewMeta,
-    previewBody: doc.previewBody?.length ? doc.previewBody : fallback.previewBody,
-    gateTitle: doc.gateTitle || fallback.gateTitle,
-    gateDescription: doc.gateDescription || fallback.gateDescription,
-    formPlaceholder: doc.formPlaceholder || fallback.formPlaceholder,
-    formButtonLabel: doc.formButtonLabel || fallback.formButtonLabel,
-    formDisclaimer: doc.formDisclaimer || fallback.formDisclaimer,
-    whatIsTitle: doc.whatIsTitle || fallback.whatIsTitle,
-    whatIsText: doc.whatIsText || fallback.whatIsText,
-    useCasesTitle: doc.useCasesTitle || fallback.useCasesTitle,
-    useCases: doc.useCases?.length ? doc.useCases : fallback.useCases,
-    customizeTitle: doc.customizeTitle || fallback.customizeTitle,
-    customizeText: doc.customizeText || fallback.customizeText,
-    faqTitle: doc.faqTitle || fallback.faqTitle,
-    faqs: doc.faqs?.length ? doc.faqs : fallback.faqs,
-    resourcesTitle: doc.resourcesTitle || fallback.resourcesTitle,
-    resources: doc.resources?.length ? doc.resources : fallback.resources,
-    seoTitle: doc.seoTitle || fallback.seoTitle,
-    seoDescription: doc.seoDescription || fallback.seoDescription,
-    body: doc.body?.length ? doc.body : fallback.body,
-  };
-}
-
-function normalizeToolDoc(doc: SanityToolDoc): ToolPageContent {
-  const fallback = getToolFallback(doc.category, doc.slug?.current) || toolFallbacks[0];
-  return {
-    ...fallback,
-    id: doc._id,
-    category: doc.category || fallback.category,
-    slug: doc.slug?.current || fallback.slug,
-    title: doc.title || fallback.title,
-    description: doc.description || fallback.description,
-    seoTitle: doc.seoTitle || fallback.seoTitle,
-    seoDescription: doc.seoDescription || fallback.seoDescription,
-    mainTitle: doc.mainTitle || fallback.mainTitle,
-    introText: doc.introText || fallback.introText,
-    benefits: doc.benefits?.length ? doc.benefits : fallback.benefits,
-    faqs: doc.faqs?.length ? doc.faqs : fallback.faqs,
-    body: doc.body?.length ? doc.body : fallback.body,
-    calculatorUi: {
-      fields: doc.calculatorUi?.fields?.length ? doc.calculatorUi.fields : fallback.calculatorUi?.fields,
-      results: doc.calculatorUi?.results?.length ? doc.calculatorUi.results : fallback.calculatorUi?.results,
-      layout: {
-        ...fallback.calculatorUi?.layout,
-        ...doc.calculatorUi?.layout,
-      },
-    },
-  };
-}
+// Sanity normalize functions removed — no longer needed
 
 export function getTemplateFallback(category?: string | null, slug?: string | null) {
   return templateFallbacks.find((item) => item.category === category && item.slug === slug) || null;
