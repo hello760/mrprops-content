@@ -269,7 +269,7 @@ export interface DirectoryEntry {
   statusLabel?: string;
   overviewTitle?: string;
   checklistTitle?: string;
-  checklistItems?: string[];
+  checklistItems?: (string | { label: string; checked?: boolean })[];
   sidebarCtaTitle?: string;
   sidebarCtaDescription?: string;
   sidebarCtaButtonLabel?: string;
@@ -425,7 +425,7 @@ interface SanityDoc {
   statusLabel?: string;
   overviewTitle?: string;
   checklistTitle?: string;
-  checklistItems?: string[];
+  checklistItems?: (string | { label: string; checked?: boolean })[];
   sidebarCtaTitle?: string;
   sidebarCtaDescription?: string;
   sidebarCtaButtonLabel?: string;
