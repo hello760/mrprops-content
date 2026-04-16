@@ -99,7 +99,7 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
     bodyHtml: data.content_body || undefined,
-    calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
+    calculatorUi: fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
   };
@@ -560,7 +560,7 @@ export async function fetchToolPage(category: string, slug: string) {
       faqs: sd.faqs || fallback?.faqs || [],
       body: [],
       bodyHtml: data.content_body || undefined,
-      calculatorUi: sd.calculatorType ? { type: sd.calculatorType } as any : fallback?.calculatorUi,
+      calculatorUi: fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
       howItWorks: sd.howItWorks || undefined,
       cta: sd.cta || undefined,
     } as ToolPageContent;
@@ -587,6 +587,7 @@ export function getToolFallback(category?: string | null, slug?: string | null) 
 /* ── slug / category aliases for backward-compat with old SPA routes ── */
 const SLUG_ALIASES: Record<string, { category: string; slug: string }> = {
   "renovation-calculator": { category: "renovations", slug: "renovation-roi-calculator" },
+  "airbnb-profit-calculator-v2": { category: "booking", slug: "airbnb-profit-calculator" },
 };
 
 /**

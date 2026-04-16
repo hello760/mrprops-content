@@ -318,6 +318,7 @@ export interface FAQItemConfig {
 }
 
 export interface FeatureCardConfig {
+  icon?: string;
   title: string;
   description: string;
 }
@@ -433,6 +434,7 @@ export interface TestimonialConfig {
   quote: string;
   name: string;
   role?: string;
+  rating?: number;
 }
 
 export interface LandingContent {
