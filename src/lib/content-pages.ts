@@ -12,6 +12,56 @@ async function getSB() {
   return _sbClient;
 }
 
+// ─── Supabase listing helper (for index/listing pages) ──────────────────────
+async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry[]> {
+  const sb = await getSB();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return [];
+
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, updated_at')
+    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
+    .eq('writing_status', 'published')
+    .not('content_body', 'is', null)
+    .like('custom_slug', `${slugPrefix}/%`)
+    .order('published_at', { ascending: false });
+
+  if (error || !data) return [];
+
+  return data
+    .filter((r: any) => r.custom_slug && !/-\d{8,}$/.test(r.custom_slug))
+    .map((r: any) => {
+      const sd = (r.structured_data || {}) as Record<string, any>;
+      const bodyHtml = (r.content_body || '') as string;
+      const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+      return {
+        id: r.id,
+        slug: r.custom_slug,
+        title: sd.heroTitle || sd.title || r.title || startCaseSlug(r.custom_slug),
+        excerpt: sd.seoDescription || r.meta_description || plainText.slice(0, 180) || '',
+        body: [],
+        bodyHtml,
+        seoTitle: sd.seoTitle || r.seo_title || `${r.title} | Mr. Props`,
+        seoDescription: sd.seoDescription || r.meta_description || '',
+        publishedAt: r.published_at,
+        updatedAt: r.updated_at || r.published_at,
+        image: sd.conceptImage?.url || fallbackImageForSlug(r.custom_slug),
+        platform: sd.platform,
+        location: sd.location,
+        region: sd.region,
+        competitorName: sd.competitorName,
+        heroBadge: sd.heroBadge,
+        heroTitle: sd.heroTitle,
+        heroDescription: sd.heroDescription,
+        comparisonTableRows: sd.comparisonTableRows,
+        alternativeCards: sd.alternativeCards,
+        faqs: sd.faqs,
+        updated: formatDisplayDate(r.updated_at || r.published_at),
+      } as DirectoryEntry;
+    });
+}
+
 async function fetchLandingFromSupabase(pageType: "features" | "services", slug: string): Promise<LandingContent | null> {
   const sb = await getSB();
   if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
@@ -981,45 +1031,70 @@ export const fetchLandingPageBySlug = cache(async (pageType: "features" | "servi
 });
 
 export const fetchComparisons = cache(async () => {
-  const docs = await fetchByType(["competitorComparison", "comparisonPage", "comparison"]);
-  return docs.map((doc) => normalizeDirectoryDoc(doc, "compare"));
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["competitorComparison", "comparisonPage", "comparison"]),
+    fetchSupabaseListings("compare"),
+  ]);
+  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "compare"));
+  return dedupeBySlug([...sbEntries, ...sanityPages]);
 });
 
 export const fetchAlternatives = cache(async () => {
-  const docs = await fetchByType(["competitorAlternative", "alternativePage", "alternative"]);
-  return docs.map((doc) => normalizeDirectoryDoc(doc, "alternatives"));
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["competitorAlternative", "alternativePage", "alternative"]),
+    fetchSupabaseListings("alternatives"),
+  ]);
+  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "alternatives"));
+  return dedupeBySlug([...sbEntries, ...sanityPages]);
 });
 
 export const fetchRegulations = cache(async () => {
-  const docs = await fetchByType(["regulationPage", "regulation", "regulations"]);
-  return docs.map((doc) => normalizeDirectoryDoc(doc, "regulations"));
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["regulationPage", "regulation", "regulations"]),
+    fetchSupabaseListings("regulations"),
+  ]);
+  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "regulations"));
+  return dedupeBySlug([...sbEntries, ...sanityPages]);
 });
 
 export const fetchTaxes = cache(async () => {
-  const docs = await fetchByType(["taxPage", "taxGuide", "taxes"]);
-  return docs.map((doc) => normalizeDirectoryDoc(doc, "taxes"));
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["taxPage", "taxGuide", "taxes"]),
+    fetchSupabaseListings("taxes"),
+  ]);
+  const sanityPages = docs.map((doc) => normalizeDirectoryDoc(doc, "taxes"));
+  return dedupeBySlug([...sbEntries, ...sanityPages]);
 });
 
 export const fetchTemplates = cache(async () => {
-  const docs = await fetchByType(["leadGenTemplatePage", "leadGenTemplate", "templatePage", "template"]);
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["leadGenTemplatePage", "leadGenTemplate", "templatePage", "template"]),
+    fetchSupabaseListings("templates"),
+  ]);
   const sanityPages = docs.map((doc) => normalizeDirectoryDoc({
     ...doc,
     slug: { current: `templates/${doc.category || "general"}/${stripPrefix(doc.slug?.current || doc._id, "templates")}` },
   }, "templates"));
-  return dedupeBySlug([...sanityPages, ...templateFallbacks]);
+  return dedupeBySlug([...sbEntries, ...sanityPages, ...templateFallbacks]);
 });
 
 export const fetchTools = cache(async () => {
-  const docs = await fetchByType(["calculatorToolPage", "calculatorTool", "toolPage", "tool"]);
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["calculatorToolPage", "calculatorTool", "toolPage", "tool"]),
+    fetchSupabaseListings("tools"),
+  ]);
   const sanityPages = docs.map((doc) => normalizeDirectoryDoc({
     ...doc,
     slug: { current: `tools/${doc.category || "general"}/${stripPrefix(doc.slug?.current || doc._id, "tools")}` },
   }, "tools"));
-  return dedupeBySlug([...sanityPages, ...toolFallbacks]);
+  return dedupeBySlug([...sbEntries, ...sanityPages, ...toolFallbacks]);
 });
 
 export const fetchGuides = cache(async () => {
-  const docs = await fetchByType(["guide", "post"]);
+  const [docs, sbEntries] = await Promise.all([
+    fetchByType(["guide", "post"]),
+    fetchSupabaseListings("guides"),
+  ]);
   const sanityGuides = docs.map((doc) => {
     const item = normalizeDirectoryDoc(doc, "guides");
     return {
@@ -1030,7 +1105,14 @@ export const fetchGuides = cache(async () => {
       readTime: calculateReadTime(portableTextToPlainText(item.body) || item.excerpt),
     };
   });
-  return dedupeBySlug([...sanityGuides, ...fallbackGuides]);
+  const sbGuides = sbEntries.map((entry) => ({
+    ...entry,
+    authorName: "Mr. Props Team",
+    category: "Operations",
+    date: formatDisplayDate(entry.publishedAt),
+    readTime: calculateReadTime(entry.excerpt || ''),
+  }));
+  return dedupeBySlug([...sbGuides, ...sanityGuides, ...fallbackGuides]);
 });
 
 export const fetchGuideBySlug = cache(async (slug: string) => {

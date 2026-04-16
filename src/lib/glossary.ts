@@ -191,9 +191,70 @@ const BY_SLUG_QUERY = `*[_type == "glossaryTerm" && slug.current in [$slug, $pre
 }`;
 
 export const fetchGlossaryTerms = cache(async () => {
-  const docs = await sanityFetch<SanityGlossaryDocument[]>(LIST_QUERY);
-  return docs.map(normalizeGlossaryTerm);
+  const [docs, sbTerms] = await Promise.all([
+    sanityFetch<SanityGlossaryDocument[]>(LIST_QUERY),
+    fetchGlossaryListFromSupabase(),
+  ]);
+  const sanityTerms = docs.map(normalizeGlossaryTerm);
+  // Supabase entries take priority; deduplicate by slug base
+  const seen = new Set<string>();
+  const result: GlossaryTerm[] = [];
+  for (const term of [...sbTerms, ...sanityTerms]) {
+    const base = glossarySlugBase(term.slug);
+    if (!base || seen.has(base)) continue;
+    seen.add(base);
+    result.push(term);
+  }
+  return result;
 });
+
+async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
+  const sb = await getSupabaseClient();
+  if (!sb) return [];
+  const clientId = process.env.MR_PROPS_CLIENT_ID;
+  if (!clientId) return [];
+
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, content_body, structured_data, seo_title, meta_description, published_at')
+    .eq('client_id', clientId)
+    .eq('writing_status', 'published')
+    .not('structured_data', 'is', null)
+    .like('custom_slug', 'glossary/%')
+    .order('title', { ascending: true });
+
+  if (error || !data) return [];
+
+  return data
+    .filter((r: any) => r.custom_slug && !/-\d{8,}$/.test(r.custom_slug))
+    .map((r: any) => {
+      const sd = (r.structured_data || {}) as Record<string, any>;
+      const bodyHtml = (r.content_body || '') as string;
+      const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const slug = normalizeGlossarySlug(r.custom_slug);
+      const term = sd.term || r.title || startCaseSlug(slug.replace(/^what-is-/, ''));
+
+      return {
+        id: r.id,
+        slug,
+        term,
+        definition: sd.definition || '',
+        body: [],
+        bodyHtml: bodyHtml || undefined,
+        relatedTerms: sd.relatedTerms || [],
+        seoTitle: sd.seoTitle || r.seo_title || `What is ${term}? | Mr. Props`,
+        seoDescription: sd.seoDescription || r.meta_description || '',
+        publishedAt: r.published_at,
+        date: formatDisplayDate(r.published_at),
+        readTime: calculateReadTime(plainText),
+        faqs: sd.faqs || [],
+        ctaTitle: sd.cta?.title,
+        ctaText: sd.cta?.text,
+        ctaPrimaryButton: sd.cta?.primaryButton,
+        conceptImageUrl: sd.conceptImage?.url,
+      } as GlossaryTerm;
+    });
+}
 
 export const fetchGlossaryTermBySlug = cache(async (slug: string) => {
   // Try Supabase first (direct structured_data, no lossy extraction)
