@@ -11,7 +11,7 @@ import type { DirectoryEntry } from "@/lib/content-pages";
 export function GuidePostClient({ guide, relatedGuides }: { guide: DirectoryEntry & { date?: string; readTime?: string }; relatedGuides: Array<DirectoryEntry & { date?: string; readTime?: string }> }) {
   const [activeSection, setActiveSection] = useState("");
 
-  const sections = useMemo(() => portableTextHeadings(guide.body), [guide.body]);
+  const sections = useMemo(() => portableTextHeadings(guide.body, guide.bodyHtml), [guide.body, guide.bodyHtml]);
 
   useEffect(() => {
     const headings = Array.from(document.querySelectorAll("article h2[id]"));
