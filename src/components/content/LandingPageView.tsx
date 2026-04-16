@@ -236,7 +236,7 @@ export function LandingPageView({ page, pageType, slug }: { page: LandingContent
       ) : page.body?.length ? (
         <section className="border-y border-border/50 bg-secondary/30 py-20">
           <div className="container mx-auto max-w-4xl px-4 prose prose-lg dark:prose-invert">
-            <PortableTextContent blocks={page.body} />
+            <PortableTextContent blocks={page.body} html={page.bodyHtml} />
           </div>
         </section>
       ) : null}
