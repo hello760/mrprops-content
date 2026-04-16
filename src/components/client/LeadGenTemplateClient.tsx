@@ -82,7 +82,7 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
               </div>
 
               <div className="font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-300 space-y-6">
-                <PortableTextContent blocks={previewBody} html={page.previewBodyHtml} />
+                <PortableTextContent blocks={previewBody} />
               </div>
 
               <div className="absolute inset-0 top-0 bg-gradient-to-b from-transparent from-60% via-white/90 to-white dark:from-transparent dark:from-60% dark:via-card/95 dark:to-card z-10 flex items-end justify-center pb-20">
