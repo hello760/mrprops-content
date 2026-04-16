@@ -110,6 +110,16 @@ export default async function AlternativePage({ params }: { params: Promise<{ co
                       <Check className="h-4 w-4 mt-0.5 flex-shrink-0" /><span className="font-medium">{solution}</span>
                     </div>
                   </div>
+                  {card.features?.length > 0 && (
+                    <ul className="mt-4 space-y-2 text-sm text-muted-foreground border-t border-border pt-4">
+                      {card.features.map((feat: string, fi: number) => (
+                        <li key={fi} className="flex items-start gap-2">
+                          <Check className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}
