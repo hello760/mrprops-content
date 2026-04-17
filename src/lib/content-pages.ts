@@ -32,7 +32,7 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
     .filter((r: any) => r.custom_slug && !/-\d{8,}$/.test(r.custom_slug))
     .map((r: any) => {
       const sd = (r.structured_data || {}) as Record<string, any>;
-      const bodyHtml = (r.content_body || '') as string;
+      const bodyHtml = ((r.structured_data as any)?.bodyHtml || r.content_body || '') as string;
       const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
       return {
@@ -87,7 +87,7 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     headline: sd.hero?.headline || data.title || '',
     subheadline: sd.hero?.subheadline || '',
     body: [],
-    bodyHtml: data.content_body || undefined,
+    bodyHtml: (sd.bodyHtml || data.content_body) || undefined,
     image: '',
     seoTitle: sd.seoTitle || data.seo_title || '',
     seoDescription: sd.seoDescription || data.meta_description || '',
@@ -147,7 +147,7 @@ async function fetchLandingListFromSupabase(pageType: "features" | "services"): 
         headline: sd.hero?.headline || r.title || '',
         subheadline: sd.hero?.subheadline || '',
         body: [],
-        bodyHtml: r.content_body || undefined,
+        bodyHtml: ((sd as any)?.bodyHtml || r.content_body) || undefined,
         image: '',
         seoTitle: sd.seoTitle || r.seo_title || '',
         seoDescription: sd.seoDescription || r.meta_description || '',
@@ -202,7 +202,8 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
   if (error || !data || !data.structured_data) return null;
 
   const sd = data.structured_data as Record<string, any>;
-  const bodyHtml = (data.content_body || '') as string;
+  // Phase 5 L3 fix: prefer structured_data.bodyHtml (stripped) over content_body.
+  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   return {

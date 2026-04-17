@@ -62,7 +62,7 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
     body: [],
-    bodyHtml: data.content_body || undefined,
+    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
   };
 }
 
@@ -98,7 +98,7 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     benefits: sd.benefits || fallback?.benefits || [],
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
-    bodyHtml: data.content_body || undefined,
+    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
     calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
@@ -511,7 +511,7 @@ export async function fetchTemplatePage(category: string, slug: string) {
           seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
           seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
           body: [],
-          bodyHtml: data.content_body || undefined,
+          bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
         } as TemplatePageContent;
       }
     }
@@ -559,7 +559,7 @@ export async function fetchToolPage(category: string, slug: string) {
       benefits: sd.benefits || fallback?.benefits || [],
       faqs: sd.faqs || fallback?.faqs || [],
       body: [],
-      bodyHtml: data.content_body || undefined,
+      bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
       calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
       howItWorks: sd.howItWorks || undefined,
       cta: sd.cta || undefined,

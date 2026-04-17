@@ -149,7 +149,7 @@ async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
     .filter((r: any) => r.custom_slug && !/-\d{8,}$/.test(r.custom_slug))
     .map((r: any) => {
       const sd = (r.structured_data || {}) as Record<string, any>;
-      const bodyHtml = (r.content_body || '') as string;
+      const bodyHtml = (sd?.bodyHtml || r.content_body || '') as string;
       const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const slug = normalizeGlossarySlug(r.custom_slug);
       const term = sd.term || r.title || startCaseSlug(slug.replace(/^what-is-/, ''));
