@@ -38,7 +38,10 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
   if (error || !data || !data.structured_data) return null;
 
   const sd = data.structured_data as Record<string, any>;
-  const bodyHtml = (data.content_body || '') as string;
+  // Phase 5 L3 fix: prefer structured_data.bodyHtml (build-structured-data has
+  // already stripped duplicate paragraphs from it). Fall back to content_body
+  // for legacy pieces whose structured_data hasn't been rebuilt yet.
+  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   // Map structured_data to GlossaryTerm interface (field-by-field)
@@ -197,7 +200,8 @@ export async function fetchGlossaryTermById(id: string): Promise<GlossaryTerm | 
   if (error || !data || data.client_id !== clientId) return null;
 
   const sd = (data.structured_data || {}) as Record<string, any>;
-  const bodyHtml = (data.content_body || '') as string;
+  // Phase 5 L3 fix: prefer sd.bodyHtml (stripped) over content_body (authoritative source).
+  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const whatIsSlug = `what-is-${String(data.custom_slug || '').replace(/^(glossary\/)?/, '').replace(/^what-is-/, '')}`;
 
