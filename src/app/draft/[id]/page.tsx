@@ -84,32 +84,15 @@ export default async function DraftPreviewPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ token?: string; debug?: string }>;
+  searchParams: Promise<{ token?: string }>;
 }) {
   const { id } = await params;
-  const { token, debug } = await searchParams;
+  const { token } = await searchParams;
   const verified = verifyDraftToken(token, id);
   if (!verified) notFound();
 
   const fam = await fetchPieceFamilyById(id);
   if (!fam) notFound();
-
-  // Debug probe — skips all rendering, just dumps resolved family + sd keys
-  if (debug === '1') {
-    const raw = await fetchPieceById(id);
-    return (
-      <div style={{ padding: 24, fontFamily: 'monospace', fontSize: 13 }}>
-        <h1>Draft debug</h1>
-        <pre>{JSON.stringify({
-          id, resolved_family: fam.family, custom_slug: fam.custom_slug,
-          live_url: fam.live_url, type_of_work: fam.type_of_work,
-          sd_keys: raw && raw.structured_data ? Object.keys(raw.structured_data) : null,
-          has_body: !!raw?.content_body,
-          expiresAt: verified.expiresAt,
-        }, null, 2)}</pre>
-      </div>
-    );
-  }
 
   // ─── Glossary ──────────────────────────────────────────────────────────
   if (fam.family === 'glossary') {
