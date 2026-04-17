@@ -49,10 +49,13 @@ async function fetchPieceById(id: string): Promise<Record<string, any> | null> {
   if (!clientId) return null;
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, client_id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, images, focus_keyword_1, primary_keyword')
+    .select('id, client_id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, images, focus_keyword_1, live_url')
     .eq('id', id)
     .single();
-  if (error || !data || (data as any).client_id !== clientId) return null;
+  if (error || !data || (data as any).client_id !== clientId) {
+    if (error) console.error('[draft fetchPieceById]', error);
+    return null;
+  }
   return data as Record<string, any>;
 }
 
