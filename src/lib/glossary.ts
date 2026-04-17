@@ -176,3 +176,87 @@ async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
 export const fetchGlossaryTermBySlug = cache(async (slug: string) => {
   return fetchGlossaryFromSupabase(slug);
 });
+
+// ─── Phase 5 C-1: fetch-by-id for draft preview ──────────────────────────────
+// Reads a glossary piece directly by id (not slug), WITHOUT the writing_status=published
+// filter — drafts must also preview. Returns the same GlossaryTerm shape as the
+// production fetcher, so the production renderer renders it identically.
+export async function fetchGlossaryTermById(id: string): Promise<GlossaryTerm | null> {
+  const sb = await getSupabaseClient();
+  if (!sb) return null;
+  const clientId = process.env.MR_PROPS_CLIENT_ID;
+  if (!clientId) return null;
+
+  const { data: rawData, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, client_id')
+    .eq('id', id)
+    .single();
+
+  const data = rawData as Record<string, any> | null;
+  if (error || !data || data.client_id !== clientId) return null;
+
+  const sd = (data.structured_data || {}) as Record<string, any>;
+  const bodyHtml = (data.content_body || '') as string;
+  const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const whatIsSlug = `what-is-${String(data.custom_slug || '').replace(/^(glossary\/)?/, '').replace(/^what-is-/, '')}`;
+
+  return {
+    id: data.id,
+    slug: normalizeGlossarySlug(data.custom_slug) || whatIsSlug,
+    term: sd.term || data.title || 'Term',
+    definition: sd.definition || '',
+    body: [],
+    bodyHtml: bodyHtml || undefined,
+    relatedTerms: sd.relatedTerms || [],
+    seoTitle: sd.seoTitle || data.seo_title || `What is ${sd.term}? | Mr. Props`,
+    seoDescription: sd.seoDescription || data.meta_description || sd.definition || '',
+    publishedAt: data.published_at || undefined,
+    updatedAt: data.published_at || undefined,
+    date: formatDisplayDate(data.published_at),
+    readTime: calculateReadTime(plainText),
+    definitionPrefix: sd.definitionPrefix || undefined,
+    conceptImageUrl: sd.conceptImage?.url || undefined,
+    conceptImageAlt: sd.conceptImage?.alt || undefined,
+    proTipBadge: sd.proTip?.badge || undefined,
+    proTipTitle: sd.proTip?.title || undefined,
+    proTipDescription: sd.proTip?.description || undefined,
+    proTipButtonLabel: sd.proTip?.buttonLabel || undefined,
+    faqTitle: `Frequently Asked Questions about ${sd.term || data.title}`,
+    faqs: (sd.faqs || []).map((f: any) => ({ question: f.question, answer: f.answer })),
+    ctaTitle: sd.cta?.title || undefined,
+    ctaText: sd.cta?.text || undefined,
+    ctaPrimaryButton: sd.cta?.primaryButton || undefined,
+  };
+}
+
+// Returns the piece's family (from custom_slug prefix) + raw row, used by the
+// draft dispatcher to pick the right renderer.
+export async function fetchPieceFamilyById(id: string): Promise<{ family: string | null; custom_slug: string | null; title: string | null } | null> {
+  const sb = await getSupabaseClient();
+  if (!sb) return null;
+  const clientId = process.env.MR_PROPS_CLIENT_ID;
+  if (!clientId) return null;
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, client_id')
+    .eq('id', id)
+    .single();
+  const row = data as Record<string, any> | null;
+  if (error || !row || row.client_id !== clientId) return null;
+
+  const prefix = String(row.custom_slug || '').split('/')[0];
+  const prefixToFamily: Record<string, string> = {
+    glossary: 'glossary',
+    tools: 'calculator',
+    templates: 'template',
+    taxes: 'tax',
+    compare: 'comparison',
+    alternatives: 'alternative',
+    regulations: 'regulation',
+    guides: 'guide',
+    features: 'landing_page',
+    services: 'landing_page',
+  };
+  return { family: prefixToFamily[prefix] || null, custom_slug: row.custom_slug || null, title: row.title || null };
+}
