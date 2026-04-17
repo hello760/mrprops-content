@@ -1,30 +1,30 @@
-// Phase 5 C-1 (expanded to all 9 families).
-// Renders a content piece by id, WITHOUT ISR caching, WITHOUT static generation.
-// Gated by HMAC token from the admin side. Invalid/expired → notFound() (no existence leak).
+// Phase 5 C-1 (9-family refactor): dispatches each family to its production renderer
+// via the same View component the production route uses. This guarantees byte-identical
+// output between admin Preview tab and the live mrprops.io page.
 //
-// Each family dispatches to its production renderer. For glossary, the renderer is
-// duplicated inline because the production /glossary/[slug]/page.tsx is a Next.js
-// page function. For calculator/template/landing_page/guide we import the existing
-// client components directly. For comparison/alternative/tax/regulation the
-// production pages are inline page.tsx files; draft route duplicates the JSX.
+// Data flow:
+//   by-id DB fetch (skipping writing_status='published' filter)
+//   → shared mapper (same shape as content-pages.ts::fetchDirectoryEntryFromSupabase)
+//   → production View component
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import {
-  AlertCircle, AlertTriangle, Check, CheckSquare,
-  ChevronRight, Download, FileCheck, Home, Minus, Printer, Search, Share2,
-  Trophy, X
-} from 'lucide-react';
+import { ChevronRight, Printer, Search, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SEOContentSkeleton } from '@/components/content/SEOContentSkeleton';
 import { ToolPageClient } from '@/components/tools/ToolPageClient';
 import { LeadGenTemplateClient } from '@/components/client/LeadGenTemplateClient';
 import { LandingPageView } from '@/components/content/LandingPageView';
 import { GuidePostClient } from '@/components/client/GuidePostClient';
+import { ComparisonView } from '@/components/content/views/ComparisonView';
+import { AlternativeView } from '@/components/content/views/AlternativeView';
+import { TaxView } from '@/components/content/views/TaxView';
+import { RegulationView } from '@/components/content/views/RegulationView';
 import { fetchGlossaryTermById, fetchPieceFamilyById } from '@/lib/glossary';
 import { verifyDraftToken } from '@/lib/verifyDraftToken';
 import { createClient } from '@supabase/supabase-js';
 import { calculateReadTime, formatDisplayDate } from '@/lib/content-helpers';
+import type { DirectoryEntry } from '@/lib/content-pages';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -34,7 +34,6 @@ export const metadata = {
   title: 'Draft preview — Mr. Props admin',
 };
 
-// ─── by-id DB read (skips writing_status='published' filter) ─────────────────
 function sbClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -59,6 +58,70 @@ async function fetchPieceById(id: string): Promise<Record<string, any> | null> {
   return data as Record<string, any>;
 }
 
+// Mirrors content-pages.ts::fetchDirectoryEntryFromSupabase — extracts the
+// same field mapping so the draft route produces the identical DirectoryEntry
+// that the production renderer is fed by the slug-based fetcher.
+function toDirectoryEntry(data: Record<string, any>): DirectoryEntry {
+  const sd = (data.structured_data || {}) as Record<string, any>;
+  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
+  const slug = String(data.custom_slug || '').replace(/^[^/]+\//, '');
+  const title = sd.heroTitle || sd.title || data.title || '';
+  return {
+    id: data.id,
+    slug,
+    title,
+    excerpt: sd.seoDescription || data.meta_description || '',
+    body: [],
+    bodyHtml: bodyHtml || undefined,
+    seoTitle: sd.seoTitle || data.seo_title || '',
+    seoDescription: sd.seoDescription || data.meta_description || '',
+    publishedAt: data.published_at || undefined,
+    updatedAt: data.published_at || undefined,
+    updated: formatDisplayDate(data.published_at),
+    image: sd.featuredImage || (Array.isArray(data.images) && data.images.length > 0 ? data.images[0]?.url : undefined) || undefined,
+    platform: sd.platform || undefined,
+    location: sd.location || undefined,
+    region: sd.region || undefined,
+    competitorName: sd.competitorName || undefined,
+    primaryItem: typeof sd.primaryItem === 'object' ? sd.primaryItem?.name : sd.primaryItem || undefined,
+    secondaryItem: typeof sd.secondaryItem === 'object' ? sd.secondaryItem?.name : sd.secondaryItem || undefined,
+    heroBadge: sd.heroBadge || sd.hero?.badge || undefined,
+    heroTitle: sd.heroTitle || sd.hero?.headline || undefined,
+    heroDescription: sd.heroDescription || sd.hero?.subheadline || undefined,
+    comparisonSnapshotTitle: sd.comparisonSnapshotTitle || undefined,
+    showdownBadge: sd.showdownBadge || undefined,
+    showdownTitle: sd.showdownTitle || undefined,
+    showdownDescription: sd.showdownDescription || undefined,
+    showdownButtonLabel: sd.showdownButtonLabel || undefined,
+    comparisonTableRows: sd.comparisonTableRows || undefined,
+    alternativeCards: sd.alternativeCards || undefined,
+    primaryCtaLabel: sd.primaryCtaLabel || undefined,
+    secondaryCtaLabel: sd.secondaryCtaLabel || undefined,
+    migrationTitle: sd.migrationTitle || undefined,
+    migrationDescription: sd.migrationDescription || undefined,
+    migrationButtonLabel: sd.migrationButtonLabel || undefined,
+    taxChecklistTitle: sd.taxChecklistTitle || undefined,
+    taxChecklistDescription: sd.taxChecklistDescription || undefined,
+    taxChecklistButtonLabel: sd.taxChecklistButtonLabel || undefined,
+    taxIntroTitle: sd.taxIntroTitle || undefined,
+    taxIntroDescription: sd.taxIntroDescription || undefined,
+    alertText: sd.alertText || undefined,
+    statusLabel: sd.statusLabel || undefined,
+    importantDatesTitle: sd.importantDatesTitle || undefined,
+    importantDates: sd.importantDates || undefined,
+    overviewTitle: sd.overviewTitle || undefined,
+    checklistTitle: sd.checklistTitle || undefined,
+    checklistItems: sd.checklistItems || undefined,
+    sidebarCtaTitle: sd.sidebarCtaTitle || undefined,
+    sidebarCtaDescription: sd.sidebarCtaDescription || undefined,
+    sidebarCtaButtonLabel: sd.sidebarCtaButtonLabel || undefined,
+    faqTitle: sd.faqTitle || 'Frequently Asked Questions',
+    faqs: sd.faqs || [],
+    ctaTitle: sd.ctaTitle || sd.finalCta?.headline || undefined,
+    ctaText: sd.ctaText || sd.finalCta?.sentence || undefined,
+  } as DirectoryEntry;
+}
+
 function bannerTop(expiresAt: number) {
   return (
     <div className="sticky top-0 z-50 bg-amber-500/90 text-amber-950 text-xs font-bold uppercase tracking-wider py-2 text-center">
@@ -72,13 +135,6 @@ function toGlossaryHref(value: string) {
   return `/glossary/what-is-${normalized}`;
 }
 
-function renderCell(value: any, isPrimary = false) {
-  if (value === true) return <Check className={`mx-auto h-5 w-5 ${isPrimary ? 'text-green-600' : 'text-gray-400'}`} />;
-  if (value === false) return <Minus className="mx-auto h-5 w-5 text-gray-300" />;
-  return <span>{String(value ?? '')}</span>;
-}
-
-// ─── Main dispatcher ─────────────────────────────────────────────────────────
 export default async function DraftPreviewPage({
   params,
   searchParams,
@@ -90,11 +146,10 @@ export default async function DraftPreviewPage({
   const { token } = await searchParams;
   const verified = verifyDraftToken(token, id);
   if (!verified) notFound();
-
   const fam = await fetchPieceFamilyById(id);
   if (!fam) notFound();
 
-  // ─── Glossary ──────────────────────────────────────────────────────────
+  // ─── Glossary (inline — production uses inline page function, no reusable view) ──
   if (fam.family === 'glossary') {
     const term = await fetchGlossaryTermById(id);
     if (!term) notFound();
@@ -190,23 +245,19 @@ export default async function DraftPreviewPage({
 
   // ─── Calculator → ToolPageClient ─────────────────────────────────────────
   if (fam.family === 'calculator') {
-    // Derive category + slug from live_url path (slug may be unprefixed legacy value)
     let category = 'general'; let slug = String(data.custom_slug || '');
     if (data.live_url) {
       try {
         const bits = new URL(data.live_url).pathname.split('/').filter(Boolean);
         if (bits[0] === 'tools' && bits.length >= 3) {
-          category = bits[1];
-          slug = bits.slice(2).join('/');
+          category = bits[1]; slug = bits.slice(2).join('/');
         } else if (bits[0] === 'tools' && bits.length === 2) {
           slug = bits[1];
         }
       } catch {}
     }
     const page: any = {
-      id: data.id,
-      category,
-      slug,
+      id: data.id, category, slug,
       title: sd.mainTitle || data.title || '',
       description: sd.introText || '',
       seoTitle: sd.seoTitle || data.seo_title || '',
@@ -215,18 +266,12 @@ export default async function DraftPreviewPage({
       introText: sd.introText || '',
       benefits: sd.benefits || [],
       faqs: sd.faqs || [],
-      body: [],
-      bodyHtml: bodyHtml || undefined,
+      body: [], bodyHtml: bodyHtml || undefined,
       calculatorUi: sd.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } : undefined),
       howItWorks: sd.howItWorks || undefined,
       cta: sd.cta || undefined,
     };
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <ToolPageClient page={page} />
-      </>
-    );
+    return (<>{bannerTop(verified.expiresAt)}<ToolPageClient page={page} /></>);
   }
 
   // ─── Template → LeadGenTemplateClient ────────────────────────────────────
@@ -260,15 +305,9 @@ export default async function DraftPreviewPage({
       resources: (sd.resources || []).filter((r: any) => r && r.href),
       seoTitle: sd.seoTitle || data.seo_title || '',
       seoDescription: sd.seoDescription || data.meta_description || '',
-      body: [],
-      bodyHtml: bodyHtml || undefined,
+      body: [], bodyHtml: bodyHtml || undefined,
     };
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <LeadGenTemplateClient page={page} />
-      </>
-    );
+    return (<>{bannerTop(verified.expiresAt)}<LeadGenTemplateClient page={page} /></>);
   }
 
   // ─── Landing page → LandingPageView ──────────────────────────────────────
@@ -308,12 +347,7 @@ export default async function DraftPreviewPage({
       ctaPrimaryButton: sd.finalCta?.primaryCta,
       ctaSecondaryButton: sd.finalCta?.secondaryCta,
     };
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <LandingPageView page={page} pageType={pageType} slug={slug} />
-      </>
-    );
+    return (<>{bannerTop(verified.expiresAt)}<LandingPageView page={page} pageType={pageType} slug={slug} /></>);
   }
 
   // ─── Guide → GuidePostClient ─────────────────────────────────────────────
@@ -322,8 +356,7 @@ export default async function DraftPreviewPage({
     const guide: any = {
       id: data.id, slug, title: data.title || '',
       excerpt: sd.seoDescription || data.meta_description || '',
-      body: [],
-      bodyHtml: bodyHtml || undefined,
+      body: [], bodyHtml: bodyHtml || undefined,
       image: sd.featuredImage || (Array.isArray(data.images) && data.images[0]?.url) || '',
       seoTitle: sd.seoTitle || data.seo_title || '',
       seoDescription: sd.seoDescription || data.meta_description || '',
@@ -349,306 +382,31 @@ export default async function DraftPreviewPage({
     );
   }
 
-  // ─── Comparison (inline) ─────────────────────────────────────────────────
+  // ─── DirectoryEntry-shaped families (comparison / alternative / tax / regulation) ─
+  const entry = toDirectoryEntry(data);
+
   if (fam.family === 'comparison') {
     const slug = String(data.custom_slug || '').replace(/^compare\//, '');
-    const slugParts = slug.split('-vs-');
-    const primary = typeof sd.primaryItem === 'object' ? sd.primaryItem?.name : sd.primaryItem;
-    const secondary = typeof sd.secondaryItem === 'object' ? sd.secondaryItem?.name : sd.secondaryItem;
-    const left = primary || slugParts[0] || 'A';
-    const right = secondary || slugParts[1] || 'B';
-    const title = sd.heroTitle || data.title || `${left} vs ${right}`;
-    const rows = sd.comparisonTableRows?.length ? sd.comparisonTableRows : [];
-    const faqs = sd.faqs?.length ? sd.faqs : [];
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <div className="min-h-screen bg-background">
-          <section className="px-4 pb-12 pt-16 md:pt-20">
-            <div className="mx-auto max-w-6xl">
-              <div className="mx-auto max-w-3xl text-center">
-                <div className="mb-4 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary md:text-sm">{sd.heroBadge || sd.showdownBadge || '2026 Software Showdown'}</div>
-                <h1 className="font-display text-4xl font-bold tracking-tight text-foreground md:text-6xl">{title}</h1>
-                <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">{sd.heroDescription || sd.showdownDescription || `${left} and ${right} solve similar problems, but they are built for different kinds of operators.`}</p>
-              </div>
-              <div className="mt-10 overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#5b21b6_0%,#7c3aed_45%,#a855f7_100%)] px-6 py-8 text-white shadow-xl md:px-10 md:py-10">
-                <div className="max-w-3xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/95"><Trophy className="h-4 w-4" />{sd.showdownBadge || 'Is there a better way?'}</div>
-                  <h2 className="mt-4 font-display text-3xl font-bold tracking-tight md:text-5xl">{sd.showdownTitle || "Don't settle for \"good enough\""}</h2>
-                  <p className="mt-4 max-w-2xl text-base leading-7 text-white/88 md:text-lg">{sd.showdownDescription || `${left} and ${right} both have trade-offs. Mr. Props was built to close the operational gaps teams actually feel every day.`}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-          <div className="container mx-auto max-w-screen-xl px-4 pb-20">
-            {rows.length > 0 && (
-              <div id="full-breakdown" className="mb-20 scroll-mt-24">
-                <div className="mb-6 text-center"><div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/75">Detailed comparison</div><h2 className="mt-2 font-display text-3xl font-bold">The Full Breakdown</h2></div>
-                <div className="overflow-x-auto rounded-3xl border border-border bg-card shadow-xl">
-                  <table className="w-full min-w-[800px] border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="w-1/4 border-b border-border p-6 text-left text-lg font-bold text-muted-foreground">Feature</th>
-                        <th className="w-1/4 border-b border-border bg-muted/20 p-6 text-center text-lg font-bold text-muted-foreground">{left}</th>
-                        <th className="w-1/4 border-b border-border bg-muted/20 p-6 text-center text-lg font-bold text-muted-foreground">{right}</th>
-                        <th className="relative w-1/4 border-b border-primary/20 bg-primary/10 p-6 text-center">
-                          <div className="absolute left-0 right-0 top-0 h-1.5 bg-primary" />
-                          <div className="font-display text-2xl font-bold text-primary">Mr. Props</div>
-                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary/70">Best Choice</div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row: any, i: number) => (
-                        <tr key={i} className="border-b border-border last:border-0">
-                          <td className="p-6 text-lg font-medium">{row.feature}</td>
-                          <td className="border-r border-border/50 bg-muted/5 p-6 text-center text-muted-foreground">{renderCell(row.primaryValue ?? '')}</td>
-                          <td className="border-r border-border/50 bg-muted/5 p-6 text-center text-muted-foreground">{renderCell(row.secondaryValue ?? '')}</td>
-                          <td className="bg-primary/5 p-6 text-center text-lg font-bold text-foreground">{renderCell(row.mrPropsValue ?? '', true)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {bodyHtml && (
-              <div className="mb-20 rounded-[2rem] border border-border bg-card p-8 shadow-sm md:p-12">
-                <div className="prose prose-lg max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
-              </div>
-            )}
-            <SEOContentSkeleton seoTitle={sd.seoTitle || data.seo_title || ''} seoDescription={sd.seoDescription || data.meta_description || ''} slug={`/compare/${slug}`} mainTitle="" introText="" faqTitle="Common Questions" faqs={faqs} ctaTitle={sd.ctaTitle || `Compare ${left} and ${right}`} ctaText={sd.ctaText || 'If you want modern operations without enterprise complexity, Mr. Props is built to help you move faster.'} ctaButtonText={sd.primaryCtaLabel || 'Start Free Migration'} />
-          </div>
-        </div>
-      </>
-    );
+    return (<>{bannerTop(verified.expiresAt)}<ComparisonView comparison={entry} slug={slug} /></>);
   }
 
-  // ─── Alternative (inline) ────────────────────────────────────────────────
   if (fam.family === 'alternative') {
-    const slug = String(data.custom_slug || '').replace(/^alternatives\//, '');
-    const competitor = sd.competitorName || slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const cards = sd.alternativeCards?.length ? sd.alternativeCards : [];
-    const rows = sd.comparisonTableRows || [];
-    const faqs = sd.faqs?.length ? sd.faqs : [];
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <div className="min-h-screen bg-background">
-          <div className="relative pt-24 pb-20 bg-secondary/10 border-b border-border overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-            <div className="container mx-auto px-4 text-center max-w-6xl relative z-10">
-              <div className="inline-flex items-center gap-2 bg-red-100 text-red-600 px-4 py-1.5 rounded-full font-bold text-sm mb-8"><AlertCircle className="h-4 w-4" /> {sd.heroBadge || 'Stop Overpaying'}</div>
-              <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 tracking-tight">{sd.heroTitle || `The #1 Alternative to ${competitor}`}</h1>
-              <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">{sd.heroDescription || `Stop paying for features you do not use. Switch from ${competitor} to the modern standard for property management.`}</p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-                <Button size="lg" className="rounded-full px-8 h-14 text-lg font-bold shadow-xl shadow-primary/20 w-full sm:w-auto">{sd.primaryCtaLabel || `Migrate from ${competitor}`}</Button>
-                <Button variant="outline" size="lg" className="rounded-full px-8 h-14 text-lg font-bold border-2 w-full sm:w-auto">{sd.secondaryCtaLabel || 'See Comparison'}</Button>
-              </div>
-            </div>
-          </div>
-          <div className="container mx-auto px-4 py-24 max-w-screen-xl">
-            <div className="grid md:grid-cols-3 gap-8 mb-24">
-              {cards.map((c: any, i: number) => {
-                const parts = (c.description || '').split(/\.\s+/);
-                const pain = parts[0] || c.description; const solution = parts.slice(1).join('. ') || c.description;
-                return (
-                  <div key={i} className="bg-card border border-border p-8 rounded-3xl shadow-sm group">
-                    <h3 className="font-display text-2xl font-bold mb-4">{c.title}</h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-start gap-2 text-red-500 bg-red-50 p-3 rounded-lg"><X className="h-4 w-4 mt-0.5 flex-shrink-0" /><span className="font-medium">{pain}</span></div>
-                      <div className="flex items-start gap-2 text-green-600 bg-green-50 p-3 rounded-lg"><Check className="h-4 w-4 mt-0.5 flex-shrink-0" /><span className="font-medium">{solution}</span></div>
-                    </div>
-                    {c.features?.length > 0 && (
-                      <ul className="mt-4 space-y-2 text-sm text-muted-foreground border-t border-border pt-4">
-                        {c.features.map((f: string, fi: number) => <li key={fi} className="flex items-start gap-2"><Check className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><span>{f}</span></li>)}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {rows.length > 0 && (
-              <div className="mb-24">
-                <div className="mb-8 text-center"><div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/75">Feature-by-feature breakdown</div><h2 className="mt-2 font-display text-3xl md:text-4xl font-bold">{competitor} vs Mr. Props</h2></div>
-                <div className="overflow-x-auto rounded-3xl border border-border bg-card shadow-xl">
-                  <table className="w-full min-w-[640px] border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="w-1/3 border-b border-border p-6 text-left text-lg font-bold text-muted-foreground">Feature</th>
-                        <th className="relative w-1/3 border-b border-primary/20 bg-primary/10 p-6 text-center">
-                          <div className="absolute left-0 right-0 top-0 h-1.5 bg-primary" />
-                          <div className="font-display text-xl font-bold text-primary">Mr. Props</div>
-                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary/70">Modern Way</div>
-                        </th>
-                        <th className="w-1/3 border-b border-border bg-muted/20 p-6 text-center text-lg font-bold text-muted-foreground">{competitor}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row: any, i: number) => (
-                        <tr key={i} className="border-b border-border last:border-0">
-                          <td className="p-6 text-lg font-medium">{row.feature}</td>
-                          <td className="bg-primary/5 p-6 text-center text-base font-semibold text-foreground">{renderCell(row.primaryValue ?? '', true)}</td>
-                          <td className="border-l border-border/50 bg-muted/5 p-6 text-center text-muted-foreground">{renderCell(row.secondaryValue ?? '')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {bodyHtml && <div className="prose prose-lg dark:prose-invert max-w-4xl mb-16" dangerouslySetInnerHTML={{ __html: bodyHtml }} />}
-            <div className="bg-foreground text-background rounded-3xl p-8 md:p-16 mb-24 relative overflow-hidden">
-              <div className="grid lg:grid-cols-2 gap-12 items-center relative z-10">
-                <div className="space-y-6">
-                  <h2 className="font-display text-3xl md:text-5xl font-bold">{sd.migrationTitle || 'Switching is instant.'}</h2>
-                  <p className="text-xl text-background/80 leading-relaxed">{sd.migrationDescription || `Don't worry about your data. Our 1-click migration tool imports your listings, reviews, and future bookings from ${competitor} in seconds.`}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-2xl">
-                  <div className="w-full rounded-xl shadow-lg bg-white/20 aspect-[4/3]" />
-                  <div className="mt-6 text-center"><Button size="lg" className="bg-white text-black hover:bg-gray-200 font-bold rounded-full w-full">{sd.migrationButtonLabel || 'Start My Import'}</Button></div>
-                </div>
-              </div>
-            </div>
-            <SEOContentSkeleton seoTitle={sd.seoTitle || data.seo_title || `Best ${competitor} Alternative | Mr. Props`} seoDescription={sd.seoDescription || data.meta_description || `Compare ${competitor} vs Mr. Props.`} slug={`/alternatives/${slug}`} mainTitle="" introText="" faqTitle="" faqs={faqs} ctaTitle={sd.ctaTitle || 'Ready to upgrade?'} ctaText={sd.ctaText} ctaButtonText={'Start Free Migration'} />
-          </div>
-        </div>
-      </>
-    );
+    const competitor = String(data.custom_slug || '').replace(/^alternatives\//, '');
+    return (<>{bannerTop(verified.expiresAt)}<AlternativeView alternative={entry} competitor={competitor} /></>);
   }
 
-  // ─── Tax (inline) ────────────────────────────────────────────────────────
   if (fam.family === 'tax') {
     const slug = String(data.custom_slug || '').replace(/^taxes\//, '');
-    const slugBits = slug.split('/');
-    const platform = (slugBits[0] || 'platform').charAt(0).toUpperCase() + (slugBits[0] || 'platform').slice(1);
-    const regionSlug = slugBits[1] || 'region';
-    const regionName = regionSlug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const dates = sd.importantDates?.length ? sd.importantDates : [];
-    const faqs = sd.faqs?.length ? sd.faqs : [];
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <div className="min-h-screen bg-background pb-20">
-          <div className="sticky top-0 z-40 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-700 dark:text-yellow-400 py-3 text-center text-sm font-medium px-4 backdrop-blur-sm"><AlertCircle className="h-4 w-4 inline-block mr-2 mb-0.5" /> {sd.alertText || 'Disclaimer: This guide is for educational purposes only. Always consult a certified tax professional.'}</div>
-          <div className="container mx-auto px-4 max-w-screen-xl mt-8">
-            <div className="flex items-center text-sm text-muted-foreground gap-2 mb-8 overflow-x-auto whitespace-nowrap">
-              <Link href="/" className="hover:text-primary transition-colors flex items-center gap-1"><Home className="h-3 w-3" /> Home</Link>
-              <ChevronRight className="h-4 w-4 flex-shrink-0" />
-              <Link href="/taxes" className="hover:text-primary transition-colors">Taxes</Link>
-              <ChevronRight className="h-4 w-4 flex-shrink-0" />
-              <span className="text-foreground font-medium truncate">{regionName}</span>
-            </div>
-            <div className="grid lg:grid-cols-[1fr_350px] gap-12 mb-16 items-start">
-              <div>
-                <div className="mb-8">
-                  <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-700 dark:text-green-400 px-4 py-1.5 rounded-full text-sm font-bold mb-6 border border-green-500/20"><FileCheck className="h-4 w-4" /> {sd.statusLabel || 'Reviewed by CPA'}</div>
-                  <h1 className="font-display text-4xl md:text-6xl font-bold mb-6">{data.title || `Short-Term Rental Taxes in ${regionName}`}</h1>
-                  <p className="text-xl text-muted-foreground">{sd.taxIntroDescription || `Everything you need to know about taxes for ${platform}.`}</p>
-                </div>
-                <div className="bg-primary text-primary-foreground p-8 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-primary/20 mb-12">
-                  <div className="flex items-center gap-6">
-                    <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center"><Download className="h-8 w-8 text-white" /></div>
-                    <div>
-                      <h3 className="text-2xl font-bold">{sd.taxChecklistTitle || 'The Ultimate Tax Checklist'}</h3>
-                      <p className="text-white/80">{sd.taxChecklistDescription || 'Download the checklist for the latest tax year.'}</p>
-                    </div>
-                  </div>
-                  <Button size="lg" variant="secondary" className="rounded-full font-bold whitespace-nowrap">{sd.taxChecklistButtonLabel || 'Download PDF'}</Button>
-                </div>
-                <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-                  {sd.taxIntroTitle && <h2 className="font-display font-bold mt-12 mb-6">{sd.taxIntroTitle}</h2>}
-                  {sd.taxIntroDescription && <p className="mb-6 leading-relaxed">{sd.taxIntroDescription}</p>}
-                  {bodyHtml && <div dangerouslySetInnerHTML={{ __html: bodyHtml }} />}
-                </div>
-              </div>
-              <div className="sticky top-24 space-y-8">
-                {dates.length > 0 && (
-                  <div className="bg-secondary/30 rounded-2xl p-6 border border-border">
-                    <h3 className="font-bold text-lg mb-2">Important Dates</h3>
-                    <ul className="space-y-3 text-sm mt-4">
-                      {dates.map((item: any, i: number) => <li key={i} className="flex justify-between"><span>{item.label}</span><span className="font-bold">{item.value}</span></li>)}
-                    </ul>
-                  </div>
-                )}
-                <div className="bg-primary text-primary-foreground rounded-2xl p-6 border border-primary/20 shadow-xl">
-                  <h3 className="font-display font-bold text-xl mb-2">{sd.sidebarCtaTitle || 'Simplify Tax Season'}</h3>
-                  <p className="text-sm text-primary-foreground/90 mb-6 leading-relaxed">{sd.sidebarCtaDescription || 'Mr. Props generates tax-ready reports in one click.'}</p>
-                  <Button variant="secondary" className="w-full font-bold">{sd.sidebarCtaButtonLabel || 'Try Mr. Props'}</Button>
-                </div>
-              </div>
-            </div>
-            <SEOContentSkeleton seoTitle={sd.seoTitle || data.seo_title || ''} seoDescription={sd.seoDescription || data.meta_description || ''} slug={`/taxes/${slug}`} mainTitle="" introText="" faqTitle="" faqs={faqs} ctaTitle={sd.ctaTitle || 'Simplify Your Tax Season'} ctaText={sd.ctaText || 'Sync your Airbnb account to Mr. Props and generate tax-ready reports in one click.'} ctaButtonText={sd.ctaPrimaryButton?.label} ctaButtonHref={sd.ctaPrimaryButton?.href} />
-          </div>
-        </div>
-      </>
-    );
+    const bits = slug.split('/');
+    const platform = bits[0] || 'airbnb'; const region = bits[1] || '';
+    return (<>{bannerTop(verified.expiresAt)}<TaxView taxPage={entry} platform={platform} region={region} /></>);
   }
 
-  // ─── Regulation (inline) ─────────────────────────────────────────────────
   if (fam.family === 'regulation') {
     const slug = String(data.custom_slug || '').replace(/^regulations\//, '');
-    const slugBits = slug.split('/');
-    const platform = (slugBits[0] || 'platform').charAt(0).toUpperCase() + (slugBits[0] || 'platform').slice(1);
-    const locSlug = slugBits[1] || 'location';
-    const locName = locSlug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const checklist = (sd.checklistItems || []) as Array<string | { label: string }>;
-    const faqs = sd.faqs?.length ? sd.faqs : [];
-    const strict = /new-york|san-francisco|berlin/i.test(locSlug);
-    return (
-      <>
-        {bannerTop(verified.expiresAt)}
-        <div className="min-h-screen bg-background pb-20">
-          <div className="sticky top-0 z-40 bg-blue-500/10 border-b border-blue-500/20 text-blue-700 dark:text-blue-400 py-3 text-center text-sm font-medium px-4 backdrop-blur-sm"><AlertTriangle className="h-4 w-4 inline-block mr-2 mb-0.5" /> {sd.alertText || 'Legal Alert: Regulations change frequently. Verify with your local city council.'}</div>
-          <div className="container mx-auto px-4 max-w-screen-xl mt-8">
-            <div className="flex items-center text-sm text-muted-foreground gap-2 mb-8 overflow-x-auto whitespace-nowrap">
-              <Link href="/" className="hover:text-primary transition-colors flex items-center gap-1"><Home className="h-3 w-3" /> Home</Link>
-              <ChevronRight className="h-4 w-4 flex-shrink-0" />
-              <Link href="/regulations" className="hover:text-primary transition-colors">Regulations</Link>
-              <ChevronRight className="h-4 w-4 flex-shrink-0" />
-              <span className="text-foreground font-medium truncate">{locName}</span>
-            </div>
-            <div className="grid lg:grid-cols-[1fr_350px] gap-12 mb-16 items-start">
-              <div>
-                <div className="mb-8">
-                  <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Local Regulations</div>
-                  <h1 className="font-display text-4xl md:text-6xl font-bold mb-6">{data.title || `${platform} Rules in ${locName}`}</h1>
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className={`px-4 py-2 rounded-full font-bold text-white flex items-center gap-2 ${strict ? 'bg-red-500' : 'bg-green-500'}`}>
-                      {strict ? <AlertTriangle className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
-                      {sd.statusLabel || (strict ? 'Strict Regulations' : 'Host Friendly')}
-                    </div>
-                  </div>
-                </div>
-                <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-                  {sd.overviewTitle && <h2 id="overview" className="font-display font-bold">{sd.overviewTitle}</h2>}
-                  {bodyHtml && <div dangerouslySetInnerHTML={{ __html: bodyHtml }} />}
-                </div>
-                {checklist.length > 0 && (
-                  <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
-                    <h3 className="font-bold text-xl mb-4">{sd.checklistTitle || `${platform} compliance checklist for ${locName}`}</h3>
-                    {checklist.map((item, i) => (
-                      <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
-                        <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
-                        <label className="font-medium cursor-pointer">{typeof item === 'string' ? item : (item as any).label || ''}</label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="sticky top-24 space-y-8">
-                <div className="bg-primary text-primary-foreground rounded-2xl p-6 border border-primary/20 shadow-xl">
-                  <h3 className="font-display font-bold text-xl mb-2">{sd.sidebarCtaTitle || 'Automate Compliance'}</h3>
-                  <p className="text-sm text-primary-foreground/90 mb-6 leading-relaxed">{sd.sidebarCtaDescription || "Don't risk fines. Mr. Props automatically tracks local regulations and alerts you to changes."}</p>
-                  <Button variant="secondary" className="w-full font-bold shadow-lg h-12 text-primary">{sd.sidebarCtaButtonLabel || 'Start Free Trial'}</Button>
-                </div>
-              </div>
-            </div>
-            <SEOContentSkeleton seoTitle={sd.seoTitle || data.seo_title || ''} seoDescription={sd.seoDescription || data.meta_description || ''} slug={`/regulations/${slug}`} mainTitle="" introText="" faqTitle="Regulation FAQs" faqs={faqs} ctaTitle={sd.ctaTitle || 'Stay Compliant Automatically'} ctaText={sd.ctaText || 'Mr. Props monitors regulatory changes in real-time and alerts you before you get fined.'} ctaButtonText={sd.ctaPrimaryButton?.label} ctaButtonHref={sd.ctaPrimaryButton?.href} />
-          </div>
-        </div>
-      </>
-    );
+    const bits = slug.split('/');
+    const platform = bits[0] || 'airbnb'; const location = bits[1] || '';
+    return (<>{bannerTop(verified.expiresAt)}<RegulationView regulation={entry} platform={platform} location={location} /></>);
   }
 
   // Unknown family
