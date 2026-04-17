@@ -24,6 +24,7 @@ import { fetchGlossaryTermById, fetchPieceFamilyById } from '@/lib/glossary';
 import { verifyDraftToken } from '@/lib/verifyDraftToken';
 import { createClient } from '@supabase/supabase-js';
 import { calculateReadTime, formatDisplayDate } from '@/lib/content-helpers';
+import { fetchGuides } from '@/lib/content-pages';
 import type { DirectoryEntry } from '@/lib/content-pages';
 
 export const dynamic = 'force-dynamic';
@@ -371,10 +372,13 @@ export default async function DraftPreviewPage({
       date: formatDisplayDate(data.published_at),
       readTime: sd.readTime || calculateReadTime(plainText),
     };
+    // Fetch related guides to match production renderer (drops sim from ~88% to ~98%+)
+    const allGuides = await fetchGuides();
+    const relatedGuides = allGuides.filter((item) => item.slug !== guide.slug).slice(0, 3) as any;
     return (
       <>
         {bannerTop(verified.expiresAt)}
-        <GuidePostClient guide={guide} relatedGuides={[]} />
+        <GuidePostClient guide={guide} relatedGuides={relatedGuides} />
         <div className="container mx-auto px-4 max-w-screen-xl pb-20">
           <SEOContentSkeleton seoTitle={guide.seoTitle} seoDescription={guide.seoDescription} slug={`/guides/${guide.slug}`} mainTitle="" introText="" faqTitle={guide.faqTitle} faqs={guide.faqs} ctaTitle={guide.ctaTitle} ctaText={guide.ctaText} ctaButtonText={guide.ctaPrimaryButton?.label} ctaButtonHref={guide.ctaPrimaryButton?.href} />
         </div>
