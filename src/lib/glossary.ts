@@ -234,22 +234,24 @@ export async function fetchGlossaryTermById(id: string): Promise<GlossaryTerm | 
   };
 }
 
-// Returns the piece's family (from custom_slug prefix) + raw row, used by the
-// draft dispatcher to pick the right renderer.
-export async function fetchPieceFamilyById(id: string): Promise<{ family: string | null; custom_slug: string | null; title: string | null } | null> {
+// Returns the piece's family (from custom_slug prefix OR live_url prefix) + raw row.
+// Used by the draft dispatcher to pick the right renderer. custom_slug is preferred,
+// but some legacy pieces have unprefixed slugs (e.g. 'cleaning-fee-calculator')
+// whose live URL lives under a category path ('/tools/cleaning/…'); those need the
+// live_url fallback to classify correctly.
+export async function fetchPieceFamilyById(id: string): Promise<{ family: string | null; custom_slug: string | null; title: string | null; live_url: string | null; type_of_work: string | null } | null> {
   const sb = await getSupabaseClient();
   if (!sb) return null;
   const clientId = process.env.MR_PROPS_CLIENT_ID;
   if (!clientId) return null;
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, client_id')
+    .select('id, custom_slug, title, client_id, live_url, type_of_work')
     .eq('id', id)
     .single();
   const row = data as Record<string, any> | null;
   if (error || !row || row.client_id !== clientId) return null;
 
-  const prefix = String(row.custom_slug || '').split('/')[0];
   const prefixToFamily: Record<string, string> = {
     glossary: 'glossary',
     tools: 'calculator',
@@ -262,5 +264,20 @@ export async function fetchPieceFamilyById(id: string): Promise<{ family: string
     features: 'landing_page',
     services: 'landing_page',
   };
-  return { family: prefixToFamily[prefix] || null, custom_slug: row.custom_slug || null, title: row.title || null };
+  const slugPrefix = String(row.custom_slug || '').split('/')[0];
+  let family = prefixToFamily[slugPrefix] || null;
+  if (!family && row.live_url) {
+    try {
+      const path = new URL(row.live_url).pathname;
+      const urlPrefix = path.split('/').filter(Boolean)[0];
+      family = prefixToFamily[urlPrefix] || null;
+    } catch {}
+  }
+  // Last-resort: type_of_work-based inference for unmapped pieces.
+  if (!family) {
+    const tow = String(row.type_of_work || '').toLowerCase();
+    if (tow === 'tool_calculator' || tow === 'calculator') family = 'calculator';
+    else if (tow === 'service_page' || tow === 'landing_page') family = 'landing_page';
+  }
+  return { family, custom_slug: row.custom_slug || null, title: row.title || null, live_url: row.live_url || null, type_of_work: row.type_of_work || null };
 }
