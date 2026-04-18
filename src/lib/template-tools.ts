@@ -14,6 +14,112 @@ function getSBSync() {
   return _sbClient;
 }
 
+// Phase 5: shared normalizer used by both slug-based (production) and id-based (draft) fetchers.
+function normalizeTemplateRow(data: any, category: string, slug: string): TemplatePageContent {
+  const sd = (data.structured_data || {}) as Record<string, any>;
+  const fallback = getTemplateFallback(category, slug) || templateFallbacks[0];
+  return {
+    ...fallback,
+    id: data.id,
+    category: category,
+    slug: slug,
+    title: sd.hero?.previewTitle || data.title || fallback.title,
+    badge: sd.hero?.badge || fallback.badge,
+    description: sd.gate?.description || fallback.description,
+    trustItems: sd.trustItems || fallback.trustItems,
+    previewTitle: sd.hero?.previewTitle || fallback.previewTitle,
+    previewMeta: sd.hero?.previewMeta || fallback.previewMeta,
+    previewBody: [],
+    gateTitle: sd.gate?.title || fallback.gateTitle,
+    gateDescription: sd.gate?.description || fallback.gateDescription,
+    formPlaceholder: sd.gate?.formPlaceholder || fallback.formPlaceholder,
+    formButtonLabel: sd.gate?.buttonLabel || fallback.formButtonLabel,
+    formDisclaimer: sd.gate?.disclaimer || fallback.formDisclaimer,
+    whatIsTitle: sd.whatIsTitle || fallback.whatIsTitle,
+    whatIsText: sd.whatIsText || fallback.whatIsText,
+    useCasesTitle: sd.useCasesTitle || fallback.useCasesTitle,
+    useCases: sd.useCases || fallback.useCases,
+    customizeTitle: sd.customizeTitle || fallback.customizeTitle,
+    customizeText: sd.customizeText || fallback.customizeText,
+    faqTitle: 'Frequently Asked Questions',
+    faqs: sd.faqs || fallback.faqs,
+    resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
+    resources: (sd.resources || fallback.resources || []).filter((r: any) => r && r.href),
+    seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
+    seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
+    body: [],
+    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+  };
+}
+
+function normalizeToolRow(data: any, category: string, slug: string): ToolPageContent {
+  const sd = (data.structured_data || {}) as Record<string, any>;
+  const fallback = resolveToolFallback(category, slug);
+  return {
+    id: data.id,
+    category: category,
+    slug: slug,
+    title: sd.mainTitle || data.title || fallback?.title || '',
+    description: sd.introText || fallback?.description || '',
+    seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
+    seoDescription: sd.seoDescription || data.meta_description || fallback?.seoDescription || '',
+    mainTitle: sd.mainTitle || data.title || '',
+    introText: sd.introText || '',
+    benefits: sd.benefits || fallback?.benefits || [],
+    faqs: sd.faqs || fallback?.faqs || [],
+    body: [],
+    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+    calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
+    howItWorks: sd.howItWorks || undefined,
+    cta: sd.cta || undefined,
+  };
+}
+
+// Phase 5 C-1: by-id fetch for draft preview. Skips writing_status='published' filter
+// so drafts can preview. Uses the same normalizer + fallback chain as production so
+// output is byte-identical to /tools/[category]/[slug] and /templates/[category]/[slug].
+export async function fetchTemplatePageById(id: string): Promise<TemplatePageContent | null> {
+  const sb = getSBSync();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, client_id, live_url')
+    .eq('id', id)
+    .single();
+  if (error || !data || (data as any).client_id !== process.env.MR_PROPS_CLIENT_ID) return null;
+  // Derive category + slug from live_url path (prefers live_url over custom_slug since
+  // aligned slugs use live_url-matching paths, but fall back to custom_slug).
+  const row: any = data;
+  let category = 'general', slug = '';
+  const fromLive = row.live_url ? new URL(row.live_url).pathname : '';
+  const fromSlug = (row.custom_slug || '').split('/');
+  const src = fromLive.startsWith('/templates/') ? fromLive.split('/').filter(Boolean) : fromSlug;
+  if (src.length >= 3 && src[0] === 'templates') { category = src[1]; slug = src.slice(2).join('/'); }
+  else if (src.length === 2 && src[0] === 'templates') { slug = src[1]; }
+  else { slug = row.custom_slug || ''; }
+  return normalizeTemplateRow(row, category, slug);
+}
+
+export async function fetchToolPageById(id: string): Promise<ToolPageContent | null> {
+  const sb = getSBSync();
+  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
+  const { data, error } = await sb
+    .from('content_pieces')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, client_id, live_url')
+    .eq('id', id)
+    .single();
+  if (error || !data || (data as any).client_id !== process.env.MR_PROPS_CLIENT_ID) return null;
+  const row: any = data;
+  let category = 'general', slug = '';
+  const fromLive = row.live_url ? new URL(row.live_url).pathname : '';
+  const fromSlug = (row.custom_slug || '').split('/');
+  const src = fromLive.startsWith('/tools/') ? fromLive.split('/').filter(Boolean) : fromSlug;
+  if (src.length >= 3 && src[0] === 'tools') { category = src[1]; slug = src.slice(2).join('/'); }
+  else if (src.length === 2 && src[0] === 'tools') { slug = src[1]; }
+  else { slug = row.custom_slug || ''; }
+  return normalizeToolRow(row, category, slug);
+}
+
 async function fetchTemplateFromSupabase(category: string, slug: string): Promise<TemplatePageContent | null> {
   const sb = getSBSync();
   if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;

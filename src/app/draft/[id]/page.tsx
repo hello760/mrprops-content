@@ -25,6 +25,7 @@ import { verifyDraftToken } from '@/lib/verifyDraftToken';
 import { createClient } from '@supabase/supabase-js';
 import { calculateReadTime, formatDisplayDate } from '@/lib/content-helpers';
 import { fetchGuides } from '@/lib/content-pages';
+import { fetchTemplatePageById, fetchToolPageById } from '@/lib/template-tools';
 import type { DirectoryEntry } from '@/lib/content-pages';
 
 export const dynamic = 'force-dynamic';
@@ -244,70 +245,17 @@ export default async function DraftPreviewPage({
   const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // ─── Calculator → ToolPageClient ─────────────────────────────────────────
+  // ─── Calculator → ToolPageClient (shared normalizer + fallback chain) ───
   if (fam.family === 'calculator') {
-    let category = 'general'; let slug = String(data.custom_slug || '');
-    if (data.live_url) {
-      try {
-        const bits = new URL(data.live_url).pathname.split('/').filter(Boolean);
-        if (bits[0] === 'tools' && bits.length >= 3) {
-          category = bits[1]; slug = bits.slice(2).join('/');
-        } else if (bits[0] === 'tools' && bits.length === 2) {
-          slug = bits[1];
-        }
-      } catch {}
-    }
-    const page: any = {
-      id: data.id, category, slug,
-      title: sd.mainTitle || data.title || '',
-      description: sd.introText || '',
-      seoTitle: sd.seoTitle || data.seo_title || '',
-      seoDescription: sd.seoDescription || data.meta_description || '',
-      mainTitle: sd.mainTitle || data.title || '',
-      introText: sd.introText || '',
-      benefits: sd.benefits || [],
-      faqs: sd.faqs || [],
-      body: [], bodyHtml: bodyHtml || undefined,
-      calculatorUi: sd.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } : undefined),
-      howItWorks: sd.howItWorks || undefined,
-      cta: sd.cta || undefined,
-    };
+    const page = await fetchToolPageById(id);
+    if (!page) notFound();
     return (<>{bannerTop(verified.expiresAt)}<ToolPageClient page={page} /></>);
   }
 
-  // ─── Template → LeadGenTemplateClient ────────────────────────────────────
+  // ─── Template → LeadGenTemplateClient (shared normalizer + fallback chain) ──
   if (fam.family === 'template') {
-    const pathBits = String(data.custom_slug || '').split('/');
-    const category = pathBits[1] || 'general';
-    const slug = pathBits.slice(2).join('/') || pathBits[1] || '';
-    const page: any = {
-      id: data.id, category, slug,
-      title: sd.hero?.previewTitle || data.title || '',
-      badge: sd.hero?.badge || 'Template',
-      description: sd.gate?.description || '',
-      trustItems: sd.trustItems || [],
-      previewTitle: sd.hero?.previewTitle || '',
-      previewMeta: sd.hero?.previewMeta || '',
-      previewBody: [],
-      gateTitle: sd.gate?.title || '',
-      gateDescription: sd.gate?.description || '',
-      formPlaceholder: sd.gate?.formPlaceholder || 'Enter your email',
-      formButtonLabel: sd.gate?.buttonLabel || 'Download',
-      formDisclaimer: sd.gate?.disclaimer || '',
-      whatIsTitle: sd.whatIsTitle || '',
-      whatIsText: sd.whatIsText || '',
-      useCasesTitle: sd.useCasesTitle || '',
-      useCases: sd.useCases || [],
-      customizeTitle: sd.customizeTitle || '',
-      customizeText: sd.customizeText || '',
-      faqTitle: 'Frequently Asked Questions',
-      faqs: sd.faqs || [],
-      resourcesTitle: sd.resourcesTitle || '',
-      resources: (sd.resources || []).filter((r: any) => r && r.href),
-      seoTitle: sd.seoTitle || data.seo_title || '',
-      seoDescription: sd.seoDescription || data.meta_description || '',
-      body: [], bodyHtml: bodyHtml || undefined,
-    };
+    const page = await fetchTemplatePageById(id);
+    if (!page) notFound();
     return (<>{bannerTop(verified.expiresAt)}<LeadGenTemplateClient page={page} /></>);
   }
 
