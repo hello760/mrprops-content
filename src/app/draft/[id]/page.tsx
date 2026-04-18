@@ -319,36 +319,46 @@ export default async function DraftPreviewPage({
     return (<>{bannerTop(verified.expiresAt)}<LandingPageView page={page} pageType={pageType} slug={slug} /></>);
   }
 
-  // ─── Guide → GuidePostClient ─────────────────────────────────────────────
+  // ─── Guide → GuidePostClient (mirror production page.tsx exactly) ───────
   if (fam.family === 'guide') {
-    const slug = String(data.custom_slug || '').replace(/^guides\//, '');
+    // Build DirectoryEntry the same way content-pages.ts::fetchDirectoryEntryFromSupabase does,
+    // then layer authorName/category/date/readTime the same way content-pages.ts::fetchGuideBySlug does.
+    // Key: do NOT set ctaPrimaryButton — production leaves it undefined so SEOContentSkeleton uses
+    // its default "Get Started" CTA label; setting it would override and diverge from live.
+    const entryForGuide = toDirectoryEntry(data);
     const guide: any = {
-      id: data.id, slug, title: data.title || '',
-      excerpt: sd.seoDescription || data.meta_description || '',
-      body: [], bodyHtml: bodyHtml || undefined,
-      image: sd.featuredImage || (Array.isArray(data.images) && data.images[0]?.url) || '',
-      seoTitle: sd.seoTitle || data.seo_title || '',
-      seoDescription: sd.seoDescription || data.meta_description || '',
-      publishedAt: data.published_at, updatedAt: data.published_at,
-      updated: formatDisplayDate(data.published_at),
-      faqs: sd.faqs || [],
-      faqTitle: 'Frequently Asked Questions',
-      ctaTitle: sd.ctaTitle, ctaText: sd.ctaText,
-      ctaPrimaryButton: sd.ctaButtonHref ? { label: sd.ctaButtonLabel || 'Start Free Trial', href: sd.ctaButtonHref } : undefined,
+      ...entryForGuide,
       authorName: sd.authorName || 'Mr. Props Team',
       category: sd.category || 'Operations',
       date: formatDisplayDate(data.published_at),
-      readTime: sd.readTime || calculateReadTime(plainText),
+      readTime: calculateReadTime((entryForGuide.bodyHtml || '').replace(/<[^>]+>/g, ' ') || entryForGuide.excerpt),
     };
-    // Fetch related guides to match production renderer (drops sim from ~88% to ~98%+)
+    // Fetch related guides to match production renderer
     const allGuides = await fetchGuides();
-    const relatedGuides = allGuides.filter((item) => item.slug !== guide.slug).slice(0, 3) as any;
+    const relatedGuides = allGuides.filter((item: any) => item.slug !== guide.slug).slice(0, 3) as any;
+    // Match production page.tsx FAQ fallback exactly (line 29-32 of /guides/[slug]/page.tsx)
+    const faqs = guide.faqs?.length ? guide.faqs : [
+      { question: `How do I apply ${guide.title}?`, answer: "Start with the workflow that creates the most operational friction, then layer in the next improvement after it is stable." },
+      { question: "Is this relevant for smaller portfolios?", answer: "Yes. Most of these systems matter even more when a small team is wearing every hat." },
+    ];
     return (
       <>
         {bannerTop(verified.expiresAt)}
         <GuidePostClient guide={guide} relatedGuides={relatedGuides} />
         <div className="container mx-auto px-4 max-w-screen-xl pb-20">
-          <SEOContentSkeleton seoTitle={guide.seoTitle} seoDescription={guide.seoDescription} slug={`/guides/${guide.slug}`} mainTitle="" introText="" faqTitle={guide.faqTitle} faqs={guide.faqs} ctaTitle={guide.ctaTitle} ctaText={guide.ctaText} ctaButtonText={guide.ctaPrimaryButton?.label} ctaButtonHref={guide.ctaPrimaryButton?.href} />
+          <SEOContentSkeleton
+            seoTitle={guide.seoTitle}
+            seoDescription={guide.seoDescription}
+            slug={`/guides/${guide.slug}`}
+            mainTitle=""
+            introText=""
+            faqTitle={guide.faqTitle}
+            faqs={faqs}
+            ctaTitle={guide.ctaTitle}
+            ctaText={guide.ctaText}
+            ctaButtonText={guide.ctaPrimaryButton?.label}
+            ctaButtonHref={guide.ctaPrimaryButton?.href}
+          />
         </div>
       </>
     );
