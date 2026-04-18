@@ -26,15 +26,35 @@ import { createClient } from '@supabase/supabase-js';
 import { calculateReadTime, formatDisplayDate } from '@/lib/content-helpers';
 import { fetchGuides } from '@/lib/content-pages';
 import { fetchTemplatePageById, fetchToolPageById } from '@/lib/template-tools';
+import { buildMetadata } from '@/lib/metadata';
 import type { DirectoryEntry } from '@/lib/content-pages';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata = {
-  robots: { index: false, follow: false, noarchive: true, nosnippet: true },
-  title: 'Draft preview — Mr. Props admin',
-};
+// Phase 5 100% parity fix: generate the SAME SEO title production would, so the
+// rendered HTML title tag matches live exactly. Only the draft banner at top
+// visually indicates draft-mode. noindex/nofollow prevents accidental indexing.
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const NOINDEX = { index: false, follow: false, noarchive: true, nosnippet: true } as const;
+  try {
+    const fam = await fetchPieceFamilyById(id);
+    if (!fam) return { robots: NOINDEX, title: 'Draft preview — Mr. Props admin' };
+    const sb = sbClient();
+    if (!sb) return { robots: NOINDEX, title: 'Draft preview' };
+    const { data } = await sb.from('content_pieces').select('seo_title, meta_description, structured_data, title, custom_slug, live_url').eq('id', id).single();
+    const sd: any = data?.structured_data || {};
+    const title: string = sd.seoTitle || (data as any)?.seo_title || (data as any)?.title || 'Preview';
+    const description: string = sd.seoDescription || (data as any)?.meta_description || '';
+    const path: string = (data as any)?.live_url ? new URL((data as any).live_url).pathname : `/${(data as any)?.custom_slug || ''}`;
+    // Use the same buildMetadata production pages use — identical title/OG/twitter/canonical.
+    // Layer noindex on top so the draft preview is never indexed.
+    return { ...buildMetadata(title, description, path), robots: NOINDEX };
+  } catch {
+    return { robots: NOINDEX, title: 'Draft preview — Mr. Props admin' };
+  }
+}
 
 function sbClient() {
   const url = process.env.SUPABASE_URL;
