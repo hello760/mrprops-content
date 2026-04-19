@@ -6,6 +6,7 @@ import { ChevronRight, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
+import { stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
 export function GuidePostClient({ guide, relatedGuides }: { guide: DirectoryEntry & { date?: string; readTime?: string; authorName?: string; category?: string }; relatedGuides: Array<DirectoryEntry & { date?: string; readTime?: string }> }) {
@@ -63,7 +64,10 @@ export function GuidePostClient({ guide, relatedGuides }: { guide: DirectoryEntr
         <div className="prose prose-lg dark:prose-invert max-w-3xl mx-auto prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-p:leading-relaxed prose-li:marker:text-primary">
           {sections.length > 0 && <div className="lg:hidden mb-12 bg-secondary/20 rounded-xl p-6 border border-border"><h3 className="font-bold text-lg mb-4">Table of Contents</h3><ul className="space-y-3 list-none pl-0 my-0">{sections.map((item, index) => <li key={item.id}><button onClick={() => scrollToSection(item.id)} className="text-primary font-medium hover:underline text-base pl-0 flex items-center gap-2"><span className="text-muted-foreground text-sm font-mono">{String(index + 1).padStart(2, "0")}.</span> {item.label}</button></li>)}</ul></div>}
           <p className="lead text-xl text-muted-foreground font-medium mb-8">{guide.excerpt}</p>
-          <PortableTextContent blocks={guide.body} html={guide.bodyHtml} />
+          {/* FIX-017 (PF-17) + FIX-021 (PF-21 inline byline): strip inline FAQ sections + author-meta
+              block from bodyHtml before render. SEOContentSkeleton (page.tsx) renders the FAQ
+              accordion as the sole FAQ source. */}
+          <PortableTextContent blocks={guide.body} html={stripRedundantBodyBlocks(guide.bodyHtml)} />
         </div>
 
         <div className="space-y-8 lg:sticky lg:top-32"><div><h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Related Guides</h3><ul className="space-y-4">{relatedGuides.map((item) => <li key={item.slug} className="group cursor-pointer"><Link href={`/guides/${item.slug}`}><div className="text-xs font-bold text-primary mb-1">{item.heroBadge || "Guide"}</div><div className="font-bold text-sm group-hover:text-primary transition-colors leading-snug">{item.title}</div></Link></li>)}</ul></div></div>

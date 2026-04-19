@@ -4,7 +4,7 @@ import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
-import { markdownToHtml } from "@/lib/markdown-to-html";
+import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
 type ChecklistItem = string | { label?: string; checked?: boolean };
@@ -107,7 +107,7 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 }
                 return null;
               })()}
-              <PortableTextContent blocks={regulation.body} html={markdownToHtml(regulation.bodyHtml)} />
+              <PortableTextContent blocks={regulation.body} html={markdownToHtml(stripRedundantBodyBlocks(regulation.bodyHtml))} />
             </div>
             <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
               <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
