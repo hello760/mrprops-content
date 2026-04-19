@@ -16,9 +16,10 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       // Redirect root-level calculator slugs to proper /tools/{category}/{slug} paths
+      // (airbnb-profit-calculator skips intermediate — see cannibalization redirects below)
       {
         source: "/airbnb-profit-calculator",
-        destination: "/tools/booking/airbnb-profit-calculator",
+        destination: "/tools/airbnb/airbnb-revenue-calculator",
         permanent: true,
       },
       {
@@ -29,6 +30,28 @@ const nextConfig: NextConfig = {
       {
         source: "/cleaning-fee-calculator",
         destination: "/tools/booking/cleaning-fee-calculator",
+        permanent: true,
+      },
+      // Cannibalization cleanup 2026-04-19: new 207-topic batch superseded these 4 published URLs.
+      // Redirect to the winning new topic in each pair to preserve any inbound links / shares.
+      {
+        source: "/tools/booking/airbnb-profit-calculator",
+        destination: "/tools/airbnb/airbnb-revenue-calculator",
+        permanent: true,
+      },
+      {
+        source: "/tools/cleaning/airbnb-profit-calculator",
+        destination: "/tools/airbnb/airbnb-cleaning-fee-calculator",
+        permanent: true,
+      },
+      {
+        source: "/glossary/what-is-dynamic-pricing-1775749911",
+        destination: "/glossary/what-is-dynamic-pricing-in-short-term-rentals",
+        permanent: true,
+      },
+      {
+        source: "/glossary/break-even-occupancy",
+        destination: "/glossary/what-is-a-break-even-occupancy-rate",
         permanent: true,
       },
       // Redirect root-level template slugs to proper /templates/{category}/{slug} paths
