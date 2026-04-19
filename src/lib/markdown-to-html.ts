@@ -83,5 +83,13 @@ export function stripRedundantBodyBlocks(html: string | undefined | null): strin
     ""
   );
 
+  // 4. Strip <h1> tags from bodyHtml — every page renderer already provides an H1 via
+  //    structured fields (hero title, seoTitle, etc.). H1s embedded in content_body
+  //    duplicate that and confuse both users and accessibility tools. Found today on
+  //    tax (2 H1s), regulation (2), guide (3), calculator (2). Demote to <p class="sr-only">
+  //    to preserve any anchor ids? No — just remove entirely. If downstream code wants the
+  //    title it should read structured_data.title.
+  cleaned = cleaned.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, "");
+
   return cleaned;
 }
