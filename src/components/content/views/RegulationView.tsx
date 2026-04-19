@@ -4,6 +4,7 @@ import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
+import { markdownToHtml } from "@/lib/markdown-to-html";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
 type ChecklistItem = string | { label?: string; checked?: boolean };
@@ -46,28 +47,67 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                   {isStrict ? <AlertTriangle className="h-5 w-5" /> : <CheckSquare className="h-5 w-5" />}
                   {regulation.statusLabel || (isStrict ? "Strict Regulations" : "Host Friendly")}
                 </div>
-                <div className="text-sm text-muted-foreground">Last Updated: {regulation.updated || "Oct 2025"}</div>
+                {/* FIX-007 (PF-07): removed 'Last Updated: …' badge. PDF regulation spec + universal
+                    rule: 'Last Updated' timestamps do not belong in body. Metadata (piece.updatedAt)
+                    is still available to CMS/structured-data consumers. */}
               </div>
             </div>
+            {/* FIX-027 (PF-27): TOC dedup — if the first body H2 label matches overviewTitle, use
+                the body H2 as chapter 1 (no hardcoded 'Regulatory Overview' duplicate). Also handle
+                the case where overviewTitle itself is the same string as contentHeadings[0]. */}
             <div className="bg-secondary/20 border border-border rounded-xl p-6 mb-12">
               <h3 className="font-bold text-lg mb-4">{regulation.tocTitle || "Table of Contents"}</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="#overview" className="text-primary hover:underline">1. {regulation.overviewTitle || "Regulatory Overview"}</a></li>
-                {contentHeadings.map((heading, index) => (
-                  <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 2}. {heading.label}</a></li>
-                ))}
-                {contentHeadings.length === 0 ? (
-                  <>
-                    <li><a href="#licenses" className="text-primary hover:underline">2. Licensing Requirements</a></li>
-                    <li><a href="#zoning" className="text-primary hover:underline">3. Zoning Restrictions</a></li>
-                  </>
-                ) : null}
+                {(() => {
+                  const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
+                  const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
+                  const hardcodedOverviewMatchesBody =
+                    firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
+                  if (hardcodedOverviewMatchesBody) {
+                    // Use body headings directly — no hardcoded first item.
+                    return contentHeadings.map((heading, index) => (
+                      <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 1}. {heading.label}</a></li>
+                    ));
+                  }
+                  return (
+                    <>
+                      <li><a href="#overview" className="text-primary hover:underline">1. {overviewLabel}</a></li>
+                      {contentHeadings.map((heading, index) => (
+                        <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 2}. {heading.label}</a></li>
+                      ))}
+                      {contentHeadings.length === 0 ? (
+                        <>
+                          <li><a href="#licenses" className="text-primary hover:underline">2. Licensing Requirements</a></li>
+                          <li><a href="#zoning" className="text-primary hover:underline">3. Zoning Restrictions</a></li>
+                        </>
+                      ) : null}
+                    </>
+                  );
+                })()}
               </ul>
             </div>
+            {/* FIX-022 (PF-22 cluster A) + FIX-020 (PF-20 markdown leak):
+                - If the first body H2 equals the hardcoded overviewTitle, skip the teaser H2+excerpt
+                  entirely (body already carries it) — removes dual-render.
+                - Otherwise keep the hardcoded teaser as a prose intro above bodyHtml.
+                - bodyHtml is piped through markdownToHtml so literal `**bold**` becomes <strong>. */}
             <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-              <h2 id="overview" className="font-display font-bold">1. {regulation.overviewTitle || "Regulatory Overview"}</h2>
-              <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt || `Operating a short-term rental in ${locName} requires navigating specific local laws.`}</p>
-              <PortableTextContent blocks={regulation.body} html={regulation.bodyHtml} />
+              {(() => {
+                const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
+                const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
+                const hardcodedOverviewMatchesBody =
+                  firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
+                if (!hardcodedOverviewMatchesBody) {
+                  return (
+                    <>
+                      <h2 id="overview" className="font-display font-bold">1. {overviewLabel}</h2>
+                      <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt || `Operating a short-term rental in ${locName} requires navigating specific local laws.`}</p>
+                    </>
+                  );
+                }
+                return null;
+              })()}
+              <PortableTextContent blocks={regulation.body} html={markdownToHtml(regulation.bodyHtml)} />
             </div>
             <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
               <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>

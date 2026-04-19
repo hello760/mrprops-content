@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FAQ } from "@/components/sections/FAQ";
 import { CTA } from "@/components/sections/CTA";
-import { PortableTextContent } from "@/components/content/PortableTextContent";
 import type { LandingContent } from "@/lib/content-pages";
 
 const defaultTrustLogos = ["Airbnb", "Booking.com", "Vrbo", "Expedia", "TripAdvisor"];
@@ -226,20 +225,11 @@ export function LandingPageView({ page, pageType, slug }: { page: LandingContent
         </section>
       ) : null}
 
-      {/* Body content — article HTML for SEO */}
-      {page.bodyHtml ? (
-        <section className="border-y border-border/50 bg-secondary/30 py-20">
-          <div className="container mx-auto max-w-4xl px-4 prose prose-lg dark:prose-invert">
-            <div dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
-          </div>
-        </section>
-      ) : page.body?.length ? (
-        <section className="border-y border-border/50 bg-secondary/30 py-20">
-          <div className="container mx-auto max-w-4xl px-4 prose prose-lg dark:prose-invert">
-            <PortableTextContent blocks={page.body} html={page.bodyHtml} />
-          </div>
-        </section>
-      ) : null}
+      {/* FIX-022 (PF-22): removed bodyHtml/body rendering. Landing pages are component-mapped
+          per the services/features PDF spec — no editorial blog-article body section. All content
+          flows through the structured fields above (hero, trust bar, spotlight, features grid,
+          stats bar, how-it-works, comparison, testimonials, FAQ, final CTA). Rendering bodyHtml
+          here on top of those sections was causing every section to appear twice on live. */}
 
       <FAQ title={page.faqTitle} description={page.faqDescription} items={page.faqs} />
       <CTA title={page.ctaTitle} text={page.ctaText} primaryButton={page.ctaPrimaryButton} secondaryButton={page.ctaSecondaryButton} />

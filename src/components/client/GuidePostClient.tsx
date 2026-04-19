@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, ChevronRight, Clock, Home, TrendingUp } from "lucide-react";
+import { ChevronRight, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
@@ -43,16 +43,13 @@ export function GuidePostClient({ guide, relatedGuides }: { guide: DirectoryEntr
       </div>
 
       <header className="container mx-auto px-4 max-w-4xl text-center mb-16">
-        <div className="flex items-center justify-center gap-3 mb-6">
+        {/* FIX-008 + FIX-021 (PF-08, PF-21): removed 'Updated {date}' label + author avatar/byline
+            block + date/readTime strip. Guide PDF GLOBAL 1 bans 'Last Updated' / 'Reviewed by' /
+            author byline in guide body — these are CMS metadata, not body elements. */}
+        <div className="flex items-center justify-center mb-6">
           <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 px-3 py-1 text-sm font-bold uppercase tracking-wider">{guide.heroBadge || guide.category || "Guide"}</Badge>
-          <span className="text-muted-foreground text-sm font-medium">Updated {guide.date}</span>
         </div>
         <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground mb-8">{guide.title}</h1>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-muted-foreground">
-          <div className="flex items-center gap-3"><div className="h-10 w-10 border border-border rounded-full bg-primary text-white flex items-center justify-center font-bold">{(guide.authorName || "Mr. Props Team").slice(0, 2).toUpperCase()}</div><div className="text-left"><div className="font-bold text-foreground text-sm leading-none">{guide.authorName || "Mr. Props Team"}</div><div className="text-xs">{guide.category ? `${guide.category} Expert` : "Operational Experts"}</div></div></div>
-          <div className="hidden sm:block w-px h-8 bg-border" />
-          <div className="flex items-center gap-4 text-sm font-medium"><div className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> {guide.date}</div><div className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {guide.readTime}</div></div>
-        </div>
       </header>
 
       <div className="container mx-auto px-4 max-w-5xl mb-16"><div className="aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl relative group"><img src={guide.image} alt={guide.title} className="w-full h-full object-cover" /></div></div>

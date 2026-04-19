@@ -6,7 +6,6 @@ import { CleaningFeeEstimator } from "@/components/tools/CleaningFeeEstimator";
 import { GenericCalculator } from "@/components/tools/GenericCalculator";
 import { KitchenCostCalculator } from "@/components/tools/KitchenCostCalculator";
 import { RenovationROICalculator } from "@/components/tools/RenovationROICalculator";
-import { PortableTextContent } from "@/components/content/PortableTextContent";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Settings2, BarChart3, Target } from "lucide-react";
 import type { ToolPageContent } from "@/lib/template-tools";
@@ -101,7 +100,6 @@ function ToolFAQSection({ faqs, toolName }: { faqs?: FAQItem[]; toolName: string
 /* ---------- Main Component ---------- */
 
 export function ToolPageClient({ page }: ToolPageClientProps) {
-  const hasBody = page.body && Array.isArray(page.body) && page.body.length > 0;
   const toolName = page.title;
 
   // Per PDF spec: tool pages are NOT article pages.
@@ -113,14 +111,12 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
   //   4. FAQ (4-6 tool-specific questions)
   const seoContent = (
     <div className="space-y-20">
-      {/* Body content — bodyHtml (Supabase) or PortableText (Sanity) */}
-      {page.bodyHtml ? (
-        <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
-      ) : hasBody ? (
-        <div className="prose prose-lg max-w-none">
-          <PortableTextContent blocks={page.body!} html={page.bodyHtml} />
-        </div>
-      ) : null}
+      {/* FIX-022 (PF-22): removed bodyHtml/body rendering on calculator pages. PDF tools-section
+          spec: "A calculator page is not a blog article or guide. Do not write editorial sections
+          that explain the topic the calculator addresses." Every supporting section exists below
+          (how-it-works, CTA, FAQ) as a structured component. The bodyHtml was causing duplicate
+          "How is Calculator Helpful?" sections + duplicate FAQ + Lucide icon name leakage
+          ("DollarSign (Lucide)") rendering as prose. PF-23 closed by this removal too. */}
 
       {/* How It Works — from structured_data if available, else static fallback */}
       {page.howItWorks?.length ? (
