@@ -49,6 +49,17 @@ function normalizeTemplateRow(data: any, category: string, slug: string): Templa
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
     body: [],
     bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+    // FIX-010 + FIX-T1: new structured fields. All optional; UI tolerates absence.
+    bestPractices: Array.isArray(sd.bestPractices) ? sd.bestPractices : undefined,
+    commonMistakes: (sd.commonMistakes && Array.isArray(sd.commonMistakes.dontList) && Array.isArray(sd.commonMistakes.doList))
+      ? { dontList: sd.commonMistakes.dontList, doList: sd.commonMistakes.doList }
+      : undefined,
+    briefClosing: (sd.briefClosing && typeof sd.briefClosing.title === 'string' && typeof sd.briefClosing.body === 'string')
+      ? { title: sd.briefClosing.title, body: sd.briefClosing.body }
+      : undefined,
+    templateFile: sd.templateFile && typeof sd.templateFile === 'object'
+      ? { url: sd.templateFile.url || null, format: sd.templateFile.format ?? null, fileName: sd.templateFile.fileName ?? null }
+      : undefined,
   };
 }
 
@@ -247,6 +258,13 @@ export interface TemplatePageContent {
   seoDescription: string;
   body?: PortableTextBlock[];
   bodyHtml?: string;
+  // FIX-010 (PF-10): PDF template §6-9 structured fields.
+  bestPractices?: string[];
+  commonMistakes?: { dontList: string[]; doList: string[] };
+  briefClosing?: { title: string; body: string };
+  // FIX-T1 (PF-T1): real-file delivery via gate. url may be null while content team is
+  // still producing the file; UI falls back to the current email-only gate in that case.
+  templateFile?: { url: string | null; format?: 'pdf' | 'docx' | 'notion' | 'xlsx' | null; fileName?: string | null };
 }
 
 export interface ToolPageContent {

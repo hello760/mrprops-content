@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
-import { Lock, FileText, CheckCircle2, Home, ChevronRight } from "lucide-react";
+import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
+import { Lock, FileText, CheckCircle2, Home, ChevronRight, Download, X, Check } from "lucide-react";
 import type { TemplatePageContent } from "@/lib/template-tools";
 
 type TemplatePage = TemplatePageContent;
@@ -16,14 +17,30 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // FIX-T1 (PF-T1): email submit handler. If the piece has a real templateFile.url
+  // we trigger a download post-submit; otherwise fall back to the existing "sent to
+  // your email" confirmation UX (the content team is still producing the file for
+  // pieces where url is null).
   const handleDownload = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const fileUrl = page.templateFile?.url;
     setTimeout(() => {
       setIsSubmitting(false);
-      alert(`Template sent to ${email}`);
+      if (fileUrl) {
+        // Force download by creating a hidden anchor with download attribute.
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.download = page.templateFile?.fileName || "";
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert(`Template sent to ${email}`);
+      }
       setEmail("");
-    }, 1500);
+    }, 1200);
   };
 
   const categoryName = page.category.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -101,9 +118,12 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
             </div>
 
             <div className="space-y-12 max-w-4xl mx-auto pt-12">
+              {/* FIX-022 leftover: pipe bodyHtml through the same strip/markdown transform applied
+                  to Tax/Regulation/Guide views. Strips inline FAQ blocks + author bylines + stray H1s +
+                  Last Updated paragraphs, and converts **bold** markdown to <strong> HTML. */}
               {page.bodyHtml ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary"
-                     dangerouslySetInnerHTML={{ __html: page.bodyHtml }} />
+                     dangerouslySetInnerHTML={{ __html: markdownToHtml(stripRedundantBodyBlocks(page.bodyHtml)) }} />
               ) : deduplicatedBody?.length ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
                   <PortableTextContent blocks={deduplicatedBody} html={page.bodyHtml} />
@@ -122,6 +142,48 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
                     </>
                   )}
                   {page.customizeTitle && <><h2 className="font-display font-bold text-3xl mb-6 mt-12">{page.customizeTitle}</h2><p>{page.customizeText}</p></>}
+                </div>
+              )}
+
+              {/* FIX-010 (PF-10): Best Practices — numbered implementation steps per PDF §6. */}
+              {page.bestPractices && page.bestPractices.length > 0 && (
+                <div className="not-prose">
+                  <h2 className="font-display font-bold text-3xl mb-6 mt-12">Best Practices for Implementation</h2>
+                  <ol className="space-y-3 list-decimal list-outside ml-5 marker:text-primary marker:font-bold">
+                    {page.bestPractices.map((item, i) => (
+                      <li key={i} className="pl-2 leading-relaxed text-foreground">{item}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* FIX-010: Common Mistakes — parallel Don't / Do lists per PDF §7. */}
+              {page.commonMistakes && (page.commonMistakes.dontList?.length || page.commonMistakes.doList?.length) && (
+                <div className="not-prose grid md:grid-cols-2 gap-6">
+                  <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 rounded-2xl p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><X className="h-5 w-5 text-orange-600" /> Don&apos;t</h3>
+                    <ul className="space-y-3 text-sm">
+                      {page.commonMistakes.dontList.map((item, i) => (
+                        <li key={i} className="flex gap-2"><span className="text-orange-500 flex-shrink-0">•</span><span>{item}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-2xl p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Check className="h-5 w-5 text-emerald-600" /> Do</h3>
+                    <ul className="space-y-3 text-sm">
+                      {page.commonMistakes.doList.map((item, i) => (
+                        <li key={i} className="flex gap-2"><span className="text-emerald-500 flex-shrink-0">•</span><span>{item}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* FIX-010: Brief Closing — declarative title + 3-5 sentences per PDF §9 (NOT "Conclusion"). */}
+              {page.briefClosing?.title && page.briefClosing?.body && (
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-8 mt-12">
+                  <h2 className="font-display font-bold text-2xl md:text-3xl mb-4">{page.briefClosing.title}</h2>
+                  <p className="text-muted-foreground leading-relaxed">{page.briefClosing.body}</p>
                 </div>
               )}
 

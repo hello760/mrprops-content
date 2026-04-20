@@ -129,14 +129,23 @@ export default async function GlossaryTermPage({ params }: { params: Promise<{ s
               <div className="bg-card border border-border p-6 rounded-xl shadow-sm">
                 <div className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Related Terms</div>
                 <ul className="space-y-3">
-                  {relatedTerms.map((related) => (
-                    <li key={related}>
-                      <Link href={toGlossaryHref(related)} className="group flex items-center justify-between text-foreground hover:text-primary transition-colors cursor-pointer text-sm font-medium py-1">
-                        <span>{related}</span>
-                        <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
-                      </Link>
-                    </li>
-                  ))}
+                  {relatedTerms.map((related, i) => {
+                    // FIX-025: support both legacy string[] and new { term, relationship }[] shapes.
+                    const termStr = typeof related === "string" ? related : related?.term;
+                    const relationshipStr = typeof related === "string" ? undefined : related?.relationship;
+                    if (!termStr) return null;
+                    return (
+                      <li key={`${termStr}-${i}`}>
+                        <Link href={toGlossaryHref(termStr)} className="group block text-foreground hover:text-primary transition-colors cursor-pointer text-sm py-1">
+                          <div className="flex items-center justify-between font-medium">
+                            <span>{termStr}</span>
+                            <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0" />
+                          </div>
+                          {relationshipStr ? <div className="mt-1 text-xs text-muted-foreground leading-snug">{relationshipStr}</div> : null}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </aside>

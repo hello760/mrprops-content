@@ -74,13 +74,20 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
   };
 }
 
+/**
+ * FIX-025 (PF-25): relatedTerms upgraded from bare string[] to supporting
+ * { term, relationship } objects per PDF glossary GLOBAL 8. Legacy pieces may
+ * still have string[] in the DB — renderer tolerates both shapes.
+ */
+export type RelatedTerm = string | { term: string; relationship?: string };
+
 export interface GlossaryTerm {
   id: string;
   slug: string;
   term: string;
   definition: string;
   body: PortableTextBlock[];
-  relatedTerms: string[];
+  relatedTerms: RelatedTerm[];
   seoTitle: string;
   seoDescription: string;
   publishedAt?: string;
