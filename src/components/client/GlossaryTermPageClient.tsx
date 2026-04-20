@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
+import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
 import { ChevronRight, Printer, Search, Share2 } from "lucide-react";
 import type { GlossaryTerm } from "@/lib/glossary";
 
@@ -65,7 +66,11 @@ export function GlossaryTermPageClient({ term }: { term: GlossaryTerm }) {
             )}
 
             <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl">
-              <PortableTextContent blocks={term.body} html={term.bodyHtml} />
+              {/* FIX-follow-up: glossary View now pipes bodyHtml through the same strip/markdown
+                  transform applied to Tax/Regulation/Guide/Template. Strips inline H1s + FAQ blocks +
+                  author-meta + Last Updated paragraphs from body, and converts literal **bold**
+                  markdown to <strong>. */}
+              <PortableTextContent blocks={term.body} html={markdownToHtml(stripRedundantBodyBlocks(term.bodyHtml))} />
             </div>
 
             <div className="flex items-center gap-4 mt-12 pt-8 border-t border-border">
