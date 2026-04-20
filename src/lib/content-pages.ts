@@ -46,7 +46,7 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
         seoDescription: sd.seoDescription || r.meta_description || '',
         publishedAt: r.published_at,
         updatedAt: r.updated_at || r.published_at,
-        image: sd.conceptImage?.url || fallbackImageForSlug(r.custom_slug),
+        image: sd.featuredImage || sd.conceptImage?.url || sd.hero?.image || fallbackImageForSlug(r.custom_slug),
         platform: sd.platform,
         location: sd.location,
         region: sd.region,
@@ -88,7 +88,9 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     subheadline: sd.hero?.subheadline || '',
     body: [],
     bodyHtml: (sd.bodyHtml || data.content_body) || undefined,
-    image: '',
+    // FIX-HERO-IMG (2026-04-20): pull hero image from structured_data.featuredImage
+    // (generate-images writes there) with sd.hero?.image fallback.
+    image: sd.featuredImage || sd.hero?.image || '',
     seoTitle: sd.seoTitle || data.seo_title || '',
     seoDescription: sd.seoDescription || data.meta_description || '',
     publishedAt: data.published_at || undefined,
@@ -148,7 +150,7 @@ async function fetchLandingListFromSupabase(pageType: "features" | "services"): 
         subheadline: sd.hero?.subheadline || '',
         body: [],
         bodyHtml: ((sd as any)?.bodyHtml || r.content_body) || undefined,
-        image: '',
+        image: sd.featuredImage || sd.hero?.image || '',
         seoTitle: sd.seoTitle || r.seo_title || '',
         seoDescription: sd.seoDescription || r.meta_description || '',
         publishedAt: r.published_at || undefined,
