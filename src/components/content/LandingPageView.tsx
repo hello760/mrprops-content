@@ -193,8 +193,12 @@ export function LandingPageView({ page, pageType, slug }: { page: LandingContent
                 </ul>
               </div>
               <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 rounded-2xl p-8">
-                <h3 className="font-bold text-lg mb-1">Traditional PM Software</h3>
-                <p className="text-sm text-muted-foreground mb-4">(based on reviews and customer feedback)</p>
+                {/* FIX-LP-COMP (2026-04-20): data-driven competitor name from
+                    structured_data.comparison.traditional.name (PDF §features-services
+                    requires naming the comparison competitor). Falls back to the
+                    legacy "Traditional PM Software" label when unset. */}
+                <h3 className="font-bold text-lg mb-1">{page.comparisonCompetitorName || "Traditional PM Software"}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{page.comparisonCompetitorSubtitle || "(based on reviews and customer feedback)"}</p>
                 <ul className="space-y-3">
                   {page.comparisonCons?.map((con, i) => (
                     <li key={i} className="flex gap-2 text-sm"><span className="text-orange-500 flex-shrink-0">⚠</span> <span>{con}</span></li>

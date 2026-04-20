@@ -109,6 +109,12 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     comparisonTitle: sd.comparison?.title,
     comparisonPros: sd.comparison?.mrProps?.pros,
     comparisonCons: sd.comparison?.traditional?.cons,
+    // FIX-LP-COMP (2026-04-20): allow per-piece named competitor labels
+    // (PDF §features-services "compare vs 2 competitors"). Falls back to
+    // legacy "Traditional PM Software" when sd.comparison.traditional.name
+    // is not set — backward compatible.
+    comparisonCompetitorName: sd.comparison?.traditional?.name,
+    comparisonCompetitorSubtitle: sd.comparison?.traditional?.subtitle,
     testimonialsTitle: 'What Our Customers Say',
     testimonials: sd.testimonials,
     faqTitle: 'Frequently Asked Questions',
@@ -169,6 +175,8 @@ async function fetchLandingListFromSupabase(pageType: "features" | "services"): 
         comparisonTitle: sd.comparison?.title,
         comparisonPros: sd.comparison?.mrProps?.pros,
         comparisonCons: sd.comparison?.traditional?.cons,
+        comparisonCompetitorName: sd.comparison?.traditional?.name,
+        comparisonCompetitorSubtitle: sd.comparison?.traditional?.subtitle,
         testimonialsTitle: 'What Our Customers Say',
         testimonials: sd.testimonials,
         faqTitle: 'Frequently Asked Questions',
@@ -472,6 +480,8 @@ export interface LandingContent {
   comparisonDescription?: string;
   comparisonPros?: string[];
   comparisonCons?: string[];
+  comparisonCompetitorName?: string;
+  comparisonCompetitorSubtitle?: string;
   testimonialsTitle?: string;
   testimonials?: TestimonialConfig[];
   faqTitle?: string;
@@ -595,6 +605,8 @@ interface SanityDoc {
   comparisonDescription?: string;
   comparisonPros?: string[];
   comparisonCons?: string[];
+  comparisonCompetitorName?: string;
+  comparisonCompetitorSubtitle?: string;
   testimonialsTitle?: string;
   testimonials?: Array<{ quote?: string; name?: string; role?: string }>;
 }
