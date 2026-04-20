@@ -6,6 +6,7 @@ import { ChevronRight, Printer, Search, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
+import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
 import { fetchGlossaryTermBySlug, fetchGlossaryTerms } from "@/lib/glossary";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createBreadcrumbSchema, createDefinedTermSchema, createFaqSchema } from "@/lib/structured-data";
@@ -89,8 +90,13 @@ export default async function GlossaryTermPage({ params }: { params: Promise<{ s
               )}
 
               <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-a:text-primary prose-img:rounded-xl">
+                {/* FIX (2026-04-20): pipe bodyHtml through stripRedundantBodyBlocks +
+                    markdownToHtml before dangerouslySetInnerHTML. stripRedundantBodyBlocks
+                    removes any inline <h1> from body (the hero already renders one at line
+                    71 → without this, the page shows 2 H1s like on Break-even Occupancy).
+                    markdownToHtml converts literal **bold** tokens to <strong>. */}
                 {term.bodyHtml ? (
-                  <div dangerouslySetInnerHTML={{ __html: term.bodyHtml }} />
+                  <div dangerouslySetInnerHTML={{ __html: markdownToHtml(stripRedundantBodyBlocks(term.bodyHtml)) }} />
                 ) : (
                   <PortableTextContent blocks={term.body} />
                 )}
