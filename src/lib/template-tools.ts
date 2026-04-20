@@ -60,6 +60,10 @@ function normalizeTemplateRow(data: any, category: string, slug: string): Templa
     templateFile: sd.templateFile && typeof sd.templateFile === 'object'
       ? { url: sd.templateFile.url || null, format: sd.templateFile.format ?? null, fileName: sd.templateFile.fileName ?? null }
       : undefined,
+    // FIX-HERO-IMG: read from structured_data.featuredImage (set by generate-images pipeline)
+    // with sd.hero.image as secondary fallback. Returns null/undefined cleanly if absent.
+    heroImage: sd.featuredImage || sd.hero?.image || null,
+    heroImageAlt: sd.hero?.headline || sd.hero?.previewTitle || data.title || null,
   };
 }
 
@@ -180,6 +184,8 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
     body: [],
     bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+    heroImage: sd.featuredImage || sd.hero?.image || null,
+    heroImageAlt: sd.hero?.headline || sd.hero?.previewTitle || data.title || null,
   };
 }
 
@@ -265,6 +271,11 @@ export interface TemplatePageContent {
   // FIX-T1 (PF-T1): real-file delivery via gate. url may be null while content team is
   // still producing the file; UI falls back to the current email-only gate in that case.
   templateFile?: { url: string | null; format?: 'pdf' | 'docx' | 'notion' | 'xlsx' | null; fileName?: string | null };
+  // FIX-HERO-IMG (2026-04-20): hero image URL sourced from generate-images pipeline.
+  // Written by /api/content/generate-images/route.ts as structured_data.featuredImage
+  // (see line 194-196). UI renders when present. Null for pieces without images generated.
+  heroImage?: string | null;
+  heroImageAlt?: string | null;
 }
 
 export interface ToolPageContent {
@@ -636,6 +647,8 @@ export async function fetchTemplatePage(category: string, slug: string) {
           seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
           body: [],
           bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+          heroImage: sd.featuredImage || sd.hero?.image || null,
+          heroImageAlt: sd.hero?.headline || sd.hero?.previewTitle || data.title || null,
         } as TemplatePageContent;
       }
     }

@@ -90,6 +90,22 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
           </div>
         </div>
 
+        {/* FIX-HERO-IMG (2026-04-20): hero image rendered above the preview card.
+            Sourced from structured_data.featuredImage via template-tools.ts normalizer.
+            Renders only when populated — pieces without images generated still look
+            clean because the preview card remains the primary visual. */}
+        {page.heroImage && (
+          <div className="max-w-4xl mx-auto mb-12 px-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={page.heroImage}
+              alt={page.heroImageAlt || page.title}
+              className="w-full h-auto rounded-2xl shadow-lg border border-border/50"
+              loading="eager"
+            />
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-[1fr_350px] gap-12 items-start max-w-6xl mx-auto">
           <div className="space-y-12">
             <div className="relative w-full mx-auto bg-white dark:bg-card border border-border/50 shadow-2xl rounded-sm overflow-hidden min-h-[900px] md:p-12 p-6">
