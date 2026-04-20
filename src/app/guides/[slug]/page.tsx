@@ -41,7 +41,21 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
     <>
       <GuidePostClient guide={guide} relatedGuides={relatedGuides} />
       <div className="container mx-auto px-4 max-w-screen-xl pb-20">
-        <SEOContentSkeleton seoTitle={guide.seoTitle} seoDescription={guide.seoDescription} slug={`/guides/${guide.slug}`} mainTitle="" introText="" faqTitle={guide.faqTitle} faqs={faqs} ctaTitle={guide.ctaTitle} ctaText={guide.ctaText} ctaButtonText={guide.ctaPrimaryButton?.label} ctaButtonHref={guide.ctaPrimaryButton?.href} />
+        {/* FIX-008-v2 (PF-08, 2026-04-20): omit ctaTitle/ctaText/button props for guide pages.
+            The SEOContentSkeleton's final CTA section renders a big service-page-styled block
+            (gradient background, <h2> 6xl, primary + secondary buttons) when ctaTitle is
+            truthy — PDF GLOBAL 3 for guides explicitly bans service-page-mimicking CTAs.
+            Keep FAQ accordion but skip the CTA block. Guides close with their own concluding
+            paragraph inside the body per PDF spec. */}
+        <SEOContentSkeleton
+          seoTitle={guide.seoTitle}
+          seoDescription={guide.seoDescription}
+          slug={`/guides/${guide.slug}`}
+          mainTitle=""
+          introText=""
+          faqTitle={guide.faqTitle}
+          faqs={faqs}
+        />
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
     </>
