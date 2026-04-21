@@ -177,21 +177,25 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
       )}
 
       {/* CTA — from structured_data if available, else static fallback.
-          2026-04-21: force explicit text-white on headline + body text + trust microcopy.
-          `text-primary-foreground` was resolving to a near-black color in this theme,
-          which is fine on a solid-primary button bg but unreadable on the gradient
-          `from-primary to-purple-600` wrapper (visual audit surfaced dark-on-purple H2).
-          The secondary button also gets a subtle white background so the outline style
-          is readable against the same gradient. */}
+          2026-04-21: the entire seoContent is rendered inside a `.prose` wrapper
+          in CalculatorLayout.tsx:172. `.prose h2/p/a` selectors (from globals.css)
+          have higher CSS specificity than Tailwind's `.text-white`, so the
+          prior text-primary-foreground / text-white classes were silently
+          overridden to the dark foreground color. Solution: inline style={{ color }}
+          on each text element so specificity 1,0,0,0 always wins. globals.css
+          doesn't ship a `not-prose` escape hatch so we can't opt out of prose
+          at the wrapper level, and restructuring seoContent out of the prose
+          wrapper would touch every calculator component. Inline style is
+          the smallest, safest fix that survives the prose-h2 rule. */}
       {page.cta ? (
-        <div className="bg-gradient-to-br from-primary to-purple-600 text-white rounded-2xl p-12 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-white">{page.cta.headline}</h2>
-          <p className="text-lg mb-8 text-white/90">{page.cta.sentence}</p>
+        <div className="bg-gradient-to-br from-primary to-purple-600 rounded-2xl p-12 text-center" style={{ color: '#fff' }}>
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4" style={{ color: '#fff' }}>{page.cta.headline}</h2>
+          <p className="text-lg mb-8" style={{ color: 'rgba(255,255,255,0.9)' }}>{page.cta.sentence}</p>
           <div className="flex justify-center gap-4 flex-wrap">
-            <a href={page.cta.primaryButton?.href || "/register"} className="bg-white text-primary font-bold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors">{page.cta.primaryButton?.label || "Get Started Free"}</a>
-            <a href={page.cta.secondaryButton?.href || "/contact"} className="border-2 border-white/80 bg-white/10 text-white font-bold px-8 py-3 rounded-lg hover:bg-white/20 transition-colors">{page.cta.secondaryButton?.label || "Talk to Sales"}</a>
+            <a href={page.cta.primaryButton?.href || "/register"} className="bg-white font-bold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors no-underline" style={{ color: 'hsl(var(--primary))' }}>{page.cta.primaryButton?.label || "Get Started Free"}</a>
+            <a href={page.cta.secondaryButton?.href || "/contact"} className="border-2 font-bold px-8 py-3 rounded-lg transition-colors no-underline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.8)', background: 'rgba(255,255,255,0.1)' }}>{page.cta.secondaryButton?.label || "Talk to Sales"}</a>
           </div>
-          <p className="text-sm mt-4 text-white/80">{page.cta.trustMicrocopy || "No credit card required. Cancel anytime."}</p>
+          <p className="text-sm mt-4" style={{ color: 'rgba(255,255,255,0.8)' }}>{page.cta.trustMicrocopy || "No credit card required. Cancel anytime."}</p>
         </div>
       ) : (
         <ToolCTA />
