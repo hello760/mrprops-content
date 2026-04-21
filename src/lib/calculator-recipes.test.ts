@@ -18,7 +18,15 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recipes, getRecipe, listRecipes, recipeExists } from './calculator-recipes.js';
+import {
+  recipes,
+  getRecipe,
+  listRecipes,
+  recipeExists,
+  validateFormula,
+  runFormula,
+  type CalculatorFormula,
+} from './calculator-recipes.js';
 
 // ─────────────── Registry-level sanity ───────────────
 
@@ -390,4 +398,138 @@ test('cleaning_fee_per_turnover — custom markup', () => {
   // 500/5 = 100 per turnover, * 1.50 = 150 recommended fee
   assert.equal(r.costPerTurnover.raw, 100);
   assert.equal(r.recommendedFee.raw, 150);
+});
+
+// ─────────────── validateFormula ───────────────
+// Mirrors the 6-rule pre-publish gate per the v2 spec: formula object
+// exists, recipe exists, every recipe-input maps to an existing field,
+// every recipe-output maps to an existing result.
+
+test('validateFormula — happy case with net_revenue_basic', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'net_revenue_basic',
+    inputMap: {
+      monthlyRevenue: 'monthlyRevenue',
+      operatingExpenses: 'operatingExpenses',
+      fixedCosts: 'fixedCosts',
+      platformFeePct: 'platformFeePct',
+      bookedNights: 'bookedNights',
+    },
+    outputMap: {
+      netRevenue: 'netRevenue',
+      netProfit: 'netProfit',
+      netRevenuePerNight: 'netRevenuePerNight',
+    },
+  };
+  const v = validateFormula(
+    formula,
+    ['monthlyRevenue', 'operatingExpenses', 'fixedCosts', 'platformFeePct', 'bookedNights'],
+    ['netRevenue', 'netProfit', 'netRevenuePerNight'],
+  );
+  assert.equal(v.valid, true);
+  assert.deepEqual(v.errors, []);
+});
+
+test('validateFormula — null formula returns missing error', () => {
+  const v = validateFormula(null, [], []);
+  assert.equal(v.valid, false);
+  assert.ok(v.errors.some((e) => e.includes('missing')));
+});
+
+test('validateFormula — unknown recipe name', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'not_a_real_recipe',
+    inputMap: {},
+    outputMap: {},
+  };
+  const v = validateFormula(formula, [], []);
+  assert.equal(v.valid, false);
+  assert.ok(v.errors.some((e) => e.includes('not found in library')));
+});
+
+test('validateFormula — inputMap missing a required recipe input', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'profit_margin',
+    inputMap: { revenue: 'myRevenue' }, // missing totalCosts
+    outputMap: { grossProfit: 'profit', profitMarginPct: 'margin' },
+  };
+  const v = validateFormula(formula, ['myRevenue'], ['profit', 'margin']);
+  assert.equal(v.valid, false);
+  assert.ok(v.errors.some((e) => e.includes('totalCosts')));
+});
+
+test('validateFormula — inputMap points to non-existent field key', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'profit_margin',
+    inputMap: { revenue: 'revenueXYZ', totalCosts: 'doesNotExist' },
+    outputMap: { grossProfit: 'profit', profitMarginPct: 'margin' },
+  };
+  const v = validateFormula(formula, ['revenueXYZ'], ['profit', 'margin']);
+  assert.equal(v.valid, false);
+  assert.ok(v.errors.some((e) => e.includes('doesNotExist')));
+});
+
+test('validateFormula — outputMap points to non-existent result key', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'profit_margin',
+    inputMap: { revenue: 'rev', totalCosts: 'costs' },
+    outputMap: { grossProfit: 'profit', profitMarginPct: 'notThere' },
+  };
+  const v = validateFormula(formula, ['rev', 'costs'], ['profit', 'margin']);
+  assert.equal(v.valid, false);
+  assert.ok(v.errors.some((e) => e.includes('notThere')));
+});
+
+// ─────────────── runFormula ───────────────
+
+test('runFormula — happy case with remapped field keys produces correct output', () => {
+  // Intentionally use DIFFERENT field keys than the recipe's native keys —
+  // this is the whole point of inputMap: decouple recipe keys from UI keys.
+  const formula: CalculatorFormula = {
+    recipe: 'net_revenue_basic',
+    inputMap: {
+      monthlyRevenue: 'rev',
+      operatingExpenses: 'opex',
+      fixedCosts: 'fixed',
+      platformFeePct: 'fee',
+      bookedNights: 'nights',
+    },
+    outputMap: {
+      netRevenue: 'netRev',
+      netProfit: 'netProf',
+      netRevenuePerNight: 'perNight',
+    },
+  };
+  const results = runFormula(
+    formula,
+    { rev: 1000, opex: 100, fixed: 100, fee: 10, nights: 100 },
+    ['rev', 'opex', 'fixed', 'fee', 'nights'],
+    ['netRev', 'netProf', 'perNight'],
+  );
+  assert.ok(results, 'runFormula should return results, not null');
+  assert.equal(results!.netRev.raw, 900);
+  assert.equal(results!.netProf.raw, 700);
+  assert.equal(results!.perNight.raw, 9);
+});
+
+test('runFormula — invalid formula returns null (caller renders banner)', () => {
+  const bad: CalculatorFormula = {
+    recipe: 'totally_fake',
+    inputMap: {},
+    outputMap: {},
+  };
+  const results = runFormula(bad, {}, [], []);
+  assert.equal(results, null);
+});
+
+test('runFormula — missing field values default to 0 (no crash)', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'profit_margin',
+    inputMap: { revenue: 'r', totalCosts: 'c' },
+    outputMap: { grossProfit: 'profit', profitMarginPct: 'margin' },
+  };
+  const results = runFormula(formula, {}, ['r', 'c'], ['profit', 'margin']);
+  assert.ok(results);
+  assert.equal(results!.profit.raw, 0);
+  assert.equal(results!.margin.raw, 0);
 });

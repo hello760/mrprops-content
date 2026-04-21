@@ -68,6 +68,40 @@ export interface Recipe {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Formula payload — the JSONB shape stored in
+// content_pieces.structured_data.calculatorUi.formula.
+// This is the contract between the LLM extractor, the DB, the
+// renderer, and the embed runtime. All four must agree on it.
+// ────────────────────────────────────────────────────────────────
+
+export interface CalculatorFormula {
+  /** Recipe name — must match a key in `recipes` and pass recipeExists(). */
+  recipe: string;
+
+  /**
+   * Maps recipe-input keys (the keys the recipe.compute() function expects)
+   * to calculatorUi.fields[].key values (the keys the user-facing inputs use).
+   * Example for net_revenue_basic:
+   *   { monthlyRevenue: "monthlyRevenue", operatingExpenses: "opex", ... }
+   * inputMap lets the same recipe power multiple UI layouts with different
+   * field-key naming conventions without the renderer caring.
+   */
+  inputMap: Record<string, string>;
+
+  /**
+   * Maps recipe-output keys (the keys recipe.compute() returns) to
+   * calculatorUi.results[].key values (the keys the result panel displays).
+   */
+  outputMap: Record<string, string>;
+
+  /**
+   * Optional overrides for the recipe's defaultConstants. Example for
+   * cleaning_fee_per_turnover: { markupPct: 30 } overrides the default 25.
+   */
+  constants?: Record<string, number>;
+}
+
+// ────────────────────────────────────────────────────────────────
 // Formatting helpers (shared across all recipes)
 // ────────────────────────────────────────────────────────────────
 
@@ -476,4 +510,92 @@ export function listRecipes(): Array<{ name: string; description: string; deprec
 
 export function recipeExists(name: string): boolean {
   return name in recipes && !recipes[name].deprecated;
+}
+
+// ────────────────────────────────────────────────────────────────
+// Formula validation — used by pre-publish gate AND by renderer's
+// "show banner on missing config" guard. Single source of truth
+// for what counts as a correctly-wired calculator formula.
+// ────────────────────────────────────────────────────────────────
+
+export interface FormulaValidation {
+  valid: boolean;
+  errors: string[]; // human-readable list; empty when valid=true
+}
+
+export function validateFormula(
+  formula: CalculatorFormula | null | undefined,
+  availableFieldKeys: string[],
+  availableResultKeys: string[],
+): FormulaValidation {
+  const errors: string[] = [];
+  if (!formula || typeof formula !== 'object') {
+    return { valid: false, errors: ['formula missing'] };
+  }
+  if (!formula.recipe || typeof formula.recipe !== 'string') {
+    errors.push('formula.recipe not set');
+    return { valid: false, errors };
+  }
+  const recipe = getRecipe(formula.recipe);
+  if (!recipe) {
+    errors.push(`recipe "${formula.recipe}" not found in library`);
+    return { valid: false, errors };
+  }
+  if (recipe.deprecated) {
+    errors.push(`recipe "${formula.recipe}" is deprecated`);
+  }
+  // inputMap must map every recipe input key to an existing field key
+  for (const input of recipe.inputs) {
+    const mapped = formula.inputMap?.[input.key];
+    if (!mapped) {
+      errors.push(`inputMap missing for recipe input "${input.key}"`);
+    } else if (!availableFieldKeys.includes(mapped)) {
+      errors.push(
+        `inputMap["${input.key}"] points to "${mapped}" but no field with that key exists`,
+      );
+    }
+  }
+  // outputMap must map every recipe output key to an existing result key
+  for (const output of recipe.outputs) {
+    const mapped = formula.outputMap?.[output.key];
+    if (!mapped) {
+      errors.push(`outputMap missing for recipe output "${output.key}"`);
+    } else if (!availableResultKeys.includes(mapped)) {
+      errors.push(
+        `outputMap["${output.key}"] points to "${mapped}" but no result with that key exists`,
+      );
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Runs a recipe's compute() with field values mapped through inputMap,
+ * and returns results keyed by the result.key values in outputMap.
+ * The renderer calls this. Returns null if validateFormula fails — caller
+ * should show the "not configured" banner in that case.
+ */
+export function runFormula(
+  formula: CalculatorFormula,
+  fieldValues: Record<string, number>,
+  availableFieldKeys: string[],
+  availableResultKeys: string[],
+): Record<string, RecipeResult> | null {
+  const validation = validateFormula(formula, availableFieldKeys, availableResultKeys);
+  if (!validation.valid) return null;
+  const recipe = getRecipe(formula.recipe)!;
+  // Build recipe-input object by pulling from fieldValues via inputMap
+  const recipeInputs: Record<string, number> = {};
+  for (const input of recipe.inputs) {
+    const fieldKey = formula.inputMap[input.key];
+    recipeInputs[input.key] = fieldValues[fieldKey] ?? 0;
+  }
+  const recipeResults = recipe.compute(recipeInputs, formula.constants);
+  // Remap result keys through outputMap
+  const output: Record<string, RecipeResult> = {};
+  for (const recipeOutKey of Object.keys(recipeResults)) {
+    const uiKey = formula.outputMap[recipeOutKey] ?? recipeOutKey;
+    output[uiKey] = recipeResults[recipeOutKey];
+  }
+  return output;
 }

@@ -1,3 +1,5 @@
+import type { CalculatorFormula } from "@/lib/calculator-recipes";
+
 export interface CalculatorFieldCopy {
   key: string;
   label: string;
@@ -31,7 +33,19 @@ export interface CalculatorUiCopy {
   fields?: CalculatorFieldCopy[];
   results?: CalculatorResultCopy[];
   layout?: CalculatorLayoutCopy;
+  /**
+   * 2026-04-21 Phase B2: recipe-driven math. When present and valid, the
+   * renderer runs the named recipe from calculator-recipes.ts. When missing
+   * or invalid, the renderer shows an explicit "not configured" banner —
+   * the old silent "About This Tool" fallback is gone. See
+   * market-me-good/src/lib/calculator-recipes.ts for the recipe catalogue.
+   */
+  formula?: CalculatorFormula;
 }
+
+// Re-export so components that already import from calculatorCopy can keep
+// that import without needing a separate import from @/lib/calculator-recipes.
+export type { CalculatorFormula };
 
 export function getFieldCopy(copy: CalculatorUiCopy | undefined, key: string, fallbackLabel: string, fallbackHelpText?: string) {
   const item = copy?.fields?.find((field) => field.key === key);

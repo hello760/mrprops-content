@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
 import type { PortableTextBlock } from "@/lib/content-helpers";
+import { AlertTriangle } from "lucide-react";
+import { runFormula, validateFormula } from "@/lib/calculator-recipes";
 
 interface GenericCalculatorProps {
   title?: string;
@@ -36,7 +38,10 @@ export function GenericCalculator({
   seoContent,
   calculatorUi,
   introText,
-  benefits,
+  // benefits intentionally unused in render paths after Phase B4 — the widget
+  // either renders the input form or the "not configured" banner; there is
+  // no longer a text-only fallback that used benefits. Keeping the prop so
+  // ToolPageClient can still pass it without a TypeScript break.
   body,
 }: GenericCalculatorProps) {
   // Render article body directly — calculator pages should NOT use blog-style SEO wrappers.
@@ -48,7 +53,10 @@ export function GenericCalculator({
   ) : null);
   const fields = calculatorUi?.fields || [];
   const resultFields = calculatorUi?.results || [];
-  const hasFields = fields.length > 0;
+  // `benefits` and `hasFields` are no longer used in render paths — post
+  // Phase B4 the widget either renders (fields >= 2 + valid formula) or
+  // shows the "not configured" banner. The old `hasFields`-branching
+  // fallback is removed.
 
   // Dynamic state for all input fields
   const [values, setValues] = useState<Record<string, number>>(() => {
@@ -63,21 +71,36 @@ export function GenericCalculator({
     setValues((prev) => ({ ...prev, [key]: val }));
   };
 
-  // Simple result computation — sum all inputs as a baseline estimate
-  // Named calculators override this with real formulas
+  // Phase B4 (2026-04-21): recipe-driven math replaces the old dummy-sum
+  // formula that was producing nonsense on every non-hardcoded calculator
+  // slug (airbnb-expense-calculator showed "Net Revenue $1,310 / Net Profit
+  // $15,720" for inputs 1000+100+100+10+100 — literal sum of all fields ×12).
+  //
+  // New behavior: resolve calculatorUi.formula against the recipe library.
+  // If the formula validates, run it and render real output. If it doesn't,
+  // `formulaValidation.valid === false` flips the results panel into an
+  // explicit "not configured" banner — the old silent "About This Tool"
+  // fallback is gone (see below: no more !hasFields branch for inputs panel).
+  const availableFieldKeys = useMemo(() => fields.map((f) => f.key), [fields]);
+  const availableResultKeys = useMemo(() => resultFields.map((r) => r.key), [resultFields]);
+  const formulaValidation = useMemo(
+    () =>
+      validateFormula(
+        calculatorUi?.formula ?? null,
+        availableFieldKeys,
+        availableResultKeys,
+      ),
+    [calculatorUi?.formula, availableFieldKeys, availableResultKeys],
+  );
   const computedResults = useMemo(() => {
-    const total = Object.values(values).reduce((sum, v) => sum + (v || 0), 0);
-    const results: Record<string, string> = {};
-    if (resultFields.length > 0) {
-      // First result gets the total, others get derived values
-      resultFields.forEach((rf, i) => {
-        if (i === 0) results[rf.key] = `$${Math.round(total).toLocaleString()}`;
-        else if (i === 1) results[rf.key] = `$${Math.round(total * 12).toLocaleString()}`;
-        else results[rf.key] = `${Math.min(100, Math.max(0, total > 0 ? Math.round((total / (total + 1000)) * 100) : 0))}%`;
-      });
-    }
-    return results;
-  }, [values, resultFields]);
+    if (!formulaValidation.valid || !calculatorUi?.formula) return null;
+    return runFormula(
+      calculatorUi.formula,
+      values,
+      availableFieldKeys,
+      availableResultKeys,
+    );
+  }, [formulaValidation.valid, calculatorUi?.formula, values, availableFieldKeys, availableResultKeys]);
 
   // FIX-CALC-INTRO-DUP (2026-04-21): CalculatorLayout already renders `description`
   // as the hero subheadline (CalculatorLayout.tsx:86). For calculator pieces where
@@ -85,7 +108,35 @@ export function GenericCalculator({
   // (template-tools.ts:78,82), the same sentence rendered twice on the live page.
   // Only render introText inside the inputs panel when it differs from description.
   const showInputIntro = introText && introText.trim() !== (description || '').trim();
-  const inputs = hasFields ? (
+
+  // Phase B4 (2026-04-21): widget hard-requires a valid formula + fields + results.
+  // When any of those are missing, BOTH panels show the same "not configured"
+  // banner — no more silent "About This Tool" text fallback where the widget
+  // should be. This closes the team's 2026-04-21 "calculator tool missing entirely"
+  // failure mode.
+  const widgetReady = fields.length >= 2 && resultFields.length >= 1 && formulaValidation.valid;
+
+  const notConfiguredBanner = (
+    <div className="space-y-4 py-8 text-center" role="alert" aria-live="polite">
+      <AlertTriangle className="h-10 w-10 mx-auto text-amber-500" aria-hidden="true" />
+      <h3 className="text-lg font-bold text-foreground">Calculator not configured</h3>
+      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+        This tool is being set up. Contact the Mr. Props team to finish wiring the calculator — the supporting content is live but the interactive math isn&apos;t ready yet.
+      </p>
+      {process.env.NODE_ENV !== "production" && formulaValidation.errors.length > 0 && (
+        <details className="text-xs text-muted-foreground max-w-md mx-auto text-left">
+          <summary className="cursor-pointer opacity-70">Configuration errors (dev only)</summary>
+          <ul className="mt-2 space-y-1 list-disc list-inside">
+            {formulaValidation.errors.map((err, i) => (
+              <li key={i}>{err}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+
+  const inputs = widgetReady ? (
     <div className="space-y-6">
       {showInputIntro && (
         <p className="text-muted-foreground text-sm leading-relaxed mb-4">{introText}</p>
@@ -109,41 +160,21 @@ export function GenericCalculator({
       </div>
     </div>
   ) : (
-    <div className="space-y-4 py-4">
-      <h3 className="text-lg font-bold text-foreground">About This Tool</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        {introText || description}
-      </p>
-      {benefits && benefits.length > 0 && (
-        <div className="space-y-3 text-left mt-6">
-          {benefits.map((benefit, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/20">
-              <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold">{i + 1}</span>
-              </div>
-              <div>
-                <div className="font-medium text-sm">{benefit.title}</div>
-                <div className="text-xs text-muted-foreground">{benefit.description}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    notConfiguredBanner
   );
 
   const hasAnyValue = Object.values(values).some((v) => v > 0);
 
-  const results = hasFields ? (
+  const results = widgetReady ? (
     <div className="space-y-6 text-center">
-      {resultFields.length > 0 && hasAnyValue ? (
+      {hasAnyValue && computedResults ? (
         <>
           <div>
             <div className="text-sm font-bold uppercase tracking-wider opacity-80 mb-1">
               {resultFields[0]?.label || "Estimated Result"}
             </div>
             <div className="text-5xl md:text-6xl font-display font-black tracking-tight">
-              {computedResults[resultFields[0]?.key] || "$0"}
+              {computedResults[resultFields[0]?.key]?.value || "—"}
             </div>
             {resultFields[0]?.helpText && (
               <p className="text-xs opacity-70 mt-2">{resultFields[0].helpText}</p>
@@ -154,7 +185,7 @@ export function GenericCalculator({
               {resultFields.slice(1).map((rf) => (
                 <div key={rf.key} className="bg-white/10 rounded-lg p-3">
                   <div className="text-xs opacity-70 mb-1">{rf.label}</div>
-                  <div className="font-bold text-xl">{computedResults[rf.key] || "—"}</div>
+                  <div className="font-bold text-xl">{computedResults[rf.key]?.value || "—"}</div>
                 </div>
               ))}
             </div>
@@ -163,10 +194,10 @@ export function GenericCalculator({
       ) : (
         <div className="flex flex-col justify-center items-center text-center space-y-4 py-8">
           <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            {hasAnyValue ? "Results" : "Enter Values"}
+            Enter Values
           </div>
           <div className="text-2xl font-display font-bold text-foreground">
-            {hasAnyValue ? "See your estimate" : "Fill in the fields to calculate"}
+            Fill in the fields to calculate
           </div>
           <p className="text-sm text-muted-foreground max-w-[240px]">
             Enter your numbers on the left to get instant estimates.
@@ -186,18 +217,7 @@ export function GenericCalculator({
       </div>
     </div>
   ) : (
-    <div className="space-y-6 text-center">
-      <div className="bg-secondary/30 rounded-2xl p-8 flex flex-col justify-center items-center text-center space-y-4 border border-primary/10">
-        <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Get Started</div>
-        <div className="text-2xl font-display font-bold text-foreground">Ready to crunch the numbers?</div>
-        <p className="text-sm text-muted-foreground max-w-[240px]">
-          Sign up for Mr. Props to access the full interactive calculator with real-time market data.
-        </p>
-        <Button variant="default" className="w-full font-bold rounded-xl gap-2 h-12 shadow-lg shadow-primary/20 mt-4" asChild>
-          <a href="https://app.mrprops.io/register">Try It Free <ArrowRight className="h-4 w-4" /></a>
-        </Button>
-      </div>
-    </div>
+    notConfiguredBanner
   );
 
   return (
