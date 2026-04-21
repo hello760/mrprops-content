@@ -142,7 +142,12 @@ export function AlternativeView({ alternative, competitor }: { alternative: Dire
           </div>
         )}
 
-        {alternative.body?.length ? (
+        {/* FIX-ALT-BODY-GATE (2026-04-21): post-Sanity-removal, `alternative.body`
+            is always `[]` (populated by fetchAlternative* in content-pages.ts).
+            Prior gate `body?.length` always evaluated falsy, so bodyHtml never
+            rendered — live pages showed only hero + FAQ + CTA, hiding 3000-4000
+            words of real content. Gate on EITHER body array OR bodyHtml string. */}
+        {(alternative.body?.length || alternative.bodyHtml) ? (
           <div className="prose prose-lg dark:prose-invert max-w-4xl mb-16">
             <PortableTextContent blocks={alternative.body} html={alternative.bodyHtml} />
           </div>

@@ -79,9 +79,15 @@ export function GenericCalculator({
     return results;
   }, [values, resultFields]);
 
+  // FIX-CALC-INTRO-DUP (2026-04-21): CalculatorLayout already renders `description`
+  // as the hero subheadline (CalculatorLayout.tsx:86). For calculator pieces where
+  // normalizeToolRow sets both description = sd.introText AND introText = sd.introText
+  // (template-tools.ts:78,82), the same sentence rendered twice on the live page.
+  // Only render introText inside the inputs panel when it differs from description.
+  const showInputIntro = introText && introText.trim() !== (description || '').trim();
   const inputs = hasFields ? (
     <div className="space-y-6">
-      {introText && (
+      {showInputIntro && (
         <p className="text-muted-foreground text-sm leading-relaxed mb-4">{introText}</p>
       )}
       <div className="grid gap-6">
