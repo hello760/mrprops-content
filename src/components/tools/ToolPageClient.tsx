@@ -100,8 +100,46 @@ function ToolFAQSection({ faqs, toolName }: { faqs?: FAQItem[]; toolName: string
 
 /* ---------- Main Component ---------- */
 
+/**
+ * Derive a SHORT display name from a calculator/tool page title.
+ *
+ * Production pieces use a long SEO-optimized title (e.g.
+ * "Airbnb Profit Calculator: Optimize Your Rental Income Today") as both the
+ * H1 and as the interpolated `{toolName}` inside "How is {toolName} helpful?"
+ * and "How the {toolName} Works". That produces headings like
+ * "How is Airbnb Profit Calculator: Optimize Your Rental Income Today helpful?"
+ * which is unreadable and makes headings look spammy.
+ *
+ * Rules (in priority order):
+ *  1. If title contains " | " → take the left side (handles "X | Mr Props")
+ *  2. If title contains ": " → take the left side (handles "X: subhead")
+ *  3. If title starts with a canonical calculator name ("Airbnb Profit
+ *     Calculator", etc.), return that substring.
+ *  4. Otherwise, truncate at the first " — " or " – " dash.
+ *  5. Fallback to the full title.
+ *
+ * Kept in this file (not lib/) because the rule is display-only and specific
+ * to tool-page headings; body/SEO title/meta still use the full `page.title`.
+ */
+function deriveDisplayName(title: string): string {
+  if (!title) return title;
+  const pipeIdx = title.indexOf(' | ');
+  if (pipeIdx > 0) return title.slice(0, pipeIdx).trim();
+  const colonIdx = title.indexOf(': ');
+  if (colonIdx > 0) return title.slice(0, colonIdx).trim();
+  const emDashIdx = title.indexOf(' — ');
+  if (emDashIdx > 0) return title.slice(0, emDashIdx).trim();
+  const enDashIdx = title.indexOf(' – ');
+  if (enDashIdx > 0) return title.slice(0, enDashIdx).trim();
+  return title;
+}
+
 export function ToolPageClient({ page }: ToolPageClientProps) {
-  const toolName = page.title;
+  // 2026-04-21: use a derived display name for heading interpolation instead of
+  // the full SEO title. The H1 itself still uses the full page.title below in
+  // the individual calculator components; this variable only feeds into the
+  // "How is ___ helpful?" / "How the ___ Works" / FAQ heading templates.
+  const toolName = deriveDisplayName(page.title);
 
   // Per PDF spec: tool pages are NOT article pages.
   // Instead of SEOContentSkeleton (which renders blog sections like What Is It, Benefits,
@@ -138,16 +176,22 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
         <HowItWorksSection toolName={toolName} />
       )}
 
-      {/* CTA — from structured_data if available, else static fallback */}
+      {/* CTA — from structured_data if available, else static fallback.
+          2026-04-21: force explicit text-white on headline + body text + trust microcopy.
+          `text-primary-foreground` was resolving to a near-black color in this theme,
+          which is fine on a solid-primary button bg but unreadable on the gradient
+          `from-primary to-purple-600` wrapper (visual audit surfaced dark-on-purple H2).
+          The secondary button also gets a subtle white background so the outline style
+          is readable against the same gradient. */}
       {page.cta ? (
-        <div className="bg-gradient-to-br from-primary to-purple-600 text-primary-foreground rounded-2xl p-12 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">{page.cta.headline}</h2>
-          <p className="text-lg mb-8 opacity-90">{page.cta.sentence}</p>
+        <div className="bg-gradient-to-br from-primary to-purple-600 text-white rounded-2xl p-12 text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-white">{page.cta.headline}</h2>
+          <p className="text-lg mb-8 text-white/90">{page.cta.sentence}</p>
           <div className="flex justify-center gap-4 flex-wrap">
             <a href={page.cta.primaryButton?.href || "/register"} className="bg-white text-primary font-bold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors">{page.cta.primaryButton?.label || "Get Started Free"}</a>
-            <a href={page.cta.secondaryButton?.href || "/contact"} className="border-2 border-white/50 text-white font-bold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors">{page.cta.secondaryButton?.label || "Talk to Sales"}</a>
+            <a href={page.cta.secondaryButton?.href || "/contact"} className="border-2 border-white/80 bg-white/10 text-white font-bold px-8 py-3 rounded-lg hover:bg-white/20 transition-colors">{page.cta.secondaryButton?.label || "Talk to Sales"}</a>
           </div>
-          <p className="text-sm mt-4 opacity-70">{page.cta.trustMicrocopy || "No credit card required. Cancel anytime."}</p>
+          <p className="text-sm mt-4 text-white/80">{page.cta.trustMicrocopy || "No credit card required. Cancel anytime."}</p>
         </div>
       ) : (
         <ToolCTA />
@@ -161,7 +205,10 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
     title: page.title,
     description: page.description,
     category: categoryLabel(page.category),
-    toolName: page.title,
+    // Use the derived short name for breadcrumb + template-interpolated headings
+    // ("How is {toolName} helpful?", "How the {toolName} Works"). The H1 below
+    // still renders the full `title` so SEO signal is preserved on the page.
+    toolName,
     seoContent,
     calculatorUi: page.calculatorUi,
   };
