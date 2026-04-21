@@ -1,5 +1,6 @@
 "use client";
 
+import { AirbnbExpenseCalculator } from "@/components/tools/AirbnbExpenseCalculator";
 import { AirbnbProfitCalculator } from "@/components/tools/AirbnbProfitCalculator";
 import { BedroomRenoCalculator } from "@/components/tools/BedroomRenoCalculator";
 import { CleaningFeeEstimator } from "@/components/tools/CleaningFeeEstimator";
@@ -166,6 +167,9 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
   };
 
   switch (page.slug) {
+    case "airbnb-expense-calculator":
+    case "expense-calculator":
+      return <AirbnbExpenseCalculator {...sharedProps} />;
     case "airbnb-profit-calculator":
       return <AirbnbProfitCalculator {...sharedProps} />;
     case "cleaning-fee-calculator":
