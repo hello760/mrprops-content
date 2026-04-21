@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { CalculatorLayout } from "./CalculatorLayout";
 import type { CalculatorUiCopy } from "./calculatorCopy";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlertTriangle } from "lucide-react";
 import { PortableTextContent } from "@/components/content/PortableTextContent";
 import type { PortableTextBlock } from "@/lib/content-helpers";
-import { AlertTriangle } from "lucide-react";
 import { runFormula, validateFormula } from "@/lib/calculator-recipes";
 
 interface GenericCalculatorProps {
@@ -53,19 +53,63 @@ export function GenericCalculator({
   ) : null);
   const fields = calculatorUi?.fields || [];
   const resultFields = calculatorUi?.results || [];
-  // `benefits` and `hasFields` are no longer used in render paths — post
-  // Phase B4 the widget either renders (fields >= 2 + valid formula) or
-  // shows the "not configured" banner. The old `hasFields`-branching
-  // fallback is removed.
 
-  // Dynamic state for all input fields
+  // Heuristic unit inference from field key — used to pick slider vs input
+  // and to choose sensible defaults. Key-based because LLM-generated fields
+  // carry only {key,label,helpText}; `unit` lives on the recipe schema but
+  // isn't replicated on the piece's field list today.
+  const inferUnit = (key: string): 'percent' | 'nights' | 'count' | 'dollar' => {
+    const k = key.toLowerCase();
+    if (k.endsWith('pct') || k.includes('percent') || k.includes('rate') || k.includes('occupancy')) return 'percent';
+    if (k.includes('night')) return 'nights';
+    if (k.includes('count') || k.includes('turnover') || k.includes('booked') || k.includes('guests') || k.includes('number')) return 'count';
+    return 'dollar';
+  };
+
+  const defaultFor = (key: string): number => {
+    const u = inferUnit(key);
+    if (u === 'percent') return 10;
+    if (u === 'nights') return 20;
+    if (u === 'count') return 5;
+    // Dollar defaults: sensible STR numbers
+    const k = key.toLowerCase();
+    if (k.includes('revenue')) return 5000;
+    if (k.includes('investment') || k.includes('property') || k.includes('value')) return 300000;
+    if (k.includes('rent')) return 2000;
+    if (k.includes('noi') || k.includes('profit')) return 3000;
+    if (k.includes('fixed')) return 1800;
+    if (k.includes('opex') || k.includes('operating') || k.includes('expense') || k.includes('cost')) return 800;
+    return 1000;
+  };
+
+  // Initialize with sensible defaults so the widget shows real numbers
+  // on first render (not $0 / empty state). Update helper bumps a value
+  // and triggers recomputation via useMemo.
   const [values, setValues] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     for (const field of fields) {
-      initial[field.key] = 0;
+      initial[field.key] = defaultFor(field.key);
     }
     return initial;
   });
+
+  // When fields change (e.g. user saves new structured_data in Editor and
+  // the page reloads with different keys), seed missing keys with defaults
+  // so we don't leave the widget in a stale state.
+  useEffect(() => {
+    setValues((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const f of fields) {
+        if (!(f.key in next)) {
+          next[f.key] = defaultFor(f.key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields.length, fields.map((f) => f.key).join(',')]);
 
   const updateValue = (key: string, val: number) => {
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -136,72 +180,97 @@ export function GenericCalculator({
     </div>
   );
 
+  // Polished input renderer — sliders for % fields, proper $/# prefixes,
+  // matches the hand-coded AirbnbProfitCalculator style so GenericCalculator
+  // pieces don't look visually downgraded next to hand-coded ones.
+  const renderField = (field: typeof fields[number]) => {
+    const unit = inferUnit(field.key);
+    const val = values[field.key] ?? defaultFor(field.key);
+    if (unit === 'percent') {
+      return (
+        <div key={field.key} className="space-y-3">
+          <div className="flex justify-between items-center">
+            <Label className="text-base font-bold">{field.label}</Label>
+            <span className="text-2xl font-display font-bold text-primary">{val}%</span>
+          </div>
+          {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+          <Slider
+            value={[val]}
+            onValueChange={(v) => updateValue(field.key, v[0])}
+            min={0}
+            max={100}
+            step={0.5}
+            className="py-2"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>0%</span><span>100%</span>
+          </div>
+        </div>
+      );
+    }
+    const prefix = unit === 'dollar' ? '$' : '';
+    const suffix = unit === 'nights' ? ' nights' : unit === 'count' ? '' : '';
+    return (
+      <div key={field.key} className="space-y-2">
+        <Label className="text-base font-bold">{field.label}</Label>
+        {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+        <div className="relative">
+          {prefix && (
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg font-medium pointer-events-none">{prefix}</span>
+          )}
+          <Input
+            type="number"
+            value={val}
+            onChange={(e) => updateValue(field.key, Number(e.target.value) || 0)}
+            className={`h-12 text-lg ${prefix ? 'pl-8' : ''}`}
+            min={0}
+          />
+          {suffix && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">{suffix}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const inputs = widgetReady ? (
     <div className="space-y-6">
       {showInputIntro && (
         <p className="text-muted-foreground text-sm leading-relaxed mb-4">{introText}</p>
       )}
-      <div className="grid gap-6">
-        {fields.map((field) => (
-          <div key={field.key} className="space-y-2">
-            <Label className="text-base font-bold">{field.label}</Label>
-            {field.helpText && (
-              <p className="text-xs text-muted-foreground">{field.helpText}</p>
-            )}
-            <Input
-              type="number"
-              value={values[field.key] || ""}
-              onChange={(e) => updateValue(field.key, Number(e.target.value))}
-              placeholder={`Enter ${field.label.toLowerCase()}`}
-              className="h-12 text-lg"
-            />
-          </div>
-        ))}
-      </div>
+      {fields.map(renderField)}
     </div>
   ) : (
     notConfiguredBanner
   );
 
-  const hasAnyValue = Object.values(values).some((v) => v > 0);
+  // Results panel — always computes live, never an empty "Enter values"
+  // placeholder. The widget ships with sensible defaults so visitors see a
+  // real example output on page load.
+  const firstResult = resultFields[0];
+  const firstComputed = computedResults && firstResult ? computedResults[firstResult.key] : null;
 
   const results = widgetReady ? (
     <div className="space-y-6 text-center">
-      {hasAnyValue && computedResults ? (
-        <>
-          <div>
-            <div className="text-sm font-bold uppercase tracking-wider opacity-80 mb-1">
-              {resultFields[0]?.label || "Estimated Result"}
+      <div>
+        <div className="text-sm font-bold uppercase tracking-wider opacity-80 mb-1">
+          {firstResult?.label || "Estimated Result"}
+        </div>
+        <div className="text-5xl md:text-6xl font-display font-black tracking-tight">
+          {firstComputed?.value ?? "—"}
+        </div>
+        {firstResult?.helpText && (
+          <p className="text-xs opacity-70 mt-2">{firstResult.helpText}</p>
+        )}
+      </div>
+      {resultFields.length > 1 && (
+        <div className={`grid gap-4 pt-2 ${resultFields.length > 2 ? "md:grid-cols-3" : "grid-cols-2"}`}>
+          {resultFields.slice(1).map((rf) => (
+            <div key={rf.key} className="bg-white/10 rounded-lg p-3">
+              <div className="text-xs opacity-70 mb-1">{rf.label}</div>
+              <div className="font-bold text-xl">{(computedResults && computedResults[rf.key]?.value) || "—"}</div>
             </div>
-            <div className="text-5xl md:text-6xl font-display font-black tracking-tight">
-              {computedResults[resultFields[0]?.key]?.value || "—"}
-            </div>
-            {resultFields[0]?.helpText && (
-              <p className="text-xs opacity-70 mt-2">{resultFields[0].helpText}</p>
-            )}
-          </div>
-          {resultFields.length > 1 && (
-            <div className={`grid gap-4 pt-2 ${resultFields.length > 2 ? "md:grid-cols-3" : "grid-cols-2"}`}>
-              {resultFields.slice(1).map((rf) => (
-                <div key={rf.key} className="bg-white/10 rounded-lg p-3">
-                  <div className="text-xs opacity-70 mb-1">{rf.label}</div>
-                  <div className="font-bold text-xl">{computedResults[rf.key]?.value || "—"}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex flex-col justify-center items-center text-center space-y-4 py-8">
-          <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Enter Values
-          </div>
-          <div className="text-2xl font-display font-bold text-foreground">
-            Fill in the fields to calculate
-          </div>
-          <p className="text-sm text-muted-foreground max-w-[240px]">
-            Enter your numbers on the left to get instant estimates.
-          </p>
+          ))}
         </div>
       )}
       <div className="pt-4">

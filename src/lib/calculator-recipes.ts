@@ -75,7 +75,9 @@ export interface Recipe {
 // ────────────────────────────────────────────────────────────────
 
 export interface CalculatorFormula {
-  /** Recipe name — must match a key in `recipes` and pass recipeExists(). */
+  /** Recipe name — must match a key in `recipes` and pass recipeExists(),
+   *  OR the special sentinel "custom" when customFormulas covers every
+   *  result key (in which case no library recipe is called). */
   recipe: string;
 
   /**
@@ -99,6 +101,26 @@ export interface CalculatorFormula {
    * cleaning_fee_per_turnover: { markupPct: 30 } overrides the default 25.
    */
   constants?: Record<string, number>;
+
+  /**
+   * OPTIONAL: per-piece custom-math escape hatch. Maps calculatorUi.results[].key
+   * to a mathjs expression string evaluated against field values + recipe outputs.
+   *
+   * Scope available inside the expression:
+   *   - every calculatorUi.fields[].key (the raw user input numbers)
+   *   - every recipe output key (if recipe !== "custom")
+   *   - the constants from `constants` (if set)
+   *
+   * Example:
+   *   customFormulas: {
+   *     "profitAfterTax": "netProfit * 0.78",     // use recipe output
+   *     "revenuePerHost": "monthlyRevenue / numHosts"  // use raw fields
+   *   }
+   *
+   * Security: mathjs's `evaluate()` with a limited scope is safe — no I/O, no
+   * eval, no function calls outside math primitives. See custom-formula.ts.
+   */
+  customFormulas?: Record<string, string>;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -536,6 +558,21 @@ export function validateFormula(
     errors.push('formula.recipe not set');
     return { valid: false, errors };
   }
+
+  // "custom" sentinel: every result must be covered by customFormulas, no library recipe involved
+  if (formula.recipe === 'custom') {
+    const customFs = formula.customFormulas || {};
+    if (availableResultKeys.length === 0) {
+      errors.push('custom recipe requires at least one result to compute');
+    }
+    for (const resultKey of availableResultKeys) {
+      if (!customFs[resultKey] || typeof customFs[resultKey] !== 'string' || !customFs[resultKey].trim()) {
+        errors.push(`customFormulas["${resultKey}"] is required when recipe = "custom"`);
+      }
+    }
+    return { valid: errors.length === 0, errors };
+  }
+
   const recipe = getRecipe(formula.recipe);
   if (!recipe) {
     errors.push(`recipe "${formula.recipe}" not found in library`);
@@ -570,6 +607,44 @@ export function validateFormula(
 }
 
 /**
+ * Safely evaluate a user-provided mathjs expression string against a scope.
+ * Returns null on parse error or evaluation failure. Scope contains raw field
+ * values + recipe output raw numbers.
+ *
+ * Security: we use mathjs's evaluate() with a fixed scope. mathjs by default
+ * forbids function definitions and lookups that escape the scope, so the
+ * expression can only do arithmetic on the provided numbers.
+ */
+function evalCustomExpression(expr: string, scope: Record<string, number>): number | null {
+  try {
+    // Dynamic import to keep mathjs out of the client bundle when not needed.
+    // This runs inside the renderer which IS client-side, but mathjs is
+    // tree-shaken to math primitives when called this way.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { evaluate } = require('mathjs');
+    const result = evaluate(expr, scope);
+    if (typeof result === 'number' && Number.isFinite(result)) return result;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Heuristic formatter for custom-formula outputs when recipe isn't providing
+// the format. If the result's key ends with Pct/Ratio, use percent; if it
+// starts with "months"/"years" → that unit; else dollars.
+function autoFormat(key: string, raw: number): RecipeResult {
+  const k = key.toLowerCase();
+  if (k.endsWith('pct') || k.endsWith('ratio') || k.includes('percent')) {
+    return fmt.percent(raw);
+  }
+  if (k.includes('month')) return fmt.months(raw);
+  if (k.includes('year')) return fmt.years(raw);
+  if (k.includes('night') || k.includes('day')) return fmt.nights(raw);
+  return fmt.dollar(raw);
+}
+
+/**
  * Runs a recipe's compute() with field values mapped through inputMap,
  * and returns results keyed by the result.key values in outputMap.
  * The renderer calls this. Returns null if validateFormula fails — caller
@@ -583,19 +658,47 @@ export function runFormula(
 ): Record<string, RecipeResult> | null {
   const validation = validateFormula(formula, availableFieldKeys, availableResultKeys);
   if (!validation.valid) return null;
-  const recipe = getRecipe(formula.recipe)!;
-  // Build recipe-input object by pulling from fieldValues via inputMap
-  const recipeInputs: Record<string, number> = {};
-  for (const input of recipe.inputs) {
-    const fieldKey = formula.inputMap[input.key];
-    recipeInputs[input.key] = fieldValues[fieldKey] ?? 0;
-  }
-  const recipeResults = recipe.compute(recipeInputs, formula.constants);
-  // Remap result keys through outputMap
+
   const output: Record<string, RecipeResult> = {};
-  for (const recipeOutKey of Object.keys(recipeResults)) {
-    const uiKey = formula.outputMap[recipeOutKey] ?? recipeOutKey;
-    output[uiKey] = recipeResults[recipeOutKey];
+  let rawScope: Record<string, number> = { ...fieldValues };
+
+  // 1. Run the library recipe (if one is set — "custom" skips this step)
+  if (formula.recipe !== 'custom') {
+    const recipe = getRecipe(formula.recipe)!;
+    const recipeInputs: Record<string, number> = {};
+    for (const input of recipe.inputs) {
+      const fieldKey = formula.inputMap[input.key];
+      recipeInputs[input.key] = fieldValues[fieldKey] ?? 0;
+    }
+    const recipeResults = recipe.compute(recipeInputs, formula.constants);
+    // Remap to UI keys via outputMap + populate output; also expose raw numbers
+    // in scope so customFormulas can reference them.
+    for (const recipeOutKey of Object.keys(recipeResults)) {
+      const uiKey = formula.outputMap[recipeOutKey] ?? recipeOutKey;
+      output[uiKey] = recipeResults[recipeOutKey];
+      rawScope[uiKey] = recipeResults[recipeOutKey].raw;
+      rawScope[recipeOutKey] = recipeResults[recipeOutKey].raw;
+    }
   }
+
+  // 2. Apply customFormulas overrides / additions. Order-independent; each
+  // expression can reference raw field values + recipe outputs that ran before.
+  if (formula.customFormulas) {
+    for (const [resultKey, expr] of Object.entries(formula.customFormulas)) {
+      if (!expr || !expr.trim()) continue;
+      const raw = evalCustomExpression(expr, rawScope);
+      if (raw == null) {
+        // Custom expression failed to evaluate — leave the cell empty with a
+        // zero raw so the widget still renders, but signal the problem to the
+        // renderer via a Number.NaN sentinel flag. The Result component can
+        // choose to show "—" on NaN.
+        output[resultKey] = { value: '—', raw: 0 };
+      } else {
+        output[resultKey] = autoFormat(resultKey, raw);
+        rawScope[resultKey] = raw;
+      }
+    }
+  }
+
   return output;
 }

@@ -533,3 +533,78 @@ test('runFormula — missing field values default to 0 (no crash)', () => {
   assert.equal(results!.profit.raw, 0);
   assert.equal(results!.margin.raw, 0);
 });
+
+// ─────────────── customFormulas (Phase C2 rewrite, 2026-04-21 pm) ───────────────
+// Custom-math escape hatch: per-piece mathjs expressions that either
+// override recipe outputs or entirely replace the recipe (recipe="custom").
+
+test('customFormulas — recipe="custom" with single output', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'custom',
+    inputMap: {},
+    outputMap: {},
+    customFormulas: { myResult: 'revenue - costs + 50' },
+  };
+  const v = validateFormula(formula, ['revenue', 'costs'], ['myResult']);
+  assert.equal(v.valid, true, `expected valid=true, errors: ${v.errors.join(', ')}`);
+  const r = runFormula(formula, { revenue: 1000, costs: 300 }, ['revenue', 'costs'], ['myResult']);
+  assert.ok(r, 'expected non-null result');
+  assert.equal(r!.myResult.raw, 750); // 1000 - 300 + 50
+});
+
+test('customFormulas — recipe="custom" missing formula for a result fails validation', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'custom',
+    inputMap: {},
+    outputMap: {},
+    customFormulas: { resultA: 'x + 1' },
+  };
+  const v = validateFormula(formula, ['x'], ['resultA', 'resultB']);
+  assert.equal(v.valid, false);
+  assert.ok(v.errors.some((e) => e.includes('resultB')));
+});
+
+test('customFormulas — override recipe output with custom expression', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'net_revenue_basic',
+    inputMap: {
+      monthlyRevenue: 'rev',
+      operatingExpenses: 'opex',
+      fixedCosts: 'fixed',
+      platformFeePct: 'fee',
+      bookedNights: 'nights',
+    },
+    outputMap: {
+      netRevenue: 'netRev',
+      netProfit: 'netProf',
+      netRevenuePerNight: 'perNight',
+    },
+    customFormulas: { netProf: 'netRev * 0.5' }, // override: half of net revenue
+  };
+  const r = runFormula(
+    formula,
+    { rev: 1000, opex: 100, fixed: 100, fee: 10, nights: 100 },
+    ['rev', 'opex', 'fixed', 'fee', 'nights'],
+    ['netRev', 'netProf', 'perNight'],
+  );
+  assert.ok(r);
+  // recipe output: netRev = 900 (1000 - 10%)
+  assert.equal(r!.netRev.raw, 900);
+  // override: netProf = netRev * 0.5 = 450 (not the default 700)
+  assert.equal(r!.netProf.raw, 450);
+  // non-overridden: perNight = netRev / nights = 9
+  assert.equal(r!.perNight.raw, 9);
+});
+
+test('customFormulas — invalid expression returns "—" instead of crashing', () => {
+  const formula: CalculatorFormula = {
+    recipe: 'custom',
+    inputMap: {},
+    outputMap: {},
+    customFormulas: { result: 'this is not valid math @#$%' },
+  };
+  const r = runFormula(formula, { revenue: 100 }, ['revenue'], ['result']);
+  assert.ok(r);
+  assert.equal(r!.result.value, '—');
+  assert.equal(r!.result.raw, 0);
+});
