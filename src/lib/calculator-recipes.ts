@@ -57,6 +57,14 @@ export interface RecipeResult {
 export interface Recipe {
   name: string;
   description: string; // one line for LLM enum + Editor dropdown
+  /** Human-friendly name shown in the Editor's "Calculator Options" dropdown.
+   *  e.g. "Net Revenue & Profit" (not "net_revenue_basic"). */
+  displayName: string;
+  /** Category group shown as <optgroup> label in the dropdown.
+   *  One of: "Revenue & Profit", "Occupancy & Pricing", "Investment Returns", "Costs". */
+  category: 'Revenue & Profit' | 'Occupancy & Pricing' | 'Investment Returns' | 'Costs';
+  /** One-line explainer shown below the dropdown when the option is selected. */
+  shortDescription: string;
   inputs: RecipeFieldSpec[];
   outputs: RecipeResultSpec[];
   defaultConstants: Record<string, number>;
@@ -168,6 +176,9 @@ const nonNeg = (n: number): number => (Number.isFinite(n) && n > 0 ? n : 0);
 
 const net_revenue_basic: Recipe = {
   name: 'net_revenue_basic',
+  displayName: 'Net Revenue & Profit',
+  category: 'Revenue & Profit',
+  shortDescription: 'After platform fees, operating expenses, and fixed costs — plus per-night breakdown.',
   description:
     'Net revenue + net profit for a short-term rental, after platform fees, operating expenses, and fixed costs. Use for airbnb-expense-calculator and similar "track hosting costs" tools.',
   inputs: [
@@ -198,6 +209,9 @@ const net_revenue_basic: Recipe = {
 
 const profit_margin: Recipe = {
   name: 'profit_margin',
+  displayName: 'Profit Margin',
+  category: 'Revenue & Profit',
+  shortDescription: 'Revenue minus total costs — shows gross profit + margin %.',
   description:
     'Gross profit and profit margin percentage from revenue and total costs. Use for any "what is my margin" calculator.',
   inputs: [
@@ -222,6 +236,9 @@ const profit_margin: Recipe = {
 
 const occupancy_rate: Recipe = {
   name: 'occupancy_rate',
+  displayName: 'Occupancy Rate',
+  category: 'Occupancy & Pricing',
+  shortDescription: 'Percent of nights booked vs. nights available, plus vacant-nights count.',
   description:
     'Occupancy rate percent + vacant nights, given nights booked and total nights available in the period.',
   inputs: [
@@ -245,6 +262,9 @@ const occupancy_rate: Recipe = {
 
 const revpar: Recipe = {
   name: 'revpar',
+  displayName: 'RevPAR (Revenue Per Available Night)',
+  category: 'Occupancy & Pricing',
+  shortDescription: 'Revenue per available rental night — ADR × occupancy.',
   description:
     'RevPAR — revenue per available rental night, from ADR and occupancy percent.',
   inputs: [
@@ -270,6 +290,9 @@ const revpar: Recipe = {
 
 const adr_recipe: Recipe = {
   name: 'adr',
+  displayName: 'ADR (Average Daily Rate)',
+  category: 'Occupancy & Pricing',
+  shortDescription: 'Total booking revenue divided by nights booked.',
   description:
     'ADR — average daily rate, from total booking revenue divided by nights booked.',
   inputs: [
@@ -285,6 +308,9 @@ const adr_recipe: Recipe = {
 
 const break_even_months: Recipe = {
   name: 'break_even_months',
+  displayName: 'Break-Even Timeline',
+  category: 'Investment Returns',
+  shortDescription: 'How many months until an investment pays for itself at a given monthly profit.',
   description:
     'How many months until an investment pays for itself given a monthly profit.',
   inputs: [
@@ -307,6 +333,9 @@ const break_even_months: Recipe = {
 
 const roi_annual: Recipe = {
   name: 'roi_annual',
+  displayName: 'Annual ROI',
+  category: 'Investment Returns',
+  shortDescription: 'Return on investment percent + payback years from annual profit and total investment.',
   description:
     'Annual ROI percent + payback years, given annual profit and total investment.',
   inputs: [
@@ -329,6 +358,9 @@ const roi_annual: Recipe = {
 
 const cap_rate: Recipe = {
   name: 'cap_rate',
+  displayName: 'Cap Rate',
+  category: 'Investment Returns',
+  shortDescription: 'Capitalization rate — annual NOI divided by property value.',
   description:
     'Capitalization rate — annual net operating income divided by property value.',
   inputs: [
@@ -344,6 +376,9 @@ const cap_rate: Recipe = {
 
 const cash_on_cash: Recipe = {
   name: 'cash_on_cash',
+  displayName: 'Cash-on-Cash Return',
+  category: 'Investment Returns',
+  shortDescription: 'Annual cash flow divided by cash invested — measures real cash yield.',
   description:
     'Cash-on-cash return — annual cash flow divided by cash invested.',
   inputs: [
@@ -362,6 +397,9 @@ const cash_on_cash: Recipe = {
 
 const noi_recipe: Recipe = {
   name: 'noi',
+  displayName: 'Net Operating Income (NOI)',
+  category: 'Revenue & Profit',
+  shortDescription: 'Annual revenue minus operating expenses, excluding debt service.',
   description:
     'Net Operating Income — annual revenue minus annual operating expenses (excluding debt service).',
   inputs: [
@@ -384,6 +422,9 @@ const noi_recipe: Recipe = {
 
 const gross_yield: Recipe = {
   name: 'gross_yield',
+  displayName: 'Gross Rental Yield',
+  category: 'Investment Returns',
+  shortDescription: 'Annual rent as a percentage of property value (ignores expenses).',
   description:
     'Gross rental yield — annual rent as a percentage of property value (ignores expenses).',
   inputs: [
@@ -406,6 +447,9 @@ const gross_yield: Recipe = {
 
 const net_yield: Recipe = {
   name: 'net_yield',
+  displayName: 'Net Rental Yield',
+  category: 'Investment Returns',
+  shortDescription: 'Annual rent minus expenses, as a percentage of property value.',
   description:
     'Net rental yield — annual rent minus annual expenses, as a percentage of property value.',
   inputs: [
@@ -429,6 +473,9 @@ const net_yield: Recipe = {
 
 const expense_ratio: Recipe = {
   name: 'expense_ratio',
+  displayName: 'Expense Ratio',
+  category: 'Costs',
+  shortDescription: 'Total expenses as a percent of total revenue (with profit ratio).',
   description:
     'Expense ratio — total expenses as a percentage of total revenue (with profit ratio as complement).',
   inputs: [
@@ -451,6 +498,9 @@ const expense_ratio: Recipe = {
 
 const gross_profit: Recipe = {
   name: 'gross_profit',
+  displayName: 'Gross Profit',
+  category: 'Revenue & Profit',
+  shortDescription: 'Revenue minus cost of goods sold — plus gross margin %.',
   description:
     'Gross profit and gross margin — revenue minus cost of goods sold (COGS).',
   inputs: [
@@ -475,6 +525,9 @@ const gross_profit: Recipe = {
 
 const cleaning_fee_per_turnover: Recipe = {
   name: 'cleaning_fee_per_turnover',
+  displayName: 'Cleaning Fee Per Turnover',
+  category: 'Costs',
+  shortDescription: 'True cost per turnover + recommended guest-facing fee with markup.',
   description:
     'True cost per turnover + recommended guest-facing cleaning fee, from labor + supplies + number of turnovers per period.',
   inputs: [
