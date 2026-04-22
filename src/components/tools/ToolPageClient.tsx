@@ -1,12 +1,18 @@
 "use client";
 
-import { AirbnbExpenseCalculator } from "@/components/tools/AirbnbExpenseCalculator";
-import { AirbnbProfitCalculator } from "@/components/tools/AirbnbProfitCalculator";
-import { BedroomRenoCalculator } from "@/components/tools/BedroomRenoCalculator";
-import { CleaningFeeEstimator } from "@/components/tools/CleaningFeeEstimator";
+// 2026-04-22: the slug-switch that routed 6 specific slugs to dedicated
+// hardcoded calculator components has been removed. Every calculator page
+// now renders through GenericCalculator, which reads the admin-configured
+// `calculatorUi` from structured_data and runs real math via the recipe
+// library. This fixes the drift where a published piece's admin config
+// (correct recipe + correct fields for the topic) was overridden by a
+// slug-matched hardcoded component that had the WRONG topic — e.g.
+// `tools/operations/cleaning-fee-calculator` has title "Vacation Rental
+// Cap Rate Calculator" + admin recipe `cap_rate` + fields
+// [annualNoi, propertyValue], but the legacy slug match routed it through
+// CleaningFeeEstimator which shows cleaning-fee inputs. Admin config is
+// now the single source of truth for every calculator.
 import { GenericCalculator } from "@/components/tools/GenericCalculator";
-import { KitchenCostCalculator } from "@/components/tools/KitchenCostCalculator";
-import { RenovationROICalculator } from "@/components/tools/RenovationROICalculator";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Settings2, BarChart3, Target } from "lucide-react";
 import type { ToolPageContent } from "@/lib/template-tools";
@@ -217,31 +223,13 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
     calculatorUi: page.calculatorUi,
   };
 
-  switch (page.slug) {
-    case "airbnb-expense-calculator":
-    case "expense-calculator":
-      return <AirbnbExpenseCalculator {...sharedProps} />;
-    case "airbnb-profit-calculator":
-      return <AirbnbProfitCalculator {...sharedProps} />;
-    case "cleaning-fee-calculator":
-      return <CleaningFeeEstimator {...sharedProps} />;
-    case "renovation-roi-calculator":
-    case "renovation-calculator":
-    case "roi-calculator":
-      return <RenovationROICalculator {...sharedProps} />;
-    case "kitchen-cost-calculator":
-      return <KitchenCostCalculator {...sharedProps} />;
-    case "bedroom-reno-calculator":
-      return <BedroomRenoCalculator {...sharedProps} />;
-    default:
-      return (
-        <GenericCalculator
-          {...sharedProps}
-          introText={page.introText}
-          benefits={page.benefits}
-          faqs={page.faqs}
-          body={page.body}
-        />
-      );
-  }
+  return (
+    <GenericCalculator
+      {...sharedProps}
+      introText={page.introText}
+      benefits={page.benefits}
+      faqs={page.faqs}
+      body={page.body}
+    />
+  );
 }
