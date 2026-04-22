@@ -17,28 +17,31 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FIX-T1 (PF-T1): email submit handler. If the piece has a real templateFile.url
-  // we trigger a download post-submit; otherwise fall back to the existing "sent to
-  // your email" confirmation UX (the content team is still producing the file for
-  // pieces where url is null).
+  // 2026-04-22: honest-UX fallback. The prior version showed
+  // `alert("Template sent to ${email}")` when templateFile.url was missing,
+  // which lied to the user — no file was ever produced or emailed. Published
+  // templates MUST have a real file attached (the publish gate now enforces
+  // this via normalizeFamily in market-me-good/src/lib/tool-config-validator.ts,
+  // and a backfill script populates any legacy rows). For the download to
+  // happen, templateFile.url must be present. If we ever render in a
+  // half-baked state anyway (legacy row that missed the backfill), the form
+  // below is disabled by `hasTemplateFile` and shows an honest "being
+  // prepared" state rather than fake-deliver.
+  const hasTemplateFile = Boolean(page.templateFile?.url);
   const handleDownload = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     const fileUrl = page.templateFile?.url;
+    if (!fileUrl) return; // form should be disabled; defensive no-op
+    setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      if (fileUrl) {
-        // Force download by creating a hidden anchor with download attribute.
-        const link = document.createElement("a");
-        link.href = fileUrl;
-        link.download = page.templateFile?.fileName || "";
-        link.rel = "noopener";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        alert(`Template sent to ${email}`);
-      }
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      link.download = page.templateFile?.fileName || "";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       setEmail("");
     }, 1200);
   };
@@ -124,11 +127,25 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
                   <h3 className="font-display font-bold text-2xl mb-2">{page.gateTitle}</h3>
                   <p className="text-muted-foreground mb-6">{page.gateDescription}</p>
 
-                  <form onSubmit={handleDownload} className="space-y-3">
-                    <Input type="email" placeholder={page.formPlaceholder} className="h-12 bg-background/50 border-primary/20 focus:border-primary text-lg" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                    <Button size="lg" className="w-full h-12 font-bold text-lg shadow-lg shadow-primary/20" disabled={isSubmitting}>{isSubmitting ? "Sending..." : page.formButtonLabel}</Button>
-                  </form>
-                  <p className="text-xs text-muted-foreground mt-4">{page.formDisclaimer}</p>
+                  {hasTemplateFile ? (
+                    <>
+                      <form onSubmit={handleDownload} className="space-y-3">
+                        <Input type="email" placeholder={page.formPlaceholder} className="h-12 bg-background/50 border-primary/20 focus:border-primary text-lg" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <Button size="lg" className="w-full h-12 font-bold text-lg shadow-lg shadow-primary/20" disabled={isSubmitting}>{isSubmitting ? "Sending..." : page.formButtonLabel}</Button>
+                      </form>
+                      <p className="text-xs text-muted-foreground mt-4">{page.formDisclaimer}</p>
+                    </>
+                  ) : (
+                    /* Honest-UX fallback — shown only for legacy rows where the
+                       publish gate didn't catch the missing file. The new
+                       backfill script + pre-publish gate (market-me-good
+                       src/lib/tool-config-validator.ts) means this branch
+                       should almost never render going forward. */
+                    <div className="space-y-3">
+                      <Button size="lg" disabled className="w-full h-12 font-bold text-lg opacity-60 cursor-not-allowed">Template is being prepared</Button>
+                      <p className="text-xs text-muted-foreground">This template is not yet available for download. Please check back shortly — our team is finalizing it.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
