@@ -28,22 +28,34 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
   // below is disabled by `hasTemplateFile` and shows an honest "being
   // prepared" state rather than fake-deliver.
   const hasTemplateFile = Boolean(page.templateFile?.url);
-  const handleDownload = (e: React.FormEvent) => {
+  const handleDownload = async (e: React.FormEvent) => {
     e.preventDefault();
     const fileUrl = page.templateFile?.url;
     if (!fileUrl) return; // form should be disabled; defensive no-op
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const link = document.createElement("a");
-      link.href = fileUrl;
-      link.download = page.templateFile?.fileName || "";
-      link.rel = "noopener";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setEmail("");
-    }, 1200);
+    // 2026-04-23: MVP lead capture. POST to /api/leads/template-download which
+    // stores (email, content_piece_id, source_url, ip, ua) and returns the same
+    // download URL we already have client-side. Capture happens even if the
+    // user closes the tab before download; we don't block the download on the
+    // API response — if it fails, the user still gets the file.
+    try {
+      await fetch("/api/leads/template-download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, content_piece_id: page.id, source_url: typeof window !== "undefined" ? window.location.href : undefined }),
+      });
+    } catch {
+      /* non-blocking — the download still happens below */
+    }
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.download = page.templateFile?.fileName || "";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setEmail("");
+    setIsSubmitting(false);
   };
 
   const categoryName = page.category.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
@@ -93,21 +105,11 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
           </div>
         </div>
 
-        {/* FIX-HERO-IMG (2026-04-20): hero image rendered above the preview card.
-            Sourced from structured_data.featuredImage via template-tools.ts normalizer.
-            Renders only when populated — pieces without images generated still look
-            clean because the preview card remains the primary visual. */}
-        {page.heroImage && (
-          <div className="max-w-4xl mx-auto mb-12 px-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={page.heroImage}
-              alt={page.heroImageAlt || page.title}
-              className="w-full h-auto rounded-2xl shadow-lg border border-border/50"
-              loading="eager"
-            />
-          </div>
-        )}
+        {/* 2026-04-23: full-bleed hero image block deleted from post page.
+            Hero remains on the /templates listing grid as a card thumbnail
+            (TemplatesIndexClient) — that's the intended placement. Keeping it
+            above the gate here pushed the CTA below the fold and killed
+            conversions. See .auto-memory/project_mrprops_hero_placement.md. */}
 
         <div className="grid lg:grid-cols-[1fr_350px] gap-12 items-start max-w-6xl mx-auto">
           <div className="space-y-12">
@@ -117,8 +119,16 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
                 <div className="text-gray-500 font-mono text-sm uppercase tracking-wider">{page.previewMeta}</div>
               </div>
 
-              <div className="font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-300 space-y-6">
-                <PortableTextContent blocks={previewBody} />
+              <div className="font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-300 space-y-6 prose prose-serif max-w-none prose-headings:font-serif prose-h2:text-2xl prose-h3:text-xl">
+                {/* 2026-04-23: sneak-peek preview. Prefer previewHtml (derived
+                    from bodyHtml in normalizeTemplateRow) so visitors see a
+                    blurred glimpse of the real template content behind the
+                    gate. Falls back to previewBody blocks if bodyHtml absent. */}
+                {page.previewHtml ? (
+                  <div dangerouslySetInnerHTML={{ __html: page.previewHtml }} />
+                ) : (
+                  <PortableTextContent blocks={previewBody} />
+                )}
               </div>
 
               <div className="absolute inset-0 top-0 bg-gradient-to-b from-transparent from-60% via-white/90 to-white dark:from-transparent dark:from-60% dark:via-card/95 dark:to-card z-10 flex items-end justify-center pb-20">

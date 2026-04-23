@@ -14,10 +14,35 @@ function getSBSync() {
   return _sbClient;
 }
 
+// Extract the first ~N words of body HTML, stripped of heading/hr tags, for the
+// gate's sneak-peek preview card. Gate overlay sits on top with a gradient
+// fade — user sees a blurred glimpse of what's inside. 2026-04-23.
+function deriveSneakPeekHtml(bodyHtml: string | undefined, wordTarget = 220): string {
+  if (!bodyHtml || typeof bodyHtml !== 'string') return '';
+  // Drop the first H1 (we already show the title above) and any trailing FAQ
+  // blocks. Keep the first few paragraphs / lists / H2-H3 context only.
+  let html = bodyHtml
+    .replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/i, '')
+    .replace(/<article\b[^>]*>|<\/article>/gi, '')
+    .trim();
+  // Walk tag boundaries, stop once we've accumulated ~wordTarget words.
+  let out = '';
+  let words = 0;
+  const re = /<[^>]+>|[^<]+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    out += m[0];
+    if (!m[0].startsWith('<')) words += m[0].split(/\s+/).filter(Boolean).length;
+    if (words >= wordTarget) break;
+  }
+  return out;
+}
+
 // Phase 5: shared normalizer used by both slug-based (production) and id-based (draft) fetchers.
 function normalizeTemplateRow(data: any, category: string, slug: string): TemplatePageContent {
   const sd = (data.structured_data || {}) as Record<string, any>;
   const fallback = getTemplateFallback(category, slug) || templateFallbacks[0];
+  const bodyHtml = ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined;
   return {
     ...fallback,
     id: data.id,
@@ -48,7 +73,10 @@ function normalizeTemplateRow(data: any, category: string, slug: string): Templa
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
     body: [],
-    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+    bodyHtml,
+    // 2026-04-23: sneak-peek HTML for the gate preview card. Derived from
+    // bodyHtml; empty string means fallback previewBody blocks are used.
+    previewHtml: deriveSneakPeekHtml(bodyHtml),
     // FIX-010 + FIX-T1: new structured fields. All optional; UI tolerates absence.
     bestPractices: Array.isArray(sd.bestPractices) ? sd.bestPractices : undefined,
     commonMistakes: (sd.commonMistakes && Array.isArray(sd.commonMistakes.dontList) && Array.isArray(sd.commonMistakes.doList))
@@ -264,6 +292,9 @@ export interface TemplatePageContent {
   seoDescription: string;
   body?: PortableTextBlock[];
   bodyHtml?: string;
+  // 2026-04-23: derived sneak-peek HTML (first ~220 words of bodyHtml, H1 stripped).
+  // Rendered inside the gate preview card; the gate overlay blurs the bottom of it.
+  previewHtml?: string;
   // FIX-010 (PF-10): PDF template §6-9 structured fields.
   bestPractices?: string[];
   commonMistakes?: { dontList: string[]; doList: string[] };
@@ -614,42 +645,14 @@ export async function fetchTemplatePage(category: string, slug: string) {
         .single();
 
       if (!error && data?.structured_data) {
-        const sd = data.structured_data as Record<string, any>;
-        const fallback = getTemplateFallback(category, slug) || templateFallbacks[0];
-        return {
-          ...fallback,
-          id: data.id,
-          category: category,
-          slug: slug,
-          title: sd.hero?.previewTitle || data.title || fallback.title,
-          badge: sd.hero?.badge || fallback.badge,
-          description: sd.gate?.description || fallback.description,
-          trustItems: sd.trustItems || fallback.trustItems,
-          previewTitle: sd.hero?.previewTitle || fallback.previewTitle,
-          previewMeta: sd.hero?.previewMeta || fallback.previewMeta,
-          previewBody: [],
-          gateTitle: sd.gate?.title || fallback.gateTitle,
-          gateDescription: sd.gate?.description || fallback.gateDescription,
-          formPlaceholder: sd.gate?.formPlaceholder || fallback.formPlaceholder,
-          formButtonLabel: sd.gate?.buttonLabel || fallback.formButtonLabel,
-          formDisclaimer: sd.gate?.disclaimer || fallback.formDisclaimer,
-          whatIsTitle: sd.whatIsTitle || fallback.whatIsTitle,
-          whatIsText: sd.whatIsText || fallback.whatIsText,
-          useCasesTitle: sd.useCasesTitle || fallback.useCasesTitle,
-          useCases: sd.useCases || fallback.useCases,
-          customizeTitle: sd.customizeTitle || fallback.customizeTitle,
-          customizeText: sd.customizeText || fallback.customizeText,
-          faqTitle: 'Frequently Asked Questions',
-          faqs: sd.faqs || fallback.faqs,
-          resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
-          resources: (sd.resources || fallback.resources || []).filter((r: any) => r && r.href),
-          seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
-          seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
-          body: [],
-          bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
-          heroImage: sd.featuredImage || sd.hero?.image || null,
-          heroImageAlt: sd.hero?.headline || sd.hero?.previewTitle || data.title || null,
-        } as TemplatePageContent;
+        // 2026-04-23: reuse the shared normalizer. The prior inline mapping
+        // silently dropped templateFile + bestPractices + commonMistakes +
+        // briefClosing (all present on the by-id path at normalizeTemplateRow).
+        // That's why the live gate never flipped off "Template is being prepared"
+        // even when the DB row had a real Storage URL — the URL was never plumbed
+        // through to the client. Refactoring to the shared normalizer fixes
+        // everything in one line.
+        return normalizeTemplateRow(data, category, slug);
       }
     }
   } catch (sbErr) {
