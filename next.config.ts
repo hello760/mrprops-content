@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/renovation-roi-calculator",
-        destination: "/tools/booking/renovation-roi-calculator",
+        destination: "/tools/renovations/renovation-calculator",
         permanent: true,
       },
       {
@@ -32,13 +32,17 @@ const nextConfig: NextConfig = {
         destination: "/tools/booking/cleaning-fee-calculator",
         permanent: true,
       },
-      // Cannibalization cleanup 2026-04-19: new 207-topic batch superseded these 4 published URLs.
-      // Redirect to the winning new topic in each pair to preserve any inbound links / shares.
+      // 2026-04-29: LA-specific calc moved to its honest URL; old hijacked slug redirects.
       {
-        source: "/tools/booking/airbnb-profit-calculator",
-        destination: "/tools/airbnb/airbnb-revenue-calculator",
+        source: "/tools/booking/renovation-roi-calculator",
+        destination: "/tools/airbnb/los-angeles-home-renovation-calculator",
         permanent: true,
       },
+      // Cannibalization cleanup 2026-04-19: new 207-topic batch superseded these published URLs.
+      // 2026-04-29 partial revert: un-retired /tools/booking/airbnb-profit-calculator —
+      // the original Airbnb Profit Calculator (different inputs/intent than Revenue Calculator)
+      // is restored at its canonical URL via the static fallback in template-tools.ts.
+      // The other cannibalization redirects below are kept.
       {
         source: "/tools/cleaning/airbnb-profit-calculator",
         destination: "/tools/airbnb/airbnb-cleaning-fee-calculator",

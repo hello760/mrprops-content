@@ -19,7 +19,7 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
 
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, updated_at')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, updated_at, live_url')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('content_body', 'is', null)
@@ -38,6 +38,7 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
       return {
         id: r.id,
         slug: r.custom_slug,
+        liveUrl: r.live_url || undefined,
         title: sd.heroTitle || sd.title || r.title || startCaseSlug(r.custom_slug),
         excerpt: sd.seoDescription || r.meta_description || plainText.slice(0, 180) || '',
         body: [],
@@ -345,6 +346,7 @@ export interface ComparisonTableRowConfig {
 export interface DirectoryEntry {
   id: string;
   slug: string;
+  liveUrl?: string;
   title: string;
   excerpt: string;
   body: PortableTextBlock[];
