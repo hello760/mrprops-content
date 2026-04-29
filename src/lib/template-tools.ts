@@ -417,8 +417,34 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "How do I estimate occupancy?", answer: "Market average is typically around 65%, but prime locations can reach 80%+. Use a conservative 60% for safe planning." },
     ],
     calculatorUi: {
-      fields: [createField("adr", "Average Daily Rate (ADR)"), createField("occupancy", "Occupancy Rate"), createField("rent", "Monthly Rent / Mortgage ($)"), createField("cleaning", "Cleaning Fee per Stay ($)"), createField("management", "Management Fee (%)")],
-      results: [createResult("monthlyProfit", "Estimated Monthly Profit"), createResult("annualProfit", "Annual Profit"), createResult("profitMargin", "Profit Margin")],
+      fields: [
+        createField("monthlyRevenue", "Monthly Revenue", "Total gross rental income collected from guests in a month before any deductions."),
+        createField("platformFeePct", "Platform Fee (%)", "Airbnb or other channel service fee percentage deducted from your gross revenue."),
+        createField("operatingExpenses", "Operating Expenses", "Variable monthly costs such as cleaning fees, utilities, and maintenance."),
+        createField("fixedCosts", "Fixed Costs", "Fixed monthly costs such as mortgage, insurance, and property management fees."),
+        createField("bookedNights", "Booked Nights", "Number of nights booked by guests in the month."),
+      ],
+      results: [
+        createResult("netRevenue", "Net Revenue", "Gross revenue minus the platform fee — the amount that actually lands in your account."),
+        createResult("netProfit", "Net Profit", "Net revenue minus all operating + fixed costs."),
+        createResult("netRevenuePerNight", "Net Revenue per Booked Night"),
+      ],
+      formula: {
+        recipe: "net_revenue_basic",
+        inputMap: {
+          monthlyRevenue: "monthlyRevenue",
+          platformFeePct: "platformFeePct",
+          operatingExpenses: "operatingExpenses",
+          fixedCosts: "fixedCosts",
+          bookedNights: "bookedNights",
+        },
+        outputMap: {
+          netRevenue: "netRevenue",
+          netProfit: "netProfit",
+          netRevenuePerNight: "netRevenuePerNight",
+        },
+        constants: {},
+      },
       layout: {
         reportButtonLabel: "Email me this detailed report",
         primaryCtaLabel: "Start Free Trial",
@@ -455,8 +481,28 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "How often should I review my fee?", answer: "Review quarterly or whenever vendor rates, linen costs, or stay length patterns change." },
     ],
     calculatorUi: {
-      fields: [createField("cleanerRate", "Cleaner hourly rate ($)"), createField("supplies", "Supplies & linen per turn ($)"), createField("hours", "Cleaning hours"), createField("buffer", "Operator buffer", "Use a small buffer to cover coordination, consumables, and surprise resets.")],
-      results: [createResult("recommendedFee", "Recommended Guest Cleaning Fee"), createResult("baseTurnCost", "Base Turn Cost"), createResult("bufferAdded", "Buffer Added")],
+      fields: [
+        createField("cleaningLaborCost", "Total Cleaning Labor Cost", "What you pay your cleaner across the period — not per turnover."),
+        createField("suppliesCost", "Total Supplies Cost", "Linens, restocking, consumables across the period."),
+        createField("numTurnovers", "Number of Turnovers", "How many turnovers happen across the period above."),
+      ],
+      results: [
+        createResult("costPerTurnover", "Cost Per Turnover"),
+        createResult("recommendedFee", "Recommended Guest Cleaning Fee", "Cost-per-turnover with a 25% operator buffer baked in."),
+      ],
+      formula: {
+        recipe: "cleaning_fee_per_turnover",
+        inputMap: {
+          cleaningLaborCost: "cleaningLaborCost",
+          suppliesCost: "suppliesCost",
+          numTurnovers: "numTurnovers",
+        },
+        outputMap: {
+          costPerTurnover: "costPerTurnover",
+          recommendedFee: "recommendedFee",
+        },
+        constants: { markupPct: 25 },
+      },
       layout: {
         reportButtonLabel: "Email me this detailed report",
         primaryCtaLabel: "Start Free Trial",
@@ -493,8 +539,26 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "Should I include financing costs?", answer: "Yes, if you are borrowing for the renovation, include financing in your total project cost." },
     ],
     calculatorUi: {
-      fields: [createField("cost", "Total Renovation Cost ($)", "Include materials and labor."), createField("rateIncrease", "Expected Nightly Rate Increase", "How much more can you charge per night?")],
-      results: [createResult("monthsToBreakEven", "Months to Break Even"), createResult("roiFirstYear", "1-Year ROI"), createResult("annualRevenueIncrease", "Annual Revenue Increase")],
+      fields: [
+        createField("investment", "Total Renovation Investment", "Materials + labor for the renovation."),
+        createField("monthlyProfit", "Expected Monthly Profit Increase", "Extra net profit per month from the renovation (rate increase × occupancy, after fees)."),
+      ],
+      results: [
+        createResult("breakEvenMonths", "Months to Break Even"),
+        createResult("breakEvenYears", "Years to Break Even"),
+      ],
+      formula: {
+        recipe: "break_even_months",
+        inputMap: {
+          investment: "investment",
+          monthlyProfit: "monthlyProfit",
+        },
+        outputMap: {
+          breakEvenMonths: "breakEvenMonths",
+          breakEvenYears: "breakEvenYears",
+        },
+        constants: {},
+      },
       layout: {
         reportButtonLabel: "Email me this detailed report",
         primaryCtaLabel: "Start Free Trial",
@@ -531,8 +595,26 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "Which tier should I choose?", answer: "Mid-tier is typically right for most urban STRs. Luxury only makes sense where ADR supports it." },
     ],
     calculatorUi: {
-      fields: [createField("kitchenSize", "Kitchen Size (sq ft)"), createField("applianceTier", "Appliance Tier")],
-      results: [createResult("estimatedCost", "Estimated Cost", "Includes cabinetry, countertops, labor, and {applianceTier} appliances.")],
+      fields: [
+        createField("baseRate", "Base Cost per Sq Ft", "Mid-tier kitchens average $150/sq ft (cabinets + counters + labor)."),
+        createField("size", "Kitchen Size (sq ft)"),
+        createField("qualityMultiplier", "Quality Multiplier", "1.0 builder-grade · 1.5 mid-range · 2.5 high-end · 3.5 luxury."),
+      ],
+      results: [
+        createResult("estimatedCost", "Estimated Total Cost", "Includes cabinets, countertops, appliances, and labor."),
+      ],
+      formula: {
+        recipe: "project_cost_estimate",
+        inputMap: {
+          baseRate: "baseRate",
+          size: "size",
+          qualityMultiplier: "qualityMultiplier",
+        },
+        outputMap: {
+          estimatedCost: "estimatedCost",
+        },
+        constants: {},
+      },
       layout: {
         reportButtonLabel: "Email me this detailed report",
         primaryCtaLabel: "Start Free Trial",
@@ -569,8 +651,26 @@ export const toolFallbacks: ToolPageContent[] = [
       { question: "What finish level is typical for STRs?", answer: "Standard to premium usually performs best: durable, clean, and visually elevated without overbuilding." },
     ],
     calculatorUi: {
-      fields: [createField("roomSize", "Room Size (sq ft)"), createField("materialQuality", "Finish Quality", "Economy to Luxury")],
-      results: [createResult("estimatedCost", "Estimated Cost", "Includes flooring, paint, furnishings, and labor based on national averages.")],
+      fields: [
+        createField("baseRate", "Base Cost per Sq Ft", "Bedroom refresh runs $20-60/sq ft for paint + flooring + furnishings."),
+        createField("size", "Bedroom Size (sq ft)"),
+        createField("qualityMultiplier", "Quality Multiplier", "1.0 budget · 1.5 mid-range · 2.5 premium STR-grade."),
+      ],
+      results: [
+        createResult("estimatedCost", "Estimated Total Cost", "Flooring, paint, mattress, lighting, basic furnishings, labor."),
+      ],
+      formula: {
+        recipe: "project_cost_estimate",
+        inputMap: {
+          baseRate: "baseRate",
+          size: "size",
+          qualityMultiplier: "qualityMultiplier",
+        },
+        outputMap: {
+          estimatedCost: "estimatedCost",
+        },
+        constants: {},
+      },
       layout: {
         reportButtonLabel: "Email me this detailed report",
         primaryCtaLabel: "Start Free Trial",
@@ -609,15 +709,39 @@ export const toolFallbacks: ToolPageContent[] = [
     ],
     calculatorUi: {
       fields: [
-        createField("propertyValue", "Property Value ($)"),
-        createField("monthlyRent", "Monthly Rental Income ($)"),
-        createField("annualExpenses", "Annual Expenses ($)", "Insurance, maintenance, management, taxes, etc."),
+        createField("monthlyRent", "Monthly Rent", "Gross rent collected per month."),
+        createField("propertyValue", "Property Value", "Purchase price (or current market value if you already own)."),
       ],
       results: [
-        createResult("grossYield", "Gross Yield"),
-        createResult("netYield", "Net Yield"),
-        createResult("annualIncome", "Annual Rental Income"),
+        createResult("grossYieldPct", "Gross Rental Yield"),
+        createResult("annualRent", "Annual Rent"),
       ],
+      formula: {
+        recipe: "gross_yield",
+        inputMap: {
+          monthlyRent: "monthlyRent",
+          propertyValue: "propertyValue",
+        },
+        outputMap: {
+          grossYieldPct: "grossYieldPct",
+          annualRent: "annualRent",
+        },
+        constants: {},
+      },
+      layout: {
+        reportButtonLabel: "Email me this detailed report",
+        primaryCtaLabel: "Start Free Trial",
+        primaryCtaHref: "https://app.mrprops.io/register",
+        trustBadgeText: "Based on 2026 Market Data",
+        reportModalTitle: "Get Your {title} Report",
+        helpfulHeading: "How is {toolName} helpful?",
+        helpfulText: "Most hosts guess their numbers. Pros use data. This tool helps you make unemotional, data-driven decisions about your property portfolio, ensuring every dollar you invest yields a measurable return.",
+        benefitStripItems: [
+          { icon: "accuracy", title: "Accuracy", description: "Based on real-time market data from 50+ cities." },
+          { icon: "speed", title: "Speed", description: "Get answers in seconds, not hours of spreadsheet work." },
+          { icon: "confidence", title: "Confidence", description: "Bank-grade formulas used by institutional investors." },
+        ],
+      },
     },
   },
 ];

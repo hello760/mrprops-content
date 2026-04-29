@@ -551,6 +551,30 @@ const cleaning_fee_per_turnover: Recipe = {
   },
 };
 
+const project_cost_estimate: Recipe = {
+  name: 'project_cost_estimate',
+  displayName: 'Project Cost Estimate',
+  category: 'Costs',
+  shortDescription: 'Estimate total renovation/build cost from base rate, scope size, and quality multiplier.',
+  description:
+    'Quick project cost estimate as: baseRate × size × qualityMultiplier. Useful for kitchen, bedroom, and similar room-by-room renovation scoping when you do not have a full bid yet.',
+  inputs: [
+    { key: 'baseRate', label: 'Base Cost per Sq Ft', unit: 'dollar', defaultValue: 50, min: 0 },
+    { key: 'size', label: 'Project Size (sq ft)', unit: 'number', defaultValue: 200, min: 0 },
+    { key: 'qualityMultiplier', label: 'Quality Tier Multiplier', unit: 'number', defaultValue: 1.5, min: 0.5, max: 5, step: 0.1 },
+  ],
+  outputs: [
+    { key: 'estimatedCost', label: 'Estimated Total Cost', format: 'dollar' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const total = nonNeg(i.baseRate) * nonNeg(i.size) * nonNeg(i.qualityMultiplier);
+    return {
+      estimatedCost: fmt.dollar(Math.round(total)),
+    };
+  },
+};
+
 // ────────────────────────────────────────────────────────────────
 // Registry + lookup API
 // ────────────────────────────────────────────────────────────────
@@ -571,6 +595,7 @@ export const recipes: Record<string, Recipe> = {
   expense_ratio,
   gross_profit,
   cleaning_fee_per_turnover,
+  project_cost_estimate,
 };
 
 export function getRecipe(name: string): Recipe | null {
