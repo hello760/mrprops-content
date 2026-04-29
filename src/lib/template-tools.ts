@@ -475,8 +475,8 @@ export const toolFallbacks: ToolPageContent[] = [
   },
   {
     id: "tool-renovation-roi-calculator",
-    category: "booking",
-    slug: "renovation-roi-calculator",
+    category: "renovations",
+    slug: "renovation-calculator",
     title: "Renovation ROI Calculator",
     description: "Should you upgrade that kitchen? Find out if the investment pays off.",
     seoTitle: "Renovation ROI Calculator for Airbnb | Mr. Props",
@@ -726,7 +726,8 @@ export function getToolFallback(category?: string | null, slug?: string | null) 
 
 /* ── slug / category aliases for backward-compat with old SPA routes ── */
 const SLUG_ALIASES: Record<string, { category: string; slug: string }> = {
-  "renovation-calculator": { category: "renovations", slug: "renovation-roi-calculator" },
+  // renovation-roi-calculator (legacy slug) → renovation-calculator (canonical)
+  "renovation-roi-calculator": { category: "renovations", slug: "renovation-calculator" },
   "airbnb-profit-calculator-v2": { category: "booking", slug: "airbnb-profit-calculator" },
 };
 
