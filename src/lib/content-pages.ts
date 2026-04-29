@@ -19,7 +19,7 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
 
   const { data, error } = await sb
     .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, updated_at, live_url')
+    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at, updated_at')
     .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
     .eq('writing_status', 'published')
     .not('content_body', 'is', null)
@@ -38,7 +38,6 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
       return {
         id: r.id,
         slug: r.custom_slug,
-        liveUrl: r.live_url || undefined,
         title: sd.heroTitle || sd.title || r.title || startCaseSlug(r.custom_slug),
         excerpt: sd.seoDescription || r.meta_description || plainText.slice(0, 180) || '',
         body: [],
@@ -1027,12 +1026,38 @@ const toolFallbacks: DirectoryEntry[] = [
   },
   {
     id: "tool-cleaning-fee-calculator",
-    slug: "tools/operations/cleaning-fee-calculator",
+    slug: "tools/booking/cleaning-fee-calculator",
     title: "Cleaning Fee Calculator",
     excerpt: "Set a profitable cleaning fee without hurting conversion.",
     body: defaultBody("Balance labor, linen, and reset costs against guest conversion with a pricing model that protects margin."),
     seoTitle: "Cleaning Fee Calculator | Mr. Props",
     seoDescription: "Estimate the right guest-facing cleaning fee for your short-term rental.",
+    image: DEFAULT_IMAGE,
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+  },
+  {
+    id: "tool-kitchen-cost-calculator",
+    slug: "tools/renovations/kitchen-cost-calculator",
+    title: "Kitchen Cost Calculator",
+    excerpt: "Full gut renovation estimates including cabinets and appliances.",
+    body: defaultBody("Estimate the cost of a full kitchen remodel for your rental property — cabinetry, countertops, appliances, and labor."),
+    seoTitle: "Kitchen Renovation Cost Calculator | Mr. Props",
+    seoDescription: "Estimate the cost of a full kitchen remodel for your rental property.",
+    image: DEFAULT_IMAGE,
+    updated: FALLBACK_DATE,
+    publishedAt: "2025-10-24",
+    updatedAt: "2025-10-24",
+  },
+  {
+    id: "tool-bedroom-reno-calculator",
+    slug: "tools/renovations/bedroom-reno-calculator",
+    title: "Bedroom Renovation Estimator",
+    excerpt: "Calculate flooring, paint, and furnishing costs based on square footage.",
+    body: defaultBody("Estimate the cost of upgrading bedrooms for your short-term rental — flooring, paint, mattresses, and furnishings."),
+    seoTitle: "Bedroom Renovation Cost Calculator | Mr. Props",
+    seoDescription: "Estimate the cost of upgrading bedrooms for your short-term rental.",
     image: DEFAULT_IMAGE,
     updated: FALLBACK_DATE,
     publishedAt: "2025-10-24",
