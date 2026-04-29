@@ -1,19 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight, Calculator, ChevronRight, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DirectoryEntry } from "@/lib/content-pages";
-
-const CATEGORIES = [
-  { id: "all", label: "All Tools" },
-  { id: "renovations", label: "Renovations" },
-  { id: "finance", label: "Finance" },
-  { id: "booking", label: "Booking" },
-];
 
 type ToolCard = DirectoryEntry & { href: string; category: string };
 
@@ -24,15 +17,30 @@ export function ToolsIndexClient({
   tools: ToolCard[];
   initialCategory?: string;
 }) {
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const activeCategory = initialCategory;
 
-  const filteredTools = useMemo(() => {
-    if (activeCategory === "all") return tools;
-    return tools.filter((t) => t.category === activeCategory);
-  }, [tools, activeCategory]);
+  const dynamicCategories = useMemo(() => {
+    const set = new Set<string>();
+    tools.forEach((t) => {
+      if (t.category) set.add(t.category);
+    });
+    return Array.from(set).sort();
+  }, [tools]);
+
+  const categories = useMemo(() => {
+    const labelize = (slug: string) =>
+      slug
+        .split("-")
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(" ");
+    return [
+      { id: "all", label: "All Tools" },
+      ...dynamicCategories.map((id) => ({ id, label: labelize(id) })),
+    ];
+  }, [dynamicCategories]);
 
   const headerLabel =
-    CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "All Tools";
+    categories.find((c) => c.id === activeCategory)?.label ?? "All Tools";
   const pageTitle =
     activeCategory === "all"
       ? "Free Property Management Tools"
@@ -54,9 +62,7 @@ export function ToolsIndexClient({
               href="/tools"
               className={cn(
                 "hover:text-primary transition-colors",
-                activeCategory === "all"
-                  ? "text-foreground font-medium"
-                  : "",
+                activeCategory === "all" ? "text-foreground font-medium" : "",
               )}
             >
               Free Tools
@@ -84,11 +90,10 @@ export function ToolsIndexClient({
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 mb-16">
-          {CATEGORIES.map((cat) => (
-            <button
+          {categories.map((cat) => (
+            <Link
               key={cat.id}
-              type="button"
-              onClick={() => setActiveCategory(cat.id)}
+              href={cat.id === "all" ? "/tools" : `/tools/${cat.id}`}
             >
               <Button
                 variant={activeCategory === cat.id ? "default" : "outline"}
@@ -101,11 +106,11 @@ export function ToolsIndexClient({
               >
                 {cat.label}
               </Button>
-            </button>
+            </Link>
           ))}
         </div>
 
-        {filteredTools.length === 0 ? (
+        {tools.length === 0 ? (
           <div className="col-span-full text-center py-20">
             <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
               <Calculator className="h-8 w-8 text-muted-foreground" />
@@ -114,17 +119,15 @@ export function ToolsIndexClient({
             <p className="text-muted-foreground">
               We haven&apos;t added tools to this category yet.
             </p>
-            <Button
-              variant="link"
-              className="mt-4"
-              onClick={() => setActiveCategory("all")}
-            >
-              View all tools
-            </Button>
+            <Link href="/tools">
+              <Button variant="link" className="mt-4">
+                View all tools
+              </Button>
+            </Link>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {filteredTools.map((tool) => (
+            {tools.map((tool) => (
               <Link key={tool.id} href={tool.href}>
                 <div className="group h-full bg-card border border-border hover:border-primary/50 rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
