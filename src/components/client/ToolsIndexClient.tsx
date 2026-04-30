@@ -129,28 +129,30 @@ export function ToolsIndexClient({
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {tools.map((tool) => (
               <Link key={tool.id} href={tool.href}>
-                <div className="group h-full bg-card border border-border hover:border-primary/50 rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden">
-                        {tool.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={tool.image}
-                            alt={tool.title}
-                            className="h-full w-full object-cover rounded-2xl"
-                          />
-                        ) : (
-                          <Calculator className="h-7 w-7" />
-                        )}
-                      </div>
-                    </div>
+                <div className="group h-full bg-card border border-border hover:border-primary/50 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  {/* Hero image — ~160px tall, centered, fills card width.
+                      2026-04-29: was a 56px (h-14 w-14) icon; user feedback —
+                      hero should be the visual anchor of the card. */}
+                  <div className="relative w-full h-40 md:h-44 bg-primary/5 overflow-hidden flex items-center justify-center">
+                    {tool.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={tool.image}
+                        alt={tool.title}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Calculator className="h-16 w-16 text-primary/40" aria-hidden />
+                    )}
+                  </div>
 
+                  <div className="relative z-10 p-6 md:p-7 flex flex-col flex-grow">
                     <h3 className="font-display text-xl font-bold mb-3 group-hover:text-primary transition-colors">
                       {tool.title}
                     </h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                    <p className="text-muted-foreground text-sm leading-relaxed mb-6 line-clamp-3">
                       {tool.excerpt}
                     </p>
                     <div className="mt-auto pt-4 flex items-center text-primary font-bold text-sm gap-2 opacity-80 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
