@@ -346,6 +346,13 @@ export interface DirectoryEntry {
   id: string;
   slug: string;
   liveUrl?: string;
+  /**
+   * Optional pre-built listing href. Used by /regulations + /taxes (and
+   * potentially other location-segmented categories) to bypass the buggy
+   * "reslugify location/title at render time" pattern. When present,
+   * listing components MUST use this verbatim. 2026-04-30.
+   */
+  href?: string;
   title: string;
   excerpt: string;
   body: PortableTextBlock[];
@@ -357,6 +364,8 @@ export interface DirectoryEntry {
   platform?: string;
   location?: string;
   region?: string;
+  /** Display date for cards (formatted from publishedAt). 2026-04-30. */
+  date?: string;
   competitorName?: string;
   primaryItem?: string;
   secondaryItem?: string;
@@ -1166,14 +1175,94 @@ export const fetchAlternatives = cache(async () => {
   return dedupeBySlug(sbEntries);
 });
 
+/**
+ * Region heuristic for /regulations + /taxes location pills.
+ * Driven by keywords in slug + title (because structured_data.region is
+ * uniformly null on existing rows).
+ * 2026-04-30 (Mr Props /regulations + /taxes Gold Standard recovery).
+ */
+function deriveRegionFromLocation(slug: string, title: string): string {
+  const text = `${slug} ${title}`.toLowerCase();
+  if (/\b(texas|austin|dallas|houston|florida|miami|orlando|tampa|california|los[- ]angeles|san[- ]francisco|san[- ]diego|colorado|denver|georgia|atlanta|tennessee|nashville|new[- ]york|nyc|chicago|illinois|washington|seattle|portland|oregon|arizona|phoenix|las[- ]vegas|nevada|massachusetts|boston|north[- ]carolina|south[- ]carolina|virginia|pennsylvania|philadelphia|hawaii|alaska|us|usa|america|united[- ]states)\b/.test(text)) return "United States";
+  if (/\b(barcelona|madrid|spain|lisbon|porto|portugal|paris|france|berlin|munich|germany|rome|milan|italy|amsterdam|netherlands|london|england|uk|britain|dublin|ireland|copenhagen|denmark|stockholm|sweden|oslo|norway|helsinki|finland|vienna|austria|prague|czech|warsaw|poland|budapest|hungary|athens|greece|brussels|belgium|zurich|switzerland|europe|eu)\b/.test(text)) return "Europe";
+  if (/\b(tokyo|kyoto|osaka|japan|seoul|south[- ]korea|korea|beijing|shanghai|china|hong[- ]kong|singapore|bangkok|thailand|bali|indonesia|jakarta|manila|philippines|kuala[- ]lumpur|malaysia|hanoi|vietnam|mumbai|india|new[- ]delhi|asia)\b/.test(text)) return "Asia";
+  if (/\b(toronto|vancouver|montreal|canada|mexico|cancun|mexico[- ]city|brazil|rio|sao[- ]paulo|argentina|buenos[- ]aires|chile|santiago|peru|lima|colombia|bogota|caribbean|jamaica|cuba|bahamas|puerto[- ]rico|dominican|costa[- ]rica|panama|latam|latin[- ]america|south[- ]america|north[- ]america|americas)\b/.test(text)) return "Americas";
+  if (/\b(sydney|melbourne|australia|auckland|new[- ]zealand|nz|oceania)\b/.test(text)) return "Oceania";
+  if (/\b(dubai|uae|abu[- ]dhabi|tel[- ]aviv|israel|riyadh|saudi|cairo|egypt|cape[- ]town|south[- ]africa|johannesburg|nairobi|kenya|africa|middle[- ]east)\b/.test(text)) return "Africa & Middle East";
+  return "Other";
+}
+
+/**
+ * Build a clean human-readable location label from the bare slug.
+ * E.g. "airbnb-rules-in-austin-texas" → "Austin, Texas"
+ *      "lisbon-portugal" → "Lisbon, Portugal"
+ *      "miami" → "Miami"
+ *      "short-term-rental-taxes-in-florida" → "Florida"
+ * Strips known boilerplate prefixes ("airbnb rules in", "short term rental taxes in").
+ * 2026-04-30 (Mr Props /regulations + /taxes Gold Standard recovery).
+ */
+function deriveLocationLabel(bareSlug: string, title?: string): string {
+  let s = bareSlug.toLowerCase();
+  s = s.replace(/^airbnb-?rules-?(in-?)?/i, "");
+  s = s.replace(/^short-?term-?rental-?taxes-?(in-?)?/i, "");
+  s = s.replace(/^taxes-?(in-?)?/i, "");
+  s = s.replace(/-(a|b|test)$/i, "");
+  const parts = s.split("-").filter(Boolean);
+  if (parts.length === 0) return title || bareSlug;
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+  const stateTokens = new Set(["texas","florida","california","colorado","georgia","tennessee","portugal","spain","france","germany","italy","england","oregon","washington","arizona","nevada"]);
+  const last = parts[parts.length - 1];
+  if (stateTokens.has(last) && parts.length >= 2) {
+    const city = parts.slice(0, -1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+    const state = last.charAt(0).toUpperCase() + last.slice(1);
+    return `${city}, ${state}`;
+  }
+  return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+}
+
 export const fetchRegulations = cache(async () => {
   const sbEntries = await fetchSupabaseListings("regulations");
-  return dedupeBySlug(sbEntries);
+  // 2026-04-30: same prefix-strip pattern as fetchGuides.
+  // DB stores `regulations/<platform>/<location>` — listing card hrefs need
+  // bare `<platform>/<location>` so /regulations/[platform]/[location] resolves.
+  return dedupeBySlug(sbEntries.map((entry) => {
+    const bareSlug = entry.slug.replace(/^regulations\//, '');
+    const parts = bareSlug.split('/').filter(Boolean);
+    const platform = entry.platform || parts[0] || 'airbnb';
+    const locationSlug = parts[1] || parts[0] || bareSlug;
+    const locationLabel = entry.location || deriveLocationLabel(locationSlug, entry.title);
+    const region = entry.region || deriveRegionFromLocation(locationSlug, entry.title);
+    return {
+      ...entry,
+      slug: bareSlug,
+      platform,
+      location: locationLabel,
+      region,
+      href: `/regulations/${platform}/${locationSlug}`,
+      date: formatDisplayDate(entry.publishedAt),
+    };
+  }));
 });
 
 export const fetchTaxes = cache(async () => {
   const sbEntries = await fetchSupabaseListings("taxes");
-  return dedupeBySlug(sbEntries);
+  return dedupeBySlug(sbEntries.map((entry) => {
+    const bareSlug = entry.slug.replace(/^taxes\//, '');
+    const parts = bareSlug.split('/').filter(Boolean);
+    const platform = entry.platform || parts[0] || 'airbnb';
+    const regionSlug = parts[1] || parts[0] || bareSlug;
+    const locationLabel = entry.location || deriveLocationLabel(regionSlug, entry.title);
+    const region = entry.region || deriveRegionFromLocation(regionSlug, entry.title);
+    return {
+      ...entry,
+      slug: bareSlug,
+      platform,
+      location: locationLabel,
+      region,
+      href: `/taxes/${platform}/${regionSlug}`,
+      date: formatDisplayDate(entry.publishedAt),
+    };
+  }));
 });
 
 export const fetchTemplates = cache(async () => {
