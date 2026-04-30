@@ -36,14 +36,19 @@ type Card = DirectoryEntry & { date?: string };
 export function TaxesIndexClient({
   taxes,
   currentPage = 1,
+  currentPlatform,
+  allPlatforms,
 }: {
   taxes: Card[];
   currentPage?: number;
+  currentPlatform?: string;
+  allPlatforms?: string[];
 }) {
   const router = useRouter();
   const [region, setRegion] = useState("All");
   const [search, setSearch] = useState("");
   const featured = taxes[0];
+  const basePath = currentPlatform ? `/taxes/${currentPlatform}` : "/taxes";
 
   const filtered = useMemo(() => {
     return taxes.filter((t) => {
@@ -60,7 +65,7 @@ export function TaxesIndexClient({
   const pageNumbers = logarithmicPageLinks(safePage, totalPages);
 
   function resetToPage1IfNeeded() {
-    if (safePage !== 1) router.push("/taxes");
+    if (safePage !== 1) router.push(basePath);
   }
 
   const availableRegions = useMemo(() => {
@@ -68,6 +73,12 @@ export function TaxesIndexClient({
     taxes.forEach((t) => t.region && set.add(t.region));
     return REGION_ORDER.filter((r) => r === "All" || set.has(r));
   }, [taxes]);
+
+  // Platform pill set — URL-changing. Same pattern as RegulationsIndexClient.
+  const availablePlatforms = useMemo(() => {
+    const fromList = allPlatforms || taxes.map((t) => t.platform).filter(Boolean) as string[];
+    return Array.from(new Set(fromList)).sort();
+  }, [allPlatforms, taxes]);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -125,9 +136,47 @@ export function TaxesIndexClient({
         </div>
       </section>
 
+      {/* Sticky filter bar — TWO pill rows:
+          (1) Platform pills — URL-changing, SEO-crawlable.
+          (2) Region pills — CSS-only filter, narrows visible card set.
+          2026-04-30 (Helvis directive: two filter dimensions). */}
       <div className="sticky top-20 z-30 bg-background/95 backdrop-blur border-b border-border/50 shadow-sm">
+        <div className="container mx-auto px-4 py-3 border-b border-border/30">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-2 hidden md:inline">
+              Rental type:
+            </span>
+            <Link href="/taxes">
+              <button
+                type="button"
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap",
+                  !currentPlatform ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
+                )}
+              >
+                All
+              </button>
+            </Link>
+            {availablePlatforms.map((p) => (
+              <Link key={p} href={`/taxes/${p}`}>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap capitalize",
+                    currentPlatform === p ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
+                  )}
+                >
+                  {p}
+                </button>
+              </Link>
+            ))}
+          </div>
+        </div>
         <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-2 hidden md:inline">
+              Region:
+            </span>
             {availableRegions.map((r) => (
               <button
                 key={r}
