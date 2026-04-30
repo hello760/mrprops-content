@@ -1267,12 +1267,23 @@ export const fetchTaxes = cache(async () => {
 
 export const fetchTemplates = cache(async () => {
   const sbEntries = await fetchSupabaseListings("templates");
-  return dedupeBySlug([...sbEntries, ...templateFallbacks]);
+  // 2026-04-30 Gold Standard: DB is the single source of truth for /templates.
+  // SPA-migration `templateFallbacks` were merged in for backwards-compat,
+  // but they appear on the listing as cards that don't exist in MMG admin —
+  // breaking listing↔admin parity. Direct hits to fallback URLs still
+  // resolve via fetchTemplate (preserves any indexed inbound links).
+  // Same pattern applied to fetchGuides in PR #7 and now fetchTools below.
+  return dedupeBySlug(sbEntries);
 });
 
 export const fetchTools = cache(async () => {
   const sbEntries = await fetchSupabaseListings("tools");
-  return dedupeBySlug([...sbEntries, ...toolFallbacks]);
+  // 2026-04-30 Gold Standard: DB is the single source of truth for /tools.
+  // SPA-migration `toolFallbacks` were merged in but caused a 13-vs-7
+  // mismatch (admin shows real published rows; listing shows real + 6
+  // fixtures). Direct hits to fallback URLs still resolve via fetchTool
+  // (preserves any indexed inbound links).
+  return dedupeBySlug(sbEntries);
 });
 
 /**
