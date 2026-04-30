@@ -1201,12 +1201,11 @@ function deriveGuideCategory(slug: string, title: string): string {
 
 export const fetchGuides = cache(async () => {
   const sbEntries = await fetchSupabaseListings("guides");
+  // 2026-04-30 fix: DB rows have slug `guides/<topic>` (full prefix from
+  // custom_slug). The /guides/[slug] route expects bare topic only — leaving
+  // prefix in produced /guides/guides/<topic> 404s on every DB-sourced card.
+  // Strip prefix here so href construction in GuideIndexClient works.
   const sbGuides = sbEntries.map((entry) => {
-    // 2026-04-30 fix: DB rows have slug `guides/<topic>` (full prefix from
-    // custom_slug). The /guides/[slug] route expects bare topic only — leaving
-    // prefix in produced /guides/guides/<topic> 404s on every DB-sourced card.
-    // Strip prefix here so href construction in GuideIndexClient works for
-    // both DB rows and static fallbacks.
     const bareSlug = entry.slug.replace(/^guides\//, '');
     return {
       ...entry,
@@ -1217,7 +1216,13 @@ export const fetchGuides = cache(async () => {
       readTime: calculateReadTime(entry.excerpt || ''),
     };
   });
-  return dedupeBySlug([...sbGuides, ...fallbackGuides]);
+  // 2026-04-30 Gold Standard: DB is the single source of truth for the
+  // /guides listing. fallbackGuides used to be merged in (SPA-migration
+  // scaffolding), but they leaked stub content onto page 2 and broke the
+  // listing↔sitemap parity. Direct hits to fallback URLs still resolve via
+  // fetchGuideBySlug (preserving any indexed inbound links), but the
+  // listing renders only real published content.
+  return dedupeBySlug(sbGuides);
 });
 
 export const fetchGuideBySlug = cache(async (slug: string) => {
