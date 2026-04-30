@@ -33,17 +33,34 @@ const REGION_ORDER = [
 
 type Card = DirectoryEntry & { date?: string };
 
+// Derive a human-readable pill label from a platform slug
+function platformLabel(slug: string): string {
+  return slug
+    .split("-")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
 export function RegulationsIndexClient({
   regulations,
   currentPage = 1,
+  currentPlatform,
+  // Optional full list (across all platforms) — needed to derive the platform-pill
+  // set when the page is filtered to one platform. If omitted, defaults to the
+  // visible `regulations` list (correct for /regulations root, partial for
+  // /regulations/<platform>).
+  allPlatforms,
 }: {
   regulations: Card[];
   currentPage?: number;
+  currentPlatform?: string;
+  allPlatforms?: string[];
 }) {
   const router = useRouter();
   const [region, setRegion] = useState("All");
   const [search, setSearch] = useState("");
   const featured = regulations[0];
+  const basePath = currentPlatform ? `/regulations/${currentPlatform}` : "/regulations";
 
   const filtered = useMemo(() => {
     return regulations.filter((r) => {
@@ -60,7 +77,7 @@ export function RegulationsIndexClient({
   const pageNumbers = logarithmicPageLinks(safePage, totalPages);
 
   function resetToPage1IfNeeded() {
-    if (safePage !== 1) router.push("/regulations");
+    if (safePage !== 1) router.push(basePath);
   }
 
   // Region pill set: only render pills for regions that actually have content.
@@ -69,6 +86,15 @@ export function RegulationsIndexClient({
     regulations.forEach((r) => r.region && set.add(r.region));
     return REGION_ORDER.filter((r) => r === "All" || set.has(r));
   }, [regulations]);
+
+  // Platform pill set — URL-changing. Pulls from `allPlatforms` (the full,
+  // unfiltered set) when provided so the pill row stays consistent across
+  // /regulations and /regulations/<platform>. Falls back to deriving from
+  // the visible list (correct for /regulations root).
+  const availablePlatforms = useMemo(() => {
+    const fromList = allPlatforms || regulations.map((r) => r.platform).filter(Boolean) as string[];
+    return Array.from(new Set(fromList)).sort();
+  }, [allPlatforms, regulations]);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -126,9 +152,50 @@ export function RegulationsIndexClient({
         </div>
       </section>
 
+      {/* Sticky filter bar — TWO pill rows:
+          (1) Platform pills — URL-changing, SEO-crawlable. "All" → /regulations,
+              "<platform>" → /regulations/<platform>. Active state derives from
+              the URL, not React state, so the back button + bookmarks work.
+          (2) Region pills — CSS-only filter (no URL change), narrows the visible
+              card set. Plus a search box on the right.
+          2026-04-30 (Helvis directive: two filter dimensions). */}
       <div className="sticky top-20 z-30 bg-background/95 backdrop-blur border-b border-border/50 shadow-sm">
+        <div className="container mx-auto px-4 py-3 border-b border-border/30">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-2 hidden md:inline">
+              Rental type:
+            </span>
+            <Link href="/regulations">
+              <button
+                type="button"
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap",
+                  !currentPlatform ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
+                )}
+              >
+                All
+              </button>
+            </Link>
+            {availablePlatforms.map((p) => (
+              <Link key={p} href={`/regulations/${p}`}>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap capitalize",
+                    currentPlatform === p ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
+                  )}
+                >
+                  {p}
+                </button>
+              </Link>
+            ))}
+          </div>
+        </div>
         <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-2 hidden md:inline">
+              Region:
+            </span>
             {availableRegions.map((r) => (
               <button
                 key={r}

@@ -39,5 +39,12 @@ export default async function TaxesIndexPage({
   const requested = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
   const totalPages = Math.max(1, Math.ceil(taxes.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(requested, totalPages);
-  return <TaxesIndexClient taxes={taxes} currentPage={currentPage} />;
+  const allPlatforms = Array.from(new Set(taxes.map((t) => t.platform).filter(Boolean) as string[]));
+  return (
+    <TaxesIndexClient
+      taxes={taxes}
+      currentPage={currentPage}
+      allPlatforms={allPlatforms}
+    />
+  );
 }

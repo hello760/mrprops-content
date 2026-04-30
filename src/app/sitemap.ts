@@ -87,21 +87,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // Derive category-level entries for /tools/[category] pages from live tool slugs.
-  const toolCategories = new Set<string>();
-  for (const piece of data) {
-    const slug = piece.custom_slug as string;
-    if (slug && slug.startsWith('tools/')) {
+  // Derive category/platform-level filter URLs:
+  //   /tools/<category>      — already wired (e.g. /tools/finance)
+  //   /regulations/<platform> — added 2026-04-30 (e.g. /regulations/airbnb)
+  //   /taxes/<platform>       — added 2026-04-30
+  // All extracted from the second slug segment of `<family>/<segment>/<slug>`.
+  function deriveSecondSegment(prefix: string): Set<string> {
+    const out = new Set<string>();
+    if (!data) return out;
+    for (const piece of data) {
+      const slug = piece.custom_slug as string;
+      if (!slug || !slug.startsWith(`${prefix}/`)) continue;
+      if (isTestContent(slug)) continue;
       const parts = slug.split('/');
-      if (parts.length >= 3 && parts[1]) toolCategories.add(parts[1]);
+      if (parts.length >= 3 && parts[1]) out.add(parts[1]);
     }
+    return out;
   }
-  const categoryEntries: MetadataRoute.Sitemap = Array.from(toolCategories).map((cat) => ({
-    url: toAbsoluteUrl(`/tools/${cat}`),
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.5,
-  }));
+  const toolCategories = deriveSecondSegment('tools');
+  const regulationPlatforms = deriveSecondSegment('regulations');
+  const taxPlatforms = deriveSecondSegment('taxes');
+
+  const categoryEntries: MetadataRoute.Sitemap = [
+    ...Array.from(toolCategories).map((cat) => ({
+      url: toAbsoluteUrl(`/tools/${cat}`),
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    })),
+    ...Array.from(regulationPlatforms).map((p) => ({
+      url: toAbsoluteUrl(`/regulations/${p}`),
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    })),
+    ...Array.from(taxPlatforms).map((p) => ({
+      url: toAbsoluteUrl(`/taxes/${p}`),
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    })),
+  ];
 
   // Logarithmic pagination — emit one sitemap entry per paginated listing page.
   // Page 1 is already in STATIC_PAGES. Pages 2+ get ?page=N.

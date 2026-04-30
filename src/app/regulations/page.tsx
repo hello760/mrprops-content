@@ -39,5 +39,12 @@ export default async function RegulationsIndexPage({
   const requested = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
   const totalPages = Math.max(1, Math.ceil(regulations.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(requested, totalPages);
-  return <RegulationsIndexClient regulations={regulations} currentPage={currentPage} />;
+  const allPlatforms = Array.from(new Set(regulations.map((r) => r.platform).filter(Boolean) as string[]));
+  return (
+    <RegulationsIndexClient
+      regulations={regulations}
+      currentPage={currentPage}
+      allPlatforms={allPlatforms}
+    />
+  );
 }
