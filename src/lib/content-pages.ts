@@ -1186,15 +1186,37 @@ export const fetchTools = cache(async () => {
   return dedupeBySlug([...sbEntries, ...toolFallbacks]);
 });
 
+/**
+ * Slug-based category heuristic for guide cards. Used for client-side filter pills.
+ * 2026-04-30: previously hardcoded all DB guides to "Operations" — every category
+ * filter except "Operations" returned zero matches. Now derives from slug keywords.
+ */
+function deriveGuideCategory(slug: string, title: string): string {
+  const text = `${slug} ${title}`.toLowerCase();
+  if (/\b(tax|yield|income|profit|money|revenue|roi|pricing|fee|earn|cost|profit)\b/.test(text)) return "Finance";
+  if (/\b(market|listing|seo|advert|brand|review|optim)\b/.test(text)) return "Marketing";
+  if (/\b(legal|rule|contract|regulat|complian|license|liabilit|insur)\b/.test(text)) return "Legal";
+  return "Operations";
+}
+
 export const fetchGuides = cache(async () => {
   const sbEntries = await fetchSupabaseListings("guides");
-  const sbGuides = sbEntries.map((entry) => ({
-    ...entry,
-    authorName: "Mr. Props Team",
-    category: "Operations",
-    date: formatDisplayDate(entry.publishedAt),
-    readTime: calculateReadTime(entry.excerpt || ''),
-  }));
+  const sbGuides = sbEntries.map((entry) => {
+    // 2026-04-30 fix: DB rows have slug `guides/<topic>` (full prefix from
+    // custom_slug). The /guides/[slug] route expects bare topic only — leaving
+    // prefix in produced /guides/guides/<topic> 404s on every DB-sourced card.
+    // Strip prefix here so href construction in GuideIndexClient works for
+    // both DB rows and static fallbacks.
+    const bareSlug = entry.slug.replace(/^guides\//, '');
+    return {
+      ...entry,
+      slug: bareSlug,
+      authorName: "Mr. Props Team",
+      category: deriveGuideCategory(bareSlug, entry.title),
+      date: formatDisplayDate(entry.publishedAt),
+      readTime: calculateReadTime(entry.excerpt || ''),
+    };
+  });
   return dedupeBySlug([...sbGuides, ...fallbackGuides]);
 });
 

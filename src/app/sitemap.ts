@@ -103,9 +103,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
+  // Logarithmic pagination — emit one sitemap entry per paginated /guides page.
+  // Page 1 is already in STATIC_PAGES as /guides. Pages 2+ get ?page=N.
+  // See `.claude/skills/pagination/SKILL.md` for the pattern + rationale.
+  const guideRows = (data as Array<Record<string, any>>).filter((p) => {
+    if (typeof p.custom_slug !== 'string') return false;
+    if (!p.custom_slug.startsWith('guides/')) return false;
+    if (isTestContent(p.custom_slug)) return false;
+    return true;
+  });
+  const ITEMS_PER_PAGE = 9;
+  const guidesTotalPages = Math.max(1, Math.ceil(guideRows.length / ITEMS_PER_PAGE));
+  const guidePaginationEntries: MetadataRoute.Sitemap = [];
+  for (let p = 2; p <= guidesTotalPages; p++) {
+    guidePaginationEntries.push({
+      url: toAbsoluteUrl(`/guides?page=${p}`),
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.4,
+    });
+  }
+
   // Deduplicate
   const seen = new Set<string>();
-  const deduped = [...contentEntries, ...categoryEntries].filter((entry) => {
+  const deduped = [...contentEntries, ...categoryEntries, ...guidePaginationEntries].filter((entry) => {
     const normalized = entry.url.toLowerCase().replace(/\/+$/, '');
     if (seen.has(normalized)) return false;
     seen.add(normalized);
