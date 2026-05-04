@@ -1167,12 +1167,30 @@ export const fetchLandingPageBySlug = cache(async (pageType: "features" | "servi
 
 export const fetchComparisons = cache(async () => {
   const sbEntries = await fetchSupabaseListings("compare");
-  return dedupeBySlug(sbEntries);
+  // 2026-05-04 fix: DB rows have slug `compare/<topic>` (full prefix from
+  // custom_slug). The /compare/[slug] route expects bare topic only — leaving
+  // prefix in produced /compare/compare/<topic> 404s on every DB-sourced card.
+  // Mirrors the fetchGuides + fetchRegulations + fetchTaxes prefix-strip
+  // pattern shipped in PRs #6/#7/#8. Listing-page design is unchanged; only
+  // the slug field is normalized so href construction resolves correctly.
+  const stripped = sbEntries.map((entry) => ({
+    ...entry,
+    slug: entry.slug.replace(/^compare\//, ''),
+  }));
+  return dedupeBySlug(stripped);
 });
 
 export const fetchAlternatives = cache(async () => {
   const sbEntries = await fetchSupabaseListings("alternatives");
-  return dedupeBySlug(sbEntries);
+  // 2026-05-04 fix: DB rows have slug `alternatives/<topic>`. The
+  // /alternatives/[competitor] route expects bare topic only — leaving the
+  // prefix in produced /alternatives/alternatives/<topic> 404s on every
+  // DB-sourced card. Same prefix-strip pattern as fetchComparisons above.
+  const stripped = sbEntries.map((entry) => ({
+    ...entry,
+    slug: entry.slug.replace(/^alternatives\//, ''),
+  }));
+  return dedupeBySlug(stripped);
 });
 
 /**
