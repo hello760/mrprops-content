@@ -17,12 +17,26 @@ function getSBSync() {
 // Extract the first ~N words of body HTML, stripped of heading/hr tags, for the
 // gate's sneak-peek preview card. Gate overlay sits on top with a gradient
 // fade — user sees a blurred glimpse of what's inside. 2026-04-23.
+//
+// 2026-05-04 update: also strip H2 + H3 + their content from the preview.
+// Previously the first 220 words could include 3-5 H2 strings; the same H2s
+// then re-appear in the full bodyHtml render below the gate (LeadGenTemplateClient
+// lines 167-173), producing 3-5 duplicate H2s on every template page (verified
+// across 5/5 template + lead_gen pages). Cross-family audit ticket 2026-05-04
+// flags this as the structural double-render bug. Stripping headings from the
+// preview gives clean prose-only teaser that doesn't collide with the body
+// render below. The visible portion of the preview (above the gate gradient)
+// is the same paragraph text it always was — just without redundant section
+// headings — so user-facing visual is unchanged.
 function deriveSneakPeekHtml(bodyHtml: string | undefined, wordTarget = 220): string {
   if (!bodyHtml || typeof bodyHtml !== 'string') return '';
-  // Drop the first H1 (we already show the title above) and any trailing FAQ
-  // blocks. Keep the first few paragraphs / lists / H2-H3 context only.
+  // Drop H1 + H2 + H3 + their content (preview is prose-only so H2/H3 don't
+  // duplicate with the full bodyHtml render below the gate). Also strip
+  // <article> wrappers.
   let html = bodyHtml
-    .replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/i, '')
+    .replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi, '')
+    .replace(/<h2\b[^>]*>[\s\S]*?<\/h2>/gi, '')
+    .replace(/<h3\b[^>]*>[\s\S]*?<\/h3>/gi, '')
     .replace(/<article\b[^>]*>|<\/article>/gi, '')
     .trim();
   // Walk tag boundaries, stop once we've accumulated ~wordTarget words.

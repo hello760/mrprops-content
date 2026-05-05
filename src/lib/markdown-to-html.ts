@@ -91,5 +91,20 @@ export function stripRedundantBodyBlocks(html: string | undefined | null): strin
   //    title it should read structured_data.title.
   cleaned = cleaned.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, "");
 
+  // 5. Strip body H2 "Best Practices for Implementation" + section content
+  //    (until next H2 or end of body). The template wrapper (LeadGenTemplateClient
+  //    line 194) hardcodes `<h2>Best Practices for Implementation</h2>` followed
+  //    by an ordered list rendered from structured_data.bestPractices. Body LLM
+  //    also emits this H2 + its bullet items, producing duplicate H2 + duplicate
+  //    items. Stripping from body keeps the wrapper as the single source of
+  //    truth for that section. Cross-family audit 2026-05-04 confirmed this
+  //    duplicate on /templates/general/property-management-termination-letter-template
+  //    and /templates/general/free-property-management-plan-template (3932-char
+  //    span between the two occurrences).
+  cleaned = cleaned.replace(
+    /<h2[^>]*>\s*[^<]*Best Practices for Implementation[^<]*<\/h2>[\s\S]*?(?=<h2|<\/article|<\/main|$)/gi,
+    ""
+  );
+
   return cleaned;
 }
