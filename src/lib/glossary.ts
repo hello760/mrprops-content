@@ -147,7 +147,15 @@ async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
     .eq('client_id', clientId)
     .eq('writing_status', 'published')
     .not('structured_data', 'is', null)
-    .like('custom_slug', 'glossary/%')
+    // Listing visibility fix (2026-05-06): the publish flow has been writing
+    // glossary slugs in two shapes — `glossary/{slug}` (legacy) and `what-is-{slug}`
+    // (current, since 2026-04-21). The detail fetcher already accepts both via
+    // .or() (see fetchGlossaryFromSupabase above). The listing was matching only
+    // the legacy shape, hiding 46 published articles. This OR mirrors the detail
+    // fetcher's tolerance. Producer-side fix is the long-term answer — restore
+    // the `glossary/` prefix in market-me-good `publish-mrprops-direct.ts` and
+    // backfill — but is tracked as a separate task to avoid cross-repo coupling.
+    .or('custom_slug.like.glossary/%,custom_slug.like.what-is-%')
     .order('title', { ascending: true });
 
   if (error || !data) return [];
