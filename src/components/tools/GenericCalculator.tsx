@@ -85,10 +85,22 @@ export function GenericCalculator({
   // Initialize with sensible defaults so the widget shows real numbers
   // on first render (not $0 / empty state). Update helper bumps a value
   // and triggers recomputation via useMemo.
+  //
+  // 2026-05-07: prefer per-piece field.defaultValue (injected by the
+  // BSD / admin Editor) over the keyword-based heuristic. When a calc's
+  // structured_data specifies realistic anchor numbers ($300k purchase /
+  // $2500 rent / etc.), respect them — the heuristic is the safety net.
+  const initialValueFor = (field: { key: string; defaultValue?: number }): number => {
+    if (typeof field.defaultValue === 'number' && Number.isFinite(field.defaultValue)) {
+      return field.defaultValue;
+    }
+    return defaultFor(field.key);
+  };
+
   const [values, setValues] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     for (const field of fields) {
-      initial[field.key] = defaultFor(field.key);
+      initial[field.key] = initialValueFor(field);
     }
     return initial;
   });
@@ -102,7 +114,7 @@ export function GenericCalculator({
       let changed = false;
       for (const f of fields) {
         if (!(f.key in next)) {
-          next[f.key] = defaultFor(f.key);
+          next[f.key] = initialValueFor(f);
           changed = true;
         }
       }

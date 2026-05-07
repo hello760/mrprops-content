@@ -4,6 +4,14 @@ export interface CalculatorFieldCopy {
   key: string;
   label: string;
   helpText?: string;
+  /**
+   * 2026-05-07: per-piece initial value for the input field. When set,
+   * GenericCalculator uses this on first render in preference to the
+   * keyword-based defaultFor() heuristic. Lets a Property Tax calc
+   * pre-fill assessedValue=350000 / taxRatePct=1.1 instead of a generic
+   * heuristic guess.
+   */
+  defaultValue?: number;
 }
 
 export interface CalculatorResultCopy {
