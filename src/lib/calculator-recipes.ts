@@ -576,6 +576,208 @@ const project_cost_estimate: Recipe = {
 };
 
 // ────────────────────────────────────────────────────────────────
+// Domain-specific recipes added 2026-05-07 (per Helvis approval).
+// Each fills a gap in the prior generic-recipe set that forced 10
+// production calculators into wrong-topic recipes (e.g., a "Tax
+// Calculator" running net_revenue_basic and labelling its output
+// "Estimated Tax Liability" when the math returned net profit).
+// ────────────────────────────────────────────────────────────────
+
+const dscr: Recipe = {
+  name: 'dscr',
+  displayName: 'Debt Service Coverage Ratio',
+  category: 'Investment Returns',
+  shortDescription: 'DSCR — NOI ÷ annual debt service. Lenders typically require ≥1.25.',
+  description:
+    'Debt service coverage ratio for rental property — NOI divided by annual debt service. Includes monthly NOI breakdown so the borrower sees the headroom each month.',
+  inputs: [
+    { key: 'annualRevenue', label: 'Annual Gross Rental Income', unit: 'dollar', defaultValue: 36000, min: 0 },
+    { key: 'annualOperatingExpenses', label: 'Annual Operating Expenses', unit: 'dollar', defaultValue: 9600, min: 0 },
+    { key: 'annualDebtService', label: 'Annual Debt Service', unit: 'dollar', defaultValue: 14400, min: 0 },
+  ],
+  outputs: [
+    { key: 'noi', label: 'Net Operating Income', format: 'dollar' },
+    { key: 'monthlyNoi', label: 'Monthly NOI', format: 'dollar' },
+    { key: 'dscrRatio', label: 'DSCR Ratio', format: 'number' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const noi = nonNeg(i.annualRevenue) - nonNeg(i.annualOperatingExpenses);
+    const ratio = safeDiv(noi, nonNeg(i.annualDebtService));
+    return {
+      noi: fmt.dollar(noi),
+      monthlyNoi: fmt.dollar(noi / 12),
+      // Inline format — fmt.number rounds, but DSCR convention is 2 decimals (1.25, 0.92, etc.)
+      dscrRatio: { value: ratio.toFixed(2), raw: Number.isFinite(ratio) ? ratio : 0 },
+    };
+  },
+};
+
+const tax_estimator: Recipe = {
+  name: 'tax_estimator',
+  displayName: 'Rental Income Tax Estimator',
+  category: 'Investment Returns',
+  shortDescription: 'Rental income tax owed from gross income, deductible expenses, and marginal rate.',
+  description:
+    'Estimates rental income tax owed using a marginal-rate model with an optional region-specific tax-free allowance (e.g. UK Property Allowance, Ireland Rent-a-Room). Outputs taxable income, tax owed, after-tax income, and effective rate.',
+  inputs: [
+    { key: 'grossRentalIncome', label: 'Gross Rental Income', unit: 'dollar', defaultValue: 36000, min: 0 },
+    { key: 'deductibleExpenses', label: 'Deductible Expenses', unit: 'dollar', defaultValue: 8000, min: 0 },
+    { key: 'marginalRatePct', label: 'Marginal Tax Rate', unit: 'percent', defaultValue: 22, min: 0, max: 100, step: 0.5 },
+  ],
+  outputs: [
+    { key: 'taxableIncome', label: 'Taxable Income', format: 'dollar' },
+    { key: 'taxOwed', label: 'Estimated Tax Owed', format: 'dollar' },
+    { key: 'afterTaxIncome', label: 'After-Tax Income', format: 'dollar' },
+    { key: 'effectiveRatePct', label: 'Effective Tax Rate', format: 'percent' },
+  ],
+  defaultConstants: { taxFreeAllowance: 0 },
+  compute: (i, c) => {
+    const allowance = nonNeg(c?.taxFreeAllowance ?? 0);
+    const gross = nonNeg(i.grossRentalIncome);
+    const deductible = nonNeg(i.deductibleExpenses);
+    const rate = nonNeg(i.marginalRatePct) / 100;
+    const taxable = Math.max(0, gross - deductible - allowance);
+    const owed = taxable * rate;
+    const afterTax = gross - deductible - owed;
+    const effective = safeDiv(owed, gross) * 100;
+    return {
+      taxableIncome: fmt.dollar(taxable),
+      taxOwed: fmt.dollar(owed),
+      afterTaxIncome: fmt.dollar(afterTax),
+      effectiveRatePct: fmt.percent(effective, 2),
+    };
+  },
+};
+
+const property_tax: Recipe = {
+  name: 'property_tax',
+  displayName: 'Property Tax (Annual)',
+  category: 'Costs',
+  shortDescription: 'Annual + monthly property tax from assessed value and tax rate.',
+  description:
+    'Annual property tax = assessed value × tax rate. Includes the monthly figure mortgage holders use to size their escrow, and the effective rate on the property.',
+  inputs: [
+    { key: 'assessedValue', label: 'Assessed Property Value', unit: 'dollar', defaultValue: 350000, min: 0 },
+    { key: 'taxRatePct', label: 'Property Tax Rate', unit: 'percent', defaultValue: 1.1, min: 0, max: 10, step: 0.05 },
+  ],
+  outputs: [
+    { key: 'annualTax', label: 'Annual Property Tax', format: 'dollar' },
+    { key: 'monthlyTax', label: 'Monthly Property Tax (Escrow)', format: 'dollar' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const annual = nonNeg(i.assessedValue) * (nonNeg(i.taxRatePct) / 100);
+    return {
+      annualTax: fmt.dollar(annual),
+      monthlyTax: fmt.dollar(annual / 12),
+    };
+  },
+};
+
+const straight_line_depreciation: Recipe = {
+  name: 'straight_line_depreciation',
+  displayName: 'Straight-Line Depreciation',
+  category: 'Investment Returns',
+  shortDescription: 'Annual + accumulated depreciation for residential rental property.',
+  description:
+    'IRS-style straight-line depreciation: (property cost − land value) / recovery period. Default 27.5 years matches US residential rental rules. Outputs annual deduction, accumulated depreciation through years held, and current book value.',
+  inputs: [
+    { key: 'propertyCost', label: 'Property Cost (Purchase + Improvements)', unit: 'dollar', defaultValue: 350000, min: 0 },
+    { key: 'landValue', label: 'Land Value (not depreciable)', unit: 'dollar', defaultValue: 70000, min: 0 },
+    { key: 'recoveryPeriodYears', label: 'Recovery Period (Years)', unit: 'years', defaultValue: 27.5, min: 1, max: 50, step: 0.5 },
+    { key: 'yearsHeld', label: 'Years Held So Far', unit: 'years', defaultValue: 5, min: 0, max: 50, step: 1 },
+  ],
+  outputs: [
+    { key: 'annualDepreciation', label: 'Annual Depreciation Deduction', format: 'dollar' },
+    { key: 'accumulatedDepreciation', label: 'Accumulated Depreciation', format: 'dollar' },
+    { key: 'currentBookValue', label: 'Current Book Value', format: 'dollar' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const basis = Math.max(0, nonNeg(i.propertyCost) - nonNeg(i.landValue));
+    const annual = safeDiv(basis, nonNeg(i.recoveryPeriodYears));
+    const accumulated = Math.min(basis, annual * nonNeg(i.yearsHeld));
+    const bookValue = nonNeg(i.propertyCost) - accumulated;
+    return {
+      annualDepreciation: fmt.dollar(annual),
+      accumulatedDepreciation: fmt.dollar(accumulated),
+      currentBookValue: fmt.dollar(bookValue),
+    };
+  },
+};
+
+const property_valuation_income: Recipe = {
+  name: 'property_valuation_income',
+  displayName: 'Property Valuation (Income Approach)',
+  category: 'Investment Returns',
+  shortDescription: 'Estimated property value from NOI and a market cap rate.',
+  description:
+    'Income-approach valuation: estimated value = NOI / cap rate. Better than comparable-sales for STR investors who care about how much income justifies the price. Includes value-to-rent multiple.',
+  inputs: [
+    { key: 'annualRevenue', label: 'Annual Gross Rental Income', unit: 'dollar', defaultValue: 60000, min: 0 },
+    { key: 'annualOperatingExpenses', label: 'Annual Operating Expenses', unit: 'dollar', defaultValue: 18000, min: 0 },
+    { key: 'capRatePct', label: 'Market Cap Rate', unit: 'percent', defaultValue: 7, min: 0.5, max: 25, step: 0.25 },
+  ],
+  outputs: [
+    { key: 'noi', label: 'Net Operating Income', format: 'dollar' },
+    { key: 'estimatedValue', label: 'Estimated Property Value', format: 'dollar' },
+    { key: 'valueToRevenueMultiple', label: 'Value-to-Revenue Multiple', format: 'number' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const noi = nonNeg(i.annualRevenue) - nonNeg(i.annualOperatingExpenses);
+    const estValue = safeDiv(noi, nonNeg(i.capRatePct) / 100);
+    const multiple = safeDiv(estValue, nonNeg(i.annualRevenue));
+    return {
+      noi: fmt.dollar(noi),
+      estimatedValue: fmt.dollar(estValue),
+      // Render with one decimal — "5.7x" reads better than "6"
+      valueToRevenueMultiple: { value: `${multiple.toFixed(1)}x`, raw: Number.isFinite(multiple) ? multiple : 0 },
+    };
+  },
+};
+
+const rental_property_roi_full: Recipe = {
+  name: 'rental_property_roi_full',
+  displayName: 'Rental Property ROI (Full)',
+  category: 'Investment Returns',
+  shortDescription: 'Full investor-grade ROI: cash flow, cash-on-cash, cap rate, payback.',
+  description:
+    'Investor-grade rental property ROI calculator. Takes purchase price, down payment, monthly rent, monthly operating expenses, and monthly mortgage payment. Outputs the five metrics that drive a buy / pass decision: monthly cash flow, annual cash flow, cash-on-cash return, cap rate, and payback period.',
+  inputs: [
+    { key: 'purchasePrice', label: 'Purchase Price', unit: 'dollar', defaultValue: 300000, min: 0 },
+    { key: 'downPaymentDollars', label: 'Down Payment', unit: 'dollar', defaultValue: 60000, min: 0 },
+    { key: 'monthlyRentalIncome', label: 'Monthly Rental Income', unit: 'dollar', defaultValue: 2500, min: 0 },
+    { key: 'monthlyOperatingExpenses', label: 'Monthly Operating Expenses', unit: 'dollar', defaultValue: 800, min: 0 },
+    { key: 'monthlyMortgagePayment', label: 'Monthly Mortgage Payment', unit: 'dollar', defaultValue: 1200, min: 0 },
+  ],
+  outputs: [
+    { key: 'monthlyCashFlow', label: 'Monthly Cash Flow', format: 'dollar' },
+    { key: 'annualCashFlow', label: 'Annual Cash Flow', format: 'dollar' },
+    { key: 'cashOnCashReturnPct', label: 'Cash-on-Cash Return', format: 'percent' },
+    { key: 'capRatePct', label: 'Cap Rate', format: 'percent' },
+    { key: 'paybackYears', label: 'Payback Period', format: 'years' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const monthlyCash = nonNeg(i.monthlyRentalIncome) - nonNeg(i.monthlyOperatingExpenses) - nonNeg(i.monthlyMortgagePayment);
+    const annualCash = monthlyCash * 12;
+    const noi = (nonNeg(i.monthlyRentalIncome) - nonNeg(i.monthlyOperatingExpenses)) * 12;
+    const cashOnCash = safeDiv(annualCash, nonNeg(i.downPaymentDollars)) * 100;
+    const capRate = safeDiv(noi, nonNeg(i.purchasePrice)) * 100;
+    const payback = annualCash > 0 ? safeDiv(nonNeg(i.downPaymentDollars), annualCash) : 0;
+    return {
+      monthlyCashFlow: fmt.dollar(monthlyCash),
+      annualCashFlow: fmt.dollar(annualCash),
+      cashOnCashReturnPct: fmt.percent(cashOnCash, 2),
+      capRatePct: fmt.percent(capRate, 2),
+      paybackYears: fmt.years(payback),
+    };
+  },
+};
+
+// ────────────────────────────────────────────────────────────────
 // Registry + lookup API
 // ────────────────────────────────────────────────────────────────
 
@@ -596,6 +798,13 @@ export const recipes: Record<string, Recipe> = {
   gross_profit,
   cleaning_fee_per_turnover,
   project_cost_estimate,
+  // Domain-specific additions 2026-05-07
+  dscr,
+  tax_estimator,
+  property_tax,
+  straight_line_depreciation,
+  property_valuation_income,
+  rental_property_roi_full,
 };
 
 export function getRecipe(name: string): Recipe | null {
