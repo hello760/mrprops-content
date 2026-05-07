@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowRight, CheckCircle2, BarChart3, Scale, Home, ChevronRight } from "lucide-react";
 import { fetchComparisons } from "@/lib/content-pages";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { buildMetadata } from "@/lib/metadata";
 
 export const revalidate = 3600;
@@ -33,13 +35,20 @@ export default async function CompareIndexPage() {
           {comparisons.map((comp, i) => {
             const [nameA = "A", nameB = "B"] = comp.title.split(" vs ");
             return (
-              <Link key={comp.id} href={`/compare/${comp.slug}`}>
+              <Fragment key={comp.id}>
+                {i === 9 && (
+                  <div className="md:col-span-2 lg:col-span-3">
+                    <NewsletterCTA source="compare_cta" />
+                  </div>
+                )}
+                <Link href={`/compare/${comp.slug}`}>
                 <div className="group bg-card hover:bg-secondary/20 border border-border hover:border-primary/30 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer">
                   {i < 3 && <div className="mb-4"><span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider">Most Read</span></div>}
                   <div className="flex items-center justify-between mb-6"><div className="text-center flex-1"><div className="font-display font-bold text-lg mb-1">{nameA}</div><div className="text-xs text-muted-foreground">Challenger</div></div><div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center font-black text-xs mx-2">VS</div><div className="text-center flex-1"><div className="font-display font-bold text-lg mb-1">{nameB}</div><div className="text-xs text-muted-foreground">Incumbent</div></div></div>
                   <div className="flex items-center justify-between pt-6 border-t border-border/50"><span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Read Comparison</span><ArrowRight className="h-4 w-4 text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" /></div>
                 </div>
               </Link>
+                </Fragment>
             );
           })}
         </div>

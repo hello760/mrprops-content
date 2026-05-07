@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Search, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { cn } from "@/lib/utils";
 import type { DirectoryEntry } from "@/lib/content-pages";
 import { logarithmicPageLinks, pageHref } from "@/lib/pagination";
@@ -146,31 +147,7 @@ export function GuideIndexClient({
       </div>
 
       <div className="container mx-auto px-4 py-16">
-        <div className="bg-primary text-primary-foreground rounded-3xl p-8 md:p-12 mb-16 flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl shadow-primary/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-          <div className="relative z-10 space-y-4 max-w-xl text-center md:text-left">
-            <h3 className="font-display text-2xl md:text-3xl font-bold">
-              Join 15,000+ Smart Hosts
-            </h3>
-            <p className="text-primary-foreground/80 text-lg">
-              Get weekly tips on automation, tax loopholes, and market trends delivered to
-              your inbox.
-            </p>
-          </div>
-          <div className="relative z-10 w-full md:w-auto flex flex-col sm:flex-row gap-3">
-            <Input
-              placeholder="Enter your email"
-              className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/20 min-w-[280px] rounded-xl"
-            />
-            <Button
-              variant="secondary"
-              size="lg"
-              className="h-12 font-bold px-8 rounded-xl shadow-lg"
-            >
-              Subscribe
-            </Button>
-          </div>
-        </div>
+        <NewsletterCTA source="guides_cta" />
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-16">
           {currentPosts.map((post) => {
