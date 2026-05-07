@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ platform: string; region: string }> }): Promise<Metadata> {
   const { platform, region } = await params;
   const page = await fetchTaxBySlug(platform, region);
-  return buildMetadata(page?.seoTitle || "Taxes", page?.seoDescription || "Tax guide.", `/taxes/${platform}/${region}`);
+  return buildMetadata(page?.seoTitle || "Taxes", page?.seoDescription || "Tax guide.", `/taxes/${platform}/${region}`, page?.image);
 }
 
 export default async function TaxPage({ params }: { params: Promise<{ platform: string; region: string }> }) {

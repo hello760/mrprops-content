@@ -15,7 +15,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ category: string; slug: string }> }): Promise<Metadata> {
   const { category, slug } = await params;
   const page = (await fetchTemplatePage(category, slug)) || getTemplateFallback(category, slug);
-  return buildMetadata(page?.seoTitle || "Templates", page?.seoDescription || "Template page.", `/templates/${category}/${slug}`);
+  return buildMetadata(page?.seoTitle || "Templates", page?.seoDescription || "Template page.", `/templates/${category}/${slug}`, (page as any)?.heroImage);
 }
 
 export default async function TemplatePage({ params }: { params: Promise<{ category: string; slug: string }> }) {

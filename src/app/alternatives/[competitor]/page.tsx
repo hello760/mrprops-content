@@ -15,7 +15,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ competitor: string }> }): Promise<Metadata> {
   const { competitor } = await params;
   const page = await fetchAlternativeBySlug(competitor);
-  return buildMetadata(page?.seoTitle || "Alternatives", page?.seoDescription || "Alternative page.", `/alternatives/${competitor}`);
+  return buildMetadata(page?.seoTitle || "Alternatives", page?.seoDescription || "Alternative page.", `/alternatives/${competitor}`, page?.image);
 }
 
 export default async function AlternativePage({ params }: { params: Promise<{ competitor: string }> }) {
