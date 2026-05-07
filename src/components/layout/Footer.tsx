@@ -30,9 +30,9 @@ export function Footer() {
             <h3 className="mb-6 text-sm font-bold uppercase tracking-wider text-foreground">Free Tools</h3>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li><Link href="/tools/finance/rental-yield-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Rental Yield Calculator</Link></li>
-              <li><Link href="/tools/renovations/renovation-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Renovation ROI</Link></li>
-              <li><Link href="/tools/booking/airbnb-profit-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Airbnb Profit Calc</Link></li>
-              <li><Link href="/tools/booking/cleaning-fee-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Cleaning Fee Estimator</Link></li>
+              <li><Link href="/tools/finance/renovation-roi-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Renovation ROI</Link></li>
+              <li><Link href="/tools/profit/airbnb-profit-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Airbnb Profit Calc</Link></li>
+              <li><Link href="/tools/operations/cleaning-fee-calculator" className="hover:text-primary cursor-pointer transition-colors block py-1">Cleaning Fee Estimator</Link></li>
               <li><Link href="/templates" className="hover:text-primary cursor-pointer transition-colors block py-1">Host Templates</Link></li>
             </ul>
           </div>

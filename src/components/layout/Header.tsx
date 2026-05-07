@@ -35,9 +35,9 @@ const menuItems: MenuItem[] = [
   { label: "Free Tools", dropdown: [
     { label: "All Free Tools", href: "/tools", desc: "View all calculators & resources" },
     { label: "Rental Yield Calc", href: "/tools/finance/rental-yield-calculator", desc: "Calculate gross & net yield", highlight: true },
-    { label: "Renovation ROI", href: "/tools/renovations/renovation-calculator", desc: "Calculate upgrade returns" },
-    { label: "Airbnb Profit Calc", href: "/tools/booking/airbnb-profit-calculator", desc: "Estimate monthly earnings" },
-    { label: "Cleaning Fee Tool", href: "/tools/booking/cleaning-fee-calculator", desc: "Set competitive pricing" },
+    { label: "Renovation ROI", href: "/tools/finance/renovation-roi-calculator", desc: "Calculate upgrade returns" },
+    { label: "Airbnb Profit Calc", href: "/tools/profit/airbnb-profit-calculator", desc: "Estimate monthly earnings" },
+    { label: "Cleaning Fee Tool", href: "/tools/operations/cleaning-fee-calculator", desc: "Set competitive pricing" },
     { label: "Templates", href: "/templates", desc: "Checklists & Email scripts" },
   ], megaMenu: true },
   { label: "Resources", dropdown: [
