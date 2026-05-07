@@ -135,6 +135,54 @@ export const fetchGlossaryTerms = cache(async () => {
   return result;
 });
 
+// --- Card display fallbacks (added 2026-05-07) ---
+// Deriving uniform card headings + non-empty definitions for entries whose
+// structured_data.term / structured_data.definition haven't been populated by
+// the producer yet. The producer-side fix (in market-me-good's
+// publish-mrprops-direct.ts) is tracked separately; this defends the listing UX
+// in the meantime and stays as cheap insurance afterward.
+
+const TITLE_CASE_LOWER = new Set([
+  'a','an','the','and','but','or','nor','for','on','at','to','from','by','in','of','vs','via','as','with',
+]);
+
+function cleanTitleToTerm(title: string | null | undefined): string | null {
+  if (!title) return null;
+  let s = title.trim();
+  // Strip leading "What Is " / "What is " / "What's "
+  s = s.replace(/^(What [Ii]s |What's )/, '');
+  // Strip leading article
+  s = s.replace(/^(a |an |the )/i, '');
+  // Cut at first separator: ?, :, |, OR space-padded dash variants
+  s = s.split(/\s+[-–—‒]\s+|[?:|]/, 1)[0].trim();
+  return (s.length >= 1 && s.length <= 45) ? s : null;
+}
+
+function startCaseSlugProper(rawSlug: string | null | undefined): string {
+  const base = (rawSlug || '').replace(/^glossary\//, '').replace(/^what-is-/, '');
+  const words = base.split('-').filter(Boolean);
+  return words
+    .map((w, i) => {
+      if (i > 0 && TITLE_CASE_LOWER.has(w.toLowerCase())) return w.toLowerCase();
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ');
+}
+
+function firstSentence(rawText: string | null | undefined, maxChars = 200): string {
+  if (!rawText) return '';
+  let plain = String(rawText).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  // Fix space-before-punct artifacts left over from HTML stripping
+  plain = plain.replace(/\s+([,.;:!?])/g, '$1');
+  if (!plain) return '';
+  const m = plain.match(/^(.{20,180}?[.!?])(?:\s|$)/);
+  if (m) return m[1].trim();
+  if (plain.length > maxChars) {
+    return plain.slice(0, maxChars).replace(/\s\S*$/, '') + '…';
+  }
+  return plain;
+}
+
 async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
   const sb = await getSupabaseClient();
   if (!sb) return [];
@@ -161,19 +209,35 @@ async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
   if (error || !data) return [];
 
   return data
-    .filter((r: any) => r.custom_slug && !/-\d{8,}$/.test(r.custom_slug))
+    .filter((r: any) => {
+      if (!r.custom_slug || /-\d{8,}$/.test(r.custom_slug)) return false;
+      // Drop rows where every potential content source is empty — prevents
+      // shell cards rendering with no heading + no body. Currently 0 rows match.
+      const sd = (r.structured_data || {}) as Record<string, any>;
+      return Boolean(sd.term || sd.definition || r.meta_description || r.content_body);
+    })
     .map((r: any) => {
       const sd = (r.structured_data || {}) as Record<string, any>;
       const bodyHtml = (sd?.bodyHtml || r.content_body || '') as string;
       const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const slug = normalizeGlossarySlug(r.custom_slug);
-      const term = sd.term || r.title || startCaseSlug(slug.replace(/^what-is-/, ''));
+      // Term fallback chain: curated sd.term → cleaned title → titleized slug.
+      const term =
+        sd.term ||
+        cleanTitleToTerm(r.seo_title || r.title) ||
+        startCaseSlugProper(r.custom_slug);
 
       return {
         id: r.id,
         slug,
         term,
-        definition: sd.definition || '',
+        // Definition fallback chain: curated sd.definition → first sentence of
+        // bodyHtml/content_body → meta_description → empty (filtered above).
+        definition:
+          sd.definition ||
+          firstSentence(sd?.bodyHtml || r.content_body) ||
+          r.meta_description ||
+          '',
         body: [],
         bodyHtml: bodyHtml || undefined,
         relatedTerms: sd.relatedTerms || [],
