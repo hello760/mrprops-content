@@ -12,8 +12,21 @@ export const metadata: Metadata = {
   title: { default: "Mr. Props | #1 Property Management Operating System", template: "%s | Mr. Props" },
   description: "Automate your rentals, optimize your yields, and master the market with Mr. Props.",
   alternates: { canonical: "/" },
-  openGraph: { type: "website", siteName: "Mr. Props", locale: "en_US" },
-  twitter: { card: "summary_large_image", site: "@mrprops" },
+  // Defaults inherited by any page that doesn't set its own openGraph.images
+  // via buildMetadata. Static listing pages (/, /tools, /templates, /glossary,
+  // /pricing) rely on this fallback so Slack / LinkedIn / Twitter previews
+  // always render a thumbnail. Per Helvis 2026-05-07 OG audit.
+  openGraph: {
+    type: "website",
+    siteName: "Mr. Props",
+    locale: "en_US",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Mr. Props" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@mrprops",
+    images: ["/og-image.png"],
+  },
   robots: { index: true, follow: true },
   icons: { icon: "/favicon.png" },
 };
