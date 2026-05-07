@@ -26,6 +26,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendTemplate } from '@/lib/postmark';
+import { signToken } from '@/lib/newsletter-tokens';
+import { fetchFxRates, buildLocalizedModel } from '@/lib/newsletter-localize';
 
 export const runtime = 'nodejs';
 
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
   }
 
-  let body: { email?: string; currency?: string; force_confirm?: boolean };
+  let body: { email?: string; currency?: string; force_confirm?: boolean; send_email_1?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -122,11 +125,57 @@ export async function POST(req: NextRequest) {
     row = inserted;
   }
 
+  // Optionally send Email 1 (welcome-1) directly + record it
+  let email1Result: { ok: boolean; message?: string } | null = null;
+  if (body.send_email_1) {
+    try {
+      const rates = await fetchFxRates(sb);
+      const confirmToken = signToken(row.id, 'confirm');
+      const unsubToken = signToken(row.id, 'unsub');
+      const model = buildLocalizedModel(row.currency || 'EUR', rates, {
+        confirm_url: `https://mrprops.io/api/newsletter/confirm?token=${confirmToken}`,
+        unsubscribe_url: `https://mrprops.io/newsletter/unsubscribed?token=${unsubToken}`,
+        first_name: 'there',
+      });
+
+      const sendResult = await sendTemplate({
+        To: row.email,
+        TemplateAlias: 'welcome-1',
+        TemplateModel: model,
+        MessageStream: 'broadcast',
+        Tag: 'welcome-step-1-test',
+        Metadata: { subscriber_id: row.id, sequence_id: 'welcome_v1', step: '1', test: 'true' },
+        TrackOpens: true,
+        TrackLinks: 'HtmlAndText',
+      });
+
+      // Record the send + advance state so cron picks up Email 2 next
+      const newMsgIds = [
+        ...((row.postmark_message_ids as Array<unknown>) ?? []),
+        { step: 1, message_id: sendResult.MessageID, sent_at: sendResult.SubmittedAt },
+      ];
+      await sb
+        .from('newsletter_subscribers')
+        .update({
+          last_email_sent_at: now,
+          postmark_message_ids: newMsgIds,
+          // scheduled_next_at already set to now by force_confirm; leave as is so cron picks up Email 2 immediately on next tick
+        })
+        .eq('id', row.id);
+
+      email1Result = { ok: true, message: sendResult.MessageID };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      email1Result = { ok: false, message: msg };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     upserted: existing ? 'updated' : 'inserted',
     force_confirmed: !!body.force_confirm,
+    email_1_sent: email1Result,
     subscriber: row,
-    note: 'After Postmark approval lands, hit POST /api/cron/newsletter-sequence with REVALIDATE_SECRET to ship the next email. Daily cron at 10 UTC will do this automatically.',
+    note: 'Once Postmark approval lands: re-call this endpoint with send_email_1=true to ship Email 1 immediately. Daily cron at 10 UTC will then ship Emails 2-10 at +24h cadence (test_compressed_daily=true).',
   });
 }
