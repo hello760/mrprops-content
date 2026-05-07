@@ -57,6 +57,7 @@ interface DueRow {
   currency: string;
   sequence_id: string;
   postmark_message_ids: Array<{ step: number; message_id: string; sent_at: string }> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 async function POST_handler(req: NextRequest) {
@@ -79,7 +80,7 @@ async function POST_handler(req: NextRequest) {
   // Query due-and-confirmed-and-active subscribers (cap to MAX_BATCH for warming)
   const { data, error } = await sb
     .from('newsletter_subscribers')
-    .select('id, email, current_step, currency, sequence_id, postmark_message_ids')
+    .select('id, email, current_step, currency, sequence_id, postmark_message_ids, metadata')
     .lte('scheduled_next_at', now)
     .is('unsubscribed_at', null)
     .is('bounced_at', null)
@@ -132,10 +133,19 @@ async function POST_handler(req: NextRequest) {
       const nextNextStep = nextStep + 1;
       let nextScheduled: string | null = null;
       if (nextNextStep <= 10) {
-        // Days offset from CURRENT step's send to NEXT step's send
-        // = STEP_DAYS_OFFSET[nextNextStep] - STEP_DAYS_OFFSET[nextStep]
-        const daysFromNow = (STEP_DAYS_OFFSET[nextNextStep] ?? 0) - (STEP_DAYS_OFFSET[nextStep] ?? 0);
-        nextScheduled = new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
+        // Test override: subscribers with metadata.test_compressed_daily=true
+        // get a 24-hour cadence regardless of which step they're on. Used so
+        // Helvis can review all 10 emails in 10 days instead of 35.
+        const meta = (row.metadata ?? {}) as Record<string, unknown>;
+        const testCompressed = meta.test_compressed_daily === true;
+        if (testCompressed) {
+          nextScheduled = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        } else {
+          // Days offset from CURRENT step's send to NEXT step's send
+          // = STEP_DAYS_OFFSET[nextNextStep] - STEP_DAYS_OFFSET[nextStep]
+          const daysFromNow = (STEP_DAYS_OFFSET[nextNextStep] ?? 0) - (STEP_DAYS_OFFSET[nextStep] ?? 0);
+          nextScheduled = new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
+        }
       }
 
       const { error: updErr } = await sb
