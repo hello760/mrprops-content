@@ -15,7 +15,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const page = await fetchLandingPageBySlug("features", slug);
-  return buildMetadata(page?.seoTitle || "Features", page?.seoDescription || "Mr. Props features.", `/features/${slug}`);
+  return buildMetadata(page?.seoTitle || "Features", page?.seoDescription || "Mr. Props features.", `/features/${slug}`, (page as any)?.image);
 }
 
 export default async function FeaturePage({ params }: { params: Promise<{ slug: string }> }) {

@@ -16,7 +16,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const page = await fetchComparisonBySlug(slug);
-  return buildMetadata(page?.seoTitle || "Compare", page?.seoDescription || "Comparison page.", `/compare/${slug}`);
+  return buildMetadata(page?.seoTitle || "Compare", page?.seoDescription || "Comparison page.", `/compare/${slug}`, page?.image);
 }
 
 export default async function ComparePage({ params }: { params: Promise<{ slug: string }> }) {

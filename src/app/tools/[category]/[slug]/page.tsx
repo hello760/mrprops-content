@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ category: string; slug: string }> }): Promise<Metadata> {
   const { category, slug } = await params;
   const page = (await fetchToolPage(category, slug)) || resolveToolFallback(category, slug);
-  return buildMetadata(page?.seoTitle || "Tools", page?.seoDescription || "Tool page.", `/tools/${category}/${slug}`);
+  return buildMetadata(page?.seoTitle || "Tools", page?.seoDescription || "Tool page.", `/tools/${category}/${slug}`, page?.featuredImage);
 }
 
 export default async function ToolPage({ params }: { params: Promise<{ category: string; slug: string }> }) {

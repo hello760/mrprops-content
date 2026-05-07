@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const term = await fetchGlossaryTermBySlug(slug);
   if (!term) return buildMetadata("Glossary", "Short-term rental terms explained.", `/glossary/${slug}`);
-  return buildMetadata(term.seoTitle, term.seoDescription, `/glossary/${term.slug}`);
+  return buildMetadata(term.seoTitle, term.seoDescription, `/glossary/${term.slug}`, (term as any)?.featuredImage || term.conceptImageUrl);
 }
 
 export default async function GlossaryTermPage({ params }: { params: Promise<{ slug: string }> }) {

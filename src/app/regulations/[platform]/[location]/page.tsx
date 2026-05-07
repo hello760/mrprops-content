@@ -18,7 +18,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ platform: string; location: string }> }): Promise<Metadata> {
   const { platform, location } = await params;
   const page = await fetchRegulationBySlug(platform, location);
-  return buildMetadata(page?.seoTitle || "Regulations", page?.seoDescription || "Regulation guide.", `/regulations/${platform}/${location}`);
+  return buildMetadata(page?.seoTitle || "Regulations", page?.seoDescription || "Regulation guide.", `/regulations/${platform}/${location}`, page?.image);
 }
 
 export default async function RegulationPage({ params }: { params: Promise<{ platform: string; location: string }> }) {

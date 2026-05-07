@@ -129,6 +129,7 @@ function normalizeToolRow(data: any, category: string, slug: string): ToolPageCo
     calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
+    featuredImage: typeof sd.featuredImage === 'string' ? sd.featuredImage : undefined,
   };
 }
 
@@ -340,6 +341,13 @@ export interface ToolPageContent {
   calculatorUi?: CalculatorUiCopy;
   howItWorks?: Array<{ fieldName: string; measures: string; whyItMatters: string }>;
   cta?: { headline: string; sentence: string; primaryButton: { label: string; href: string }; secondaryButton: { label: string; href: string }; trustMicrocopy: string };
+  /**
+   * URL of the listing-card / OG hero image. Sourced from
+   * structured_data.featuredImage written by the image-pipeline. Used by
+   * generateMetadata to populate og:image + twitter:image so URL pasted into
+   * Slack/LinkedIn renders a thumbnail. 2026-05-07.
+   */
+  featuredImage?: string;
 }
 
 // Sanity interfaces removed — all content from Supabase
@@ -841,6 +849,7 @@ export async function fetchToolPage(category: string, slug: string) {
       calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
       howItWorks: sd.howItWorks || undefined,
       cta: sd.cta || undefined,
+      featuredImage: typeof sd.featuredImage === 'string' ? sd.featuredImage : undefined,
     } as ToolPageContent;
       }
     }
