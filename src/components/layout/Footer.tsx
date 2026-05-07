@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { NewsletterFormInline } from "@/components/newsletter/NewsletterFormInline";
 
 export function Footer() {
   return (
@@ -25,10 +23,7 @@ export function Footer() {
           <div className="space-y-4 order-1 lg:order-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Stay in the Loop</h3>
             <p className="text-sm text-muted-foreground mb-4">Get the latest renovation tips and market insights delivered to your inbox.</p>
-            <form className="relative group">
-              <Input placeholder="Enter your email" className="h-12 bg-secondary/30 border-border rounded-full pr-12 focus-visible:ring-primary focus-visible:ring-offset-0 transition-all" />
-              <Button type="submit" size="icon" className="absolute right-1 top-1 h-10 w-10 rounded-full bg-primary hover:bg-primary/90 shadow-md"><ArrowRight className="h-4 w-4" /></Button>
-            </form>
+            <NewsletterFormInline source="footer" />
           </div>
 
           <div className="order-3 lg:order-3">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState , Fragment } from "react";
 import Link from "next/link";
 import { ChevronRight, Download, FileText, Filter, Home, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { DirectoryEntry } from "@/lib/content-pages";
@@ -98,7 +99,13 @@ export function TemplatesIndexClient({ pages, initialCategory = "All" }: { pages
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredTemplates.map((template, index) => (
-            <Link key={template.id} href={template.href}>
+            <Fragment key={template.id}>
+              {index === 6 && (
+                <div className="col-span-full">
+                  <NewsletterCTA source="templates_cta" />
+                </div>
+              )}
+              <Link href={template.href}>
               <div className="group bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col">
                 <div className="aspect-[4/3] bg-secondary relative overflow-hidden">
                   <img
@@ -126,6 +133,7 @@ export function TemplatesIndexClient({ pages, initialCategory = "All" }: { pages
                 </div>
               </div>
             </Link>
+              </Fragment>
           ))}
         </div>
 

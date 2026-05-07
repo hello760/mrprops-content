@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ShieldCheck, RefreshCw, Database, Home, ChevronRight } from "lucide-react";
 import { fetchAlternatives } from "@/lib/content-pages";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { buildMetadata } from "@/lib/metadata";
 
 export const revalidate = 3600;
@@ -26,8 +28,14 @@ export default async function AlternativesIndexPage() {
 
       <section className="container mx-auto px-4 max-w-screen-xl mb-24">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {competitors.map((comp) => (
-            <Link key={comp.id} href={`/alternatives/${comp.slug}`}>
+          {competitors.map((comp, _newsletterIndex) => (
+            <Fragment key={comp.id}>
+              {_newsletterIndex === 9 && (
+                <div className="col-span-2 md:col-span-3 lg:col-span-4">
+                  <NewsletterCTA source="alternatives_cta" />
+                </div>
+              )}
+              <Link href={`/alternatives/${comp.slug}`}>
               <div className="group bg-card hover:bg-primary/5 border border-border hover:border-primary/50 rounded-2xl p-8 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col items-center justify-center min-h-[200px]">
                 <div className="h-16 w-16 bg-secondary rounded-full flex items-center justify-center text-xl font-bold text-muted-foreground mb-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-inner">{comp.title.charAt(0)}</div>
                 <h3 className="font-display font-bold text-lg mb-2 group-hover:text-primary transition-colors">{comp.title}</h3>
@@ -35,6 +43,7 @@ export default async function AlternativesIndexPage() {
                 <div className="text-xs font-bold uppercase tracking-wider text-primary opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-1">Compare <ArrowRight className="h-3 w-3" /></div>
               </div>
             </Link>
+              </Fragment>
           ))}
         </div>
       </section>

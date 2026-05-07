@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
+import { useMemo , Fragment } from "react";
 import Link from "next/link";
 import { ArrowRight, Calculator, ChevronRight, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -127,8 +128,14 @@ export function ToolsIndexClient({
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {tools.map((tool) => (
-              <Link key={tool.id} href={tool.href}>
+            {tools.map((tool, _newsletterIndex) => (
+              <Fragment key={tool.id}>
+                {_newsletterIndex === 6 && (
+                  <div className="col-span-full">
+                    <NewsletterCTA source="tools_cta" />
+                  </div>
+                )}
+              <Link href={tool.href}>
                 <div className="group h-full bg-card border border-border hover:border-primary/50 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   {/* Hero image — ~160px tall, centered, fills card width.
@@ -161,6 +168,7 @@ export function ToolsIndexClient({
                   </div>
                 </div>
               </Link>
+              </Fragment>
             ))}
           </div>
         )}

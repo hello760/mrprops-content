@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState , Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { DirectoryEntry } from "@/lib/content-pages";
@@ -230,8 +231,14 @@ export function TaxesIndexClient({
           </div>
         ) : (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-16">
-            {currentItems.map((item) => (
-              <Link key={item.id} href={item.href || `/taxes/${item.platform}/${item.slug.split("/").pop()}`}>
+            {currentItems.map((item, _newsletterIndex) => (
+              <Fragment key={item.id}>
+                {_newsletterIndex === 6 && (
+                  <div className="col-span-full">
+                    <NewsletterCTA source="taxes_cta" />
+                  </div>
+                )}
+                <Link href={item.href || `/taxes/${item.platform}/${item.slug.split("/").pop()}`}>
                 <div className="group h-full bg-card border border-border hover:border-primary/50 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   <div className="relative w-full h-40 md:h-44 bg-primary/5 overflow-hidden flex items-center justify-center">
@@ -266,6 +273,7 @@ export function TaxesIndexClient({
                   </div>
                 </div>
               </Link>
+              </Fragment>
             ))}
           </div>
         )}

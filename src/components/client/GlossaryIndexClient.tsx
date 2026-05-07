@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState , Fragment } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, ChevronRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { Input } from "@/components/ui/input";
 import type { GlossaryTerm } from "@/lib/glossary";
 
@@ -55,7 +56,7 @@ export function GlossaryIndexClient({ terms }: { terms: GlossaryTerm[] }) {
               <h2 className="text-2xl font-bold font-display">{search ? `Search Results for "${search}"` : "All Terms"}</h2>
               <span className="text-muted-foreground text-sm">{filteredTerms.length} definitions found</span>
             </div>
-            {filteredTerms.length > 0 ? <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredTerms.map((item) => <Link key={item.id} href={`/glossary/${item.slug}`}><div className="group h-full bg-card border border-border p-6 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer flex flex-col"><h3 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">{item.term}</h3><p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow line-clamp-3">{item.definition}</p><div className="flex items-center text-sm font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">Read Definition <ArrowRight className="ml-1 h-4 w-4" /></div></div></Link>)}</div> : <div className="text-center py-20 bg-secondary/20 rounded-xl border border-dashed border-border"><p className="text-lg text-muted-foreground">No terms found matching "{search}"</p><Button variant="link" onClick={() => setSearch("")}>Clear Search</Button></div>}
+            {filteredTerms.length > 0 ? <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredTerms.map((item, _newsletterIndex) => <Fragment key={item.id}>{_newsletterIndex === 9 && (<div className="col-span-full"><NewsletterCTA source="glossary_cta" /></div>)}<Link href={`/glossary/${item.slug}`}><div className="group h-full bg-card border border-border p-6 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer flex flex-col"><h3 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">{item.term}</h3><p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow line-clamp-3">{item.definition}</p><div className="flex items-center text-sm font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">Read Definition <ArrowRight className="ml-1 h-4 w-4" /></div></div></Link></Fragment>)}</div> : <div className="text-center py-20 bg-secondary/20 rounded-xl border border-dashed border-border"><p className="text-lg text-muted-foreground">No terms found matching "{search}"</p><Button variant="link" onClick={() => setSearch("")}>Clear Search</Button></div>}
           </div>
         </div>
       </div>
