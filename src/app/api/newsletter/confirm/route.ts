@@ -34,12 +34,24 @@ export async function GET(req: NextRequest) {
 
   try {
     const sb = createClient(url, key);
+
+    // Lookup subscriber to check for test_compressed_daily override
+    const { data: subRow } = await sb
+      .from('newsletter_subscribers')
+      .select('metadata')
+      .eq('id', payload.sub)
+      .single();
+    const meta = (subRow?.metadata ?? {}) as Record<string, unknown>;
+    const testCompressed = meta.test_compressed_daily === true;
+    const daysOffset = testCompressed ? 1 : 2;
+
     const { error } = await sb
       .from('newsletter_subscribers')
       .update({
         confirmed_at: new Date().toISOString(),
-        // First scheduled-next: Day 2 from confirmation (not from subscribe)
-        scheduled_next_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        // First scheduled-next: Day 2 from confirmation (not from subscribe).
+        // Test mode (Helvis review): Day 1 to compress cadence to 1/day.
+        scheduled_next_at: new Date(Date.now() + daysOffset * 24 * 60 * 60 * 1000).toISOString(),
       })
       .eq('id', payload.sub)
       .is('unsubscribed_at', null);
