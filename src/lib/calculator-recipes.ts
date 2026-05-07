@@ -778,6 +778,128 @@ const rental_property_roi_full: Recipe = {
 };
 
 // ────────────────────────────────────────────────────────────────
+// Investor-search recipes added 2026-05-07 evening (per Helvis content
+// strategy directive). Fills topic gaps surfaced by the audit:
+// mortgage, compound interest, capital gains tax.
+// ────────────────────────────────────────────────────────────────
+
+const mortgage_payment: Recipe = {
+  name: 'mortgage_payment',
+  displayName: 'Mortgage Payment',
+  category: 'Investment Returns',
+  shortDescription: 'Monthly P&I payment from loan amount, rate, and term — the standard amortization formula.',
+  description:
+    'Monthly principal-and-interest payment on a fixed-rate amortized mortgage. Output also includes total interest paid over the life of the loan and the total amount paid (principal + interest).',
+  inputs: [
+    { key: 'loanAmount', label: 'Loan Amount', unit: 'dollar', defaultValue: 240000, min: 0 },
+    { key: 'annualRatePct', label: 'Annual Interest Rate', unit: 'percent', defaultValue: 7, min: 0, max: 30, step: 0.05 },
+    { key: 'termYears', label: 'Loan Term (Years)', unit: 'years', defaultValue: 30, min: 1, max: 50, step: 1 },
+  ],
+  outputs: [
+    { key: 'monthlyPayment', label: 'Monthly P&I Payment', format: 'dollar' },
+    { key: 'totalInterest', label: 'Total Interest Paid', format: 'dollar' },
+    { key: 'totalPaid', label: 'Total Amount Paid', format: 'dollar' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const P = nonNeg(i.loanAmount);
+    const r = nonNeg(i.annualRatePct) / 100 / 12; // monthly rate
+    const n = nonNeg(i.termYears) * 12;            // total months
+    let monthly: number;
+    if (r === 0) {
+      monthly = safeDiv(P, n);
+    } else {
+      const factor = Math.pow(1 + r, n);
+      monthly = (P * r * factor) / (factor - 1);
+    }
+    const total = monthly * n;
+    return {
+      monthlyPayment: fmt.dollar(monthly),
+      totalInterest: fmt.dollar(total - P),
+      totalPaid: fmt.dollar(total),
+    };
+  },
+};
+
+const compound_interest_fv: Recipe = {
+  name: 'compound_interest_fv',
+  displayName: 'Compound Interest / Future Value',
+  category: 'Investment Returns',
+  shortDescription: 'Future value of an investment with compounding interest plus optional monthly contributions.',
+  description:
+    'Compute the future value of a starting principal that compounds annually plus optional regular monthly contributions over a holding period. Outputs future value, total contributions, and total interest earned.',
+  inputs: [
+    { key: 'principal', label: 'Initial Investment', unit: 'dollar', defaultValue: 50000, min: 0 },
+    { key: 'monthlyContribution', label: 'Monthly Contribution', unit: 'dollar', defaultValue: 500, min: 0 },
+    { key: 'annualRatePct', label: 'Annual Return Rate', unit: 'percent', defaultValue: 7, min: 0, max: 50, step: 0.25 },
+    { key: 'years', label: 'Investment Period (Years)', unit: 'years', defaultValue: 20, min: 0, max: 60, step: 1 },
+  ],
+  outputs: [
+    { key: 'futureValue', label: 'Future Value', format: 'dollar' },
+    { key: 'totalContributions', label: 'Total Contributions', format: 'dollar' },
+    { key: 'totalInterest', label: 'Total Interest Earned', format: 'dollar' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const P = nonNeg(i.principal);
+    const PMT = nonNeg(i.monthlyContribution);
+    const r = nonNeg(i.annualRatePct) / 100 / 12;
+    const n = nonNeg(i.years) * 12;
+    const fvPrincipal = r === 0 ? P : P * Math.pow(1 + r, n);
+    const fvContrib = r === 0 ? PMT * n : PMT * ((Math.pow(1 + r, n) - 1) / r);
+    const fv = fvPrincipal + fvContrib;
+    const totalContrib = P + PMT * n;
+    return {
+      futureValue: fmt.dollar(fv),
+      totalContributions: fmt.dollar(totalContrib),
+      totalInterest: fmt.dollar(fv - totalContrib),
+    };
+  },
+};
+
+const capital_gains_tax: Recipe = {
+  name: 'capital_gains_tax',
+  displayName: 'Capital Gains Tax',
+  category: 'Investment Returns',
+  shortDescription: 'Capital gains tax owed on sale of an investment property — short- or long-term rate.',
+  description:
+    'Computes capital gains tax owed on the sale of an investment property. Uses the long-term rate (held >1 year) by default; flip the constant to apply short-term rates. Includes an optional cost-basis adjustment for capital improvements and the depreciation-recapture portion taxed at a separate rate (default 25%, US convention).',
+  inputs: [
+    { key: 'salePrice', label: 'Sale Price', unit: 'dollar', defaultValue: 500000, min: 0 },
+    { key: 'purchasePrice', label: 'Original Purchase Price', unit: 'dollar', defaultValue: 350000, min: 0 },
+    { key: 'capitalImprovements', label: 'Capital Improvements', unit: 'dollar', defaultValue: 25000, min: 0 },
+    { key: 'accumulatedDepreciation', label: 'Accumulated Depreciation', unit: 'dollar', defaultValue: 30000, min: 0 },
+    { key: 'capitalGainsRatePct', label: 'Long-Term Capital Gains Rate', unit: 'percent', defaultValue: 15, min: 0, max: 50, step: 1 },
+  ],
+  outputs: [
+    { key: 'capitalGain', label: 'Capital Gain', format: 'dollar' },
+    { key: 'capitalGainsTax', label: 'Capital Gains Tax', format: 'dollar' },
+    { key: 'depreciationRecaptureTax', label: 'Depreciation Recapture Tax', format: 'dollar' },
+    { key: 'totalTaxOwed', label: 'Total Tax Owed', format: 'dollar' },
+    { key: 'netProceeds', label: 'Net Proceeds After Tax', format: 'dollar' },
+  ],
+  defaultConstants: { recaptureRatePct: 25 },
+  compute: (i, c) => {
+    const sale = nonNeg(i.salePrice);
+    const basis = nonNeg(i.purchasePrice) + nonNeg(i.capitalImprovements) - nonNeg(i.accumulatedDepreciation);
+    const capGain = Math.max(0, sale - basis);
+    // Recapture portion = the depreciation that was previously deducted, taxed at the recapture rate
+    const recaptureTax = nonNeg(i.accumulatedDepreciation) * (nonNeg(c?.recaptureRatePct ?? 25) / 100);
+    // The remaining gain (capGain MINUS the recapture portion) is taxed at the cap-gains rate
+    const remainingGain = Math.max(0, capGain - nonNeg(i.accumulatedDepreciation));
+    const cgtTax = remainingGain * (nonNeg(i.capitalGainsRatePct) / 100);
+    const totalTax = recaptureTax + cgtTax;
+    return {
+      capitalGain: fmt.dollar(capGain),
+      capitalGainsTax: fmt.dollar(cgtTax),
+      depreciationRecaptureTax: fmt.dollar(recaptureTax),
+      totalTaxOwed: fmt.dollar(totalTax),
+      netProceeds: fmt.dollar(sale - totalTax),
+    };
+  },
+};
+
+// ────────────────────────────────────────────────────────────────
 // Registry + lookup API
 // ────────────────────────────────────────────────────────────────
 
@@ -805,6 +927,10 @@ export const recipes: Record<string, Recipe> = {
   straight_line_depreciation,
   property_valuation_income,
   rental_property_roi_full,
+  // Investor-search additions 2026-05-07 evening
+  mortgage_payment,
+  compound_interest_fv,
+  capital_gains_tax,
 };
 
 export function getRecipe(name: string): Recipe | null {
