@@ -188,9 +188,13 @@ const net_revenue_basic: Recipe = {
     { key: 'platformFeePct', label: 'Platform Fee (%)', unit: 'percent', defaultValue: 3, min: 0, max: 100, step: 0.1 },
     { key: 'bookedNights', label: 'Booked Nights Per Month', unit: 'nights', defaultValue: 20, min: 0, max: 31 },
   ],
+  // 2026-05-08 (Issue 2 fix): netProfit listed FIRST so the prominent result
+  // depends on 4 of 5 inputs (revenue, platformFeePct, operatingExpenses, fixedCosts).
+  // Previously netRevenue was first — it only depends on 2 inputs, so users
+  // changing the other 3 saw "the main number didn't move = broken".
   outputs: [
-    { key: 'netRevenue', label: 'Net Revenue', format: 'dollar' },
     { key: 'netProfit', label: 'Net Profit', format: 'dollar' },
+    { key: 'netRevenue', label: 'Net Revenue (After Platform Fee)', format: 'dollar' },
     { key: 'netRevenuePerNight', label: 'Net Revenue Per Booked Night', format: 'dollar' },
   ],
   defaultConstants: {},
@@ -200,8 +204,8 @@ const net_revenue_basic: Recipe = {
     const netRev = revenue - platformFee;
     const netProfit = netRev - nonNeg(i.operatingExpenses) - nonNeg(i.fixedCosts);
     return {
-      netRevenue: fmt.dollar(netRev),
       netProfit: fmt.dollar(netProfit),
+      netRevenue: fmt.dollar(netRev),
       netRevenuePerNight: fmt.dollar(safeDiv(netRev, nonNeg(i.bookedNights))),
     };
   },
@@ -903,6 +907,40 @@ const capital_gains_tax: Recipe = {
 // Registry + lookup API
 // ────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────
+// Host-fee narrow recipe (2026-05-08, Issue 2 fix)
+// ────────────────────────────────────────────────────────────────
+// Topic-specific recipe for "Airbnb host fees" calculators. Replaces the
+// previous net_revenue_basic shoehorn (5 inputs / 3 outputs where only 2
+// of 5 inputs affected the prominent output) with a tight 2-input / 2-output
+// shape where every input feeds every output.
+const host_fee_only: Recipe = {
+  name: 'host_fee_only',
+  displayName: 'Host Fee + Net Payout',
+  category: 'Costs',
+  shortDescription: 'Host service fee taken by Airbnb + your net payout after the fee.',
+  description:
+    'Computes the Airbnb host service fee (revenue × fee%) and the resulting net payout (revenue − fee). Use for narrow "what does Airbnb charge?" tools where the only relevant inputs are gross revenue and the host fee percentage.',
+  inputs: [
+    { key: 'monthlyRevenue', label: 'Monthly Gross Booking Revenue', unit: 'dollar', defaultValue: 5000, min: 0 },
+    { key: 'hostFeePct', label: 'Airbnb Host Service Fee (%)', unit: 'percent', defaultValue: 3, min: 0, max: 100, step: 0.1 },
+  ],
+  outputs: [
+    { key: 'netPayout', label: 'Net Payout (After Host Fee)', format: 'dollar' },
+    { key: 'hostFee', label: 'Host Fee Paid to Airbnb', format: 'dollar' },
+  ],
+  defaultConstants: {},
+  compute: (i) => {
+    const rev = nonNeg(i.monthlyRevenue);
+    const feePct = nonNeg(i.hostFeePct);
+    const fee = rev * (feePct / 100);
+    return {
+      netPayout: fmt.dollar(rev - fee),
+      hostFee: fmt.dollar(fee),
+    };
+  },
+};
+
 export const recipes: Record<string, Recipe> = {
   net_revenue_basic,
   profit_margin,
@@ -931,6 +969,8 @@ export const recipes: Record<string, Recipe> = {
   mortgage_payment,
   compound_interest_fv,
   capital_gains_tax,
+  // Issue 2 fix 2026-05-08: narrow host-fee recipe (every input feeds visible output)
+  host_fee_only,
 };
 
 export function getRecipe(name: string): Recipe | null {

@@ -30,9 +30,9 @@ import {
 
 // ─────────────── Registry-level sanity ───────────────
 
-test('registry: exactly 15 active recipes', () => {
+test('registry: exactly 26 active recipes', () => {
   const active = Object.values(recipes).filter((r) => !r.deprecated);
-  assert.equal(active.length, 15, `expected 15 active recipes, got ${active.length}`);
+  assert.equal(active.length, 26, `expected 26 active recipes, got ${active.length}`);
 });
 
 test('registry: every recipe has name matching its key', () => {
@@ -50,7 +50,7 @@ test('registry: getRecipe + recipeExists work + unknown name returns null', () =
 
 test('registry: listRecipes returns {name, description} for each active recipe', () => {
   const list = listRecipes();
-  assert.equal(list.length, 15);
+  assert.equal(list.length, 26);
   for (const entry of list) {
     assert.ok(entry.name && typeof entry.name === 'string');
     assert.ok(entry.description && entry.description.length > 10);
@@ -607,4 +607,32 @@ test('customFormulas — invalid expression returns "—" instead of crashing', 
   assert.ok(r);
   assert.equal(r!.result.value, '—');
   assert.equal(r!.result.raw, 0);
+});
+
+// ─────────────── host_fee_only (added 2026-05-08, Issue 2 fix) ───────────────
+test('host_fee_only — happy (5000 revenue, 3% fee → $150 fee, $4,850 payout)', () => {
+  const r = recipes.host_fee_only.compute({ monthlyRevenue: 5000, hostFeePct: 3 });
+  assert.equal(r.hostFee.raw, 150);
+  assert.equal(r.netPayout.raw, 4850);
+});
+
+test('host_fee_only — host-only model (10% fee → $500 fee, $4,500 payout)', () => {
+  const r = recipes.host_fee_only.compute({ monthlyRevenue: 5000, hostFeePct: 10 });
+  assert.equal(r.hostFee.raw, 500);
+  assert.equal(r.netPayout.raw, 4500);
+});
+
+test('host_fee_only — every input affects both outputs (Issue 2 invariant)', () => {
+  const baseline = recipes.host_fee_only.compute({ monthlyRevenue: 5000, hostFeePct: 3 });
+  const moveRev = recipes.host_fee_only.compute({ monthlyRevenue: 6000, hostFeePct: 3 });
+  const moveFee = recipes.host_fee_only.compute({ monthlyRevenue: 5000, hostFeePct: 5 });
+  assert.notEqual(moveRev.hostFee.raw, baseline.hostFee.raw);
+  assert.notEqual(moveRev.netPayout.raw, baseline.netPayout.raw);
+  assert.notEqual(moveFee.hostFee.raw, baseline.hostFee.raw);
+  assert.notEqual(moveFee.netPayout.raw, baseline.netPayout.raw);
+});
+
+test('net_revenue_basic — outputs[0] is netProfit (uses 4 of 5 inputs, Issue 2 fix)', () => {
+  assert.equal(recipes.net_revenue_basic.outputs[0].key, 'netProfit');
+  assert.equal(recipes.net_revenue_basic.outputs[1].key, 'netRevenue');
 });
