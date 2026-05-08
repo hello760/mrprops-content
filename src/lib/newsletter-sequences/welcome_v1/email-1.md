@@ -4,7 +4,7 @@ day_offset: 0
 stream: outbound
 subject_a: "What you actually signed up for"
 subject_b: "I run 6 units in Riga. Here's what I'd send myself."
-preheader: "One real story per email. Specific numbers. No fluff."
+preheader: "Real stories, real numbers, every dollar we lose so you don't have to."
 ---
 
 Hey {{first_name}} —
@@ -15,9 +15,11 @@ I run 6 short-term + long-term rental units in Riga and Jūrmala. Some flip seas
 
 I built Mr Props because I couldn't keep tracking 6 units across 7 spreadsheets — and because I noticed the operators around me running 20+ units were running blind on the same problems.
 
-This sequence is 10 emails over 5 weeks. Each one = one decision I made + the number it cost or saved me. No fluff, no "leverage your portfolio synergies."
+Here's what you'll get from this list: every real story from running our portfolio. The decisions that worked, the ones that cost us money, and the wisdom we pick up along the way.
 
-If you want them, click below. One click, no form. If you don't click in 5 days, I'll stop emailing — that filters out bots and people who weren't really interested.
+Our goal is to scale from 6 units to ~100x that in the next two years. We're documenting everything publicly so the operators reading this don't have to lose what we've already lost.
+
+If you want in, click below. One click, no form. If you don't click in 5 days I'll stop emailing — that filters out bots and people who weren't actually interested.
 
 **[Yes, send me the rest →]({{confirm_url}})**
 
@@ -25,7 +27,7 @@ If you want them, click below. One click, no form. If you don't click in 5 days,
 
 ---
 
-P.S. Email 2 lands in 2 days. The story I lost {{total_loss_last_winter}} on. It's the most expensive thing I learned last year.
+P.S. Next one's the story we lost {{total_loss_last_winter}} on. It's the most expensive thing I learned last year — and one of the cheapest you'll learn from this list.
 
 ---
 unsubscribe_footer: |

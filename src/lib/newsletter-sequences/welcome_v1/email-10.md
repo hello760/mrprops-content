@@ -4,12 +4,12 @@ day_offset: 35
 stream: broadcast
 subject_a: "What I'd tell myself in year 1"
 subject_b: "If any of this resonated…"
-preheader: "Five weeks. Ten emails. One close."
+preheader: "What I'd tell my year-one self — plus where this list goes next."
 ---
 
-Five weeks ago you signed up for this list.
+You've made it through the first arc.
 
-Ten emails later, here's what I'd tell my year-one self if I could:
+Here's what I'd tell my year-one self if I could:
 
 ---
 
@@ -43,9 +43,11 @@ If you're past unit 5 and your spreadsheet is starting to lie to you, the trial 
 
 **[See if Mr Props fits your portfolio →](https://app.mrprops.io/register)**
 
-If it doesn't — that's fine. The decisions in these 10 emails work on a Google Sheet too.
+If it doesn't fit — that's fine. The decisions we shared on this list work on a Google Sheet too.
 
 Either way: thanks for reading. Reply anytime.
+
+This list isn't done — we're going from 6 units to ~100x that over the next two years, and every real lesson lands here as it happens. Stick around.
 
 — Helvis
 
