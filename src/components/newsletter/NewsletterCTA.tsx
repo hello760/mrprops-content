@@ -76,7 +76,7 @@ export function NewsletterCTA({ source = "guides_cta", headline, subhead }: Prop
         {state === "success" ? (
           <div className="flex items-center gap-3 rounded-xl bg-white/15 px-5 py-3 text-sm">
             <Check className="h-4 w-4 flex-shrink-0" />
-            <span>Check your inbox — Email 1 is on its way.</span>
+            <span>Welcome aboard. Check your inbox → confirm your subscription → I'll start sharing the wisdom.</span>
           </div>
         ) : state === "alreadyMember" ? (
           <div className="flex items-center gap-3 rounded-xl bg-white/15 px-5 py-3 text-sm">

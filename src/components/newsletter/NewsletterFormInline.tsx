@@ -62,7 +62,7 @@ export function NewsletterFormInline({ source = "footer" }: Props) {
     return (
       <div className="flex items-center gap-3 rounded-full bg-primary/10 px-4 py-3 text-sm text-foreground">
         <Check className="h-4 w-4 text-primary flex-shrink-0" />
-        <span>Check your inbox — Email 1 is on its way.</span>
+        <span>Welcome aboard. Check your inbox → confirm your subscription → I'll start sharing the wisdom.</span>
       </div>
     );
   }
