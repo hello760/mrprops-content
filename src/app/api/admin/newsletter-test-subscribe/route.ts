@@ -26,7 +26,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendTemplate } from '@/lib/postmark';
+import { sendEmail } from '@/lib/resend';
+import { renderWelcomeEmail } from '@/lib/newsletter-render';
 import { signToken } from '@/lib/newsletter-tokens';
 import { fetchFxRates, buildLocalizedModel } from '@/lib/newsletter-localize';
 
@@ -138,21 +139,27 @@ export async function POST(req: NextRequest) {
         first_name: 'there',
       });
 
-      const sendResult = await sendTemplate({
-        To: row.email,
-        TemplateAlias: 'welcome-1',
-        TemplateModel: model,
-        MessageStream: 'broadcast',
-        Tag: 'welcome-step-1-test',
-        Metadata: { subscriber_id: row.id, sequence_id: 'welcome_v1', step: '1', test: 'true' },
-        TrackOpens: true,
-        TrackLinks: 'HtmlAndText',
+      const rendered = renderWelcomeEmail(1, {
+        ...(model as Record<string, string>),
+        confirm_url: (model as Record<string, string>).confirm_url ?? '',
+        unsubscribe_url: (model as Record<string, string>).unsubscribe_url ?? '',
       });
 
-      // Record the send + advance state so cron picks up Email 2 next
+      const sendResult = await sendEmail({
+        to: row.email,
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
+        tags: [
+          { name: 'sequence', value: 'welcome_v1' },
+          { name: 'step', value: '1' },
+          { name: 'test', value: 'true' },
+        ],
+      });
+
       const newMsgIds = [
         ...((row.postmark_message_ids as Array<unknown>) ?? []),
-        { step: 1, message_id: sendResult.MessageID, sent_at: sendResult.SubmittedAt },
+        { step: 1, message_id: sendResult.id, sent_at: new Date().toISOString(), provider: 'resend' },
       ];
       await sb
         .from('newsletter_subscribers')
@@ -163,7 +170,7 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', row.id);
 
-      email1Result = { ok: true, message: sendResult.MessageID };
+      email1Result = { ok: true, message: sendResult.id };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       email1Result = { ok: false, message: msg };
