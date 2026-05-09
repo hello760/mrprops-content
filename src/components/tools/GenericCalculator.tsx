@@ -20,7 +20,15 @@ interface GenericCalculatorProps {
   seoContent?: React.ReactNode;
   calculatorUi?: CalculatorUiCopy;
   introText?: string;
-  benefits?: Array<{ title: string; description: string }>;
+  /**
+   * 2026-05-09 (CC↔Live True Parity v3, Phase 1): benefits + benefitsIntro
+   * forwarded to CalculatorLayout to render the "How is X helpful?" section
+   * verbatim from CC sd.* (replacing hardcoded Accuracy/Speed/Confidence).
+   * `icon` is a Lucide name string (e.g. "TrendingUp") — resolved by
+   * CalculatorLayout's resolveLucideIcon().
+   */
+  benefits?: Array<{ icon?: string; title: string; description: string }>;
+  benefitsIntro?: string;
   faqs?: Array<{ question: string; answer: string }>;
   body?: PortableTextBlock[];
 }
@@ -38,10 +46,13 @@ export function GenericCalculator({
   seoContent,
   calculatorUi,
   introText,
-  // benefits intentionally unused in render paths after Phase B4 — the widget
-  // either renders the input form or the "not configured" banner; there is
-  // no longer a text-only fallback that used benefits. Keeping the prop so
-  // ToolPageClient can still pass it without a TypeScript break.
+  // 2026-05-09 (CC↔Live True Parity v3, Phase 1): benefits + benefitsIntro
+  // are now forwarded to CalculatorLayout below (line ~314) so the "How is X
+  // helpful?" section renders from CC sd.* — closes the schema mismatch where
+  // CC wrote sd.benefits[] but the renderer fell back to hardcoded
+  // Accuracy/Speed/Confidence. Prior comment "intentionally unused" is gone.
+  benefits,
+  benefitsIntro,
   body,
 }: GenericCalculatorProps) {
   // Render article body directly — calculator pages should NOT use blog-style SEO wrappers.
@@ -311,6 +322,8 @@ export function GenericCalculator({
       results={results}
       seoContent={resolvedSeoContent}
       calculatorUi={calculatorUi}
+      benefits={benefits}
+      benefitsIntro={benefitsIntro}
     />
   );
 }
