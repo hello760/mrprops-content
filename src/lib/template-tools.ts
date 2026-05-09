@@ -123,6 +123,12 @@ function normalizeToolRow(data: any, category: string, slug: string): ToolPageCo
     mainTitle: sd.mainTitle || data.title || '',
     introText: sd.introText || '',
     benefits: sd.benefits || fallback?.benefits || [],
+    // 2026-05-09 (CC↔Live True Parity v3, Phase 1): benefitsIntro is the
+    // single-sentence lead between the "How is X helpful?" H2 and the 3
+    // benefit cards. BSD's body parser populates sd.benefitsIntro from the
+    // body's lead paragraph in that section. Live renderer uses it via
+    // GenericCalculator → CalculatorLayout (no hardcoded fallback).
+    benefitsIntro: sd.benefitsIntro || undefined,
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
     bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
@@ -262,6 +268,12 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     mainTitle: sd.mainTitle || data.title || '',
     introText: sd.introText || '',
     benefits: sd.benefits || fallback?.benefits || [],
+    // 2026-05-09 (CC↔Live True Parity v3, Phase 1): benefitsIntro is the
+    // single-sentence lead between the "How is X helpful?" H2 and the 3
+    // benefit cards. BSD's body parser populates sd.benefitsIntro from the
+    // body's lead paragraph in that section. Live renderer uses it via
+    // GenericCalculator → CalculatorLayout (no hardcoded fallback).
+    benefitsIntro: sd.benefitsIntro || undefined,
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
     bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
@@ -334,7 +346,14 @@ export interface ToolPageContent {
   seoDescription: string;
   mainTitle: string;
   introText: string;
-  benefits: Array<{ title: string; description: string }>;
+  benefits: Array<{ icon?: string; title: string; description: string }>;
+  /**
+   * 2026-05-09 (CC↔Live True Parity v3, Phase 1): single-sentence lead between
+   * the "How is X helpful?" H2 and the 3 benefit cards. Sourced from
+   * sd.benefitsIntro which BSD's body parser populates from the body's lead
+   * paragraph in that section. Threaded through GenericCalculator → CalculatorLayout.
+   */
+  benefitsIntro?: string;
   faqs: Array<{ question: string; answer: string }>;
   body?: PortableTextBlock[];
   bodyHtml?: string;

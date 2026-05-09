@@ -228,6 +228,7 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
       {...sharedProps}
       introText={page.introText}
       benefits={page.benefits}
+      benefitsIntro={page.benefitsIntro}
       faqs={page.faqs}
       body={page.body}
     />

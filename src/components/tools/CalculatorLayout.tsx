@@ -3,12 +3,28 @@
 import { type ReactNode, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowRight, Home, ChevronRight, CheckCircle2, Zap, ShieldCheck } from "lucide-react";
+import {
+  Download, ArrowRight, Home, ChevronRight, CheckCircle2, Zap, ShieldCheck,
+  TrendingUp, TrendingDown, BarChart2, BarChart3, DollarSign, Calculator,
+  Receipt, Target, Sliders, SlidersHorizontal, RefreshCw, FileText,
+  AlertTriangle, MapPin, PieChart, PoundSterling, GitCompare, Filter,
+  Percent, ClipboardCheck, CalendarDays, SplitSquareHorizontal,
+  BadgePoundSterling, CalendarCheck, Clock, CheckCircle, Award, Compass,
+  Eye, HelpCircle, Lightbulb, Map, Search, Settings,
+  type LucideIcon,
+} from "lucide-react";
 import { LeadGenModal } from "./LeadGenModal";
 import Link from "next/link";
 
 
-import type { CalculatorBenefitStripItem, CalculatorUiCopy } from "./calculatorCopy";
+import type { CalculatorUiCopy } from "./calculatorCopy";
+
+/** Single benefit card — title + description + icon (Lucide name from CC). */
+export interface BenefitItem {
+  icon?: string;        // Lucide icon name (e.g. "TrendingUp"), kebab or PascalCase OK
+  title: string;
+  description: string;
+}
 
 interface CalculatorLayoutProps {
   title: string;
@@ -19,6 +35,40 @@ interface CalculatorLayoutProps {
   category?: string;
   toolName?: string;
   calculatorUi?: CalculatorUiCopy;
+  /**
+   * 2026-05-09 (CC↔Live True Parity v3, Phase 1): benefits + benefitsIntro
+   * are now passed directly from CC's `sd.benefits[]` and `sd.benefitsIntro`
+   * via GenericCalculator → CalculatorLayout. When present, the "How is X
+   * helpful?" section renders these verbatim. When absent, the entire
+   * section is suppressed (no hardcoded Accuracy/Speed/Confidence fallback).
+   * Replaces the prior `calculatorUi.layout.benefitStripItems` lookup which
+   * was always empty for DB-driven calcs and silently fired the fallback.
+   */
+  benefits?: BenefitItem[];
+  benefitsIntro?: string;
+}
+
+/**
+ * Resolve a Lucide icon name (PascalCase OR kebab-case) to a component.
+ * Returns CheckCircle2 if unknown — keeps render alive on unrecognized icon.
+ * The set covers every name observed in DB sd.benefits[].icon as of 2026-05-08.
+ */
+function resolveLucideIcon(name?: string): LucideIcon {
+  if (!name) return CheckCircle2;
+  const pascal = name
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((p) => p[0].toUpperCase() + p.slice(1))
+    .join("");
+  const map: Record<string, LucideIcon> = {
+    TrendingUp, TrendingDown, BarChart2, BarChart3, DollarSign, Calculator,
+    Receipt, Target, Sliders, SlidersHorizontal, ShieldCheck, RefreshCw,
+    FileText, Zap, AlertTriangle, MapPin, PieChart, PoundSterling, GitCompare,
+    Filter, Percent, ClipboardCheck, CalendarDays, SplitSquareHorizontal,
+    BadgePoundSterling, CalendarCheck, Clock, CheckCircle, CheckCircle2,
+    Award, Compass, Eye, HelpCircle, Lightbulb, Map, Search, Settings,
+  };
+  return map[pascal] || map[name] || CheckCircle2;
 }
 
 function interpolateTemplate(template: string | undefined, replacements: Record<string, string>) {
@@ -29,7 +79,10 @@ function interpolateTemplate(template: string | undefined, replacements: Record<
   );
 }
 
-export function CalculatorLayout({ title, description, inputs, results, seoContent, category = "General", toolName, calculatorUi }: CalculatorLayoutProps) {
+export function CalculatorLayout({
+  title, description, inputs, results, seoContent, category = "General",
+  toolName, calculatorUi, benefits, benefitsIntro,
+}: CalculatorLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const reportButtonLabel = calculatorUi?.layout?.reportButtonLabel || "Email me this detailed report";
@@ -40,26 +93,30 @@ export function CalculatorLayout({ title, description, inputs, results, seoConte
     calculatorUi?.layout?.helpfulHeading || "How is {toolName} helpful?",
     { title, toolName: toolName || "this calculator" },
   );
-  const helpfulText = interpolateTemplate(
-    calculatorUi?.layout?.helpfulText || "Most hosts guess their numbers. Pros use data. This tool helps you make unemotional, data-driven decisions about your property portfolio, ensuring every dollar you invest yields a measurable return.",
-    { title, toolName: toolName || "this calculator" },
-  );
+  // 2026-05-09 (CC↔Live True Parity v3, Phase 1):
+  // helpfulText is the lead paragraph between H2 "How is X helpful?" and the
+  // 3 benefit cards. PRIORITY: prop `benefitsIntro` (from sd.benefitsIntro,
+  // extracted from body) > legacy `calculatorUi.layout.helpfulText`. If
+  // neither is set, the paragraph is suppressed (no hardcoded "Most hosts
+  // guess their numbers..." fallback).
+  const helpfulText = benefitsIntro
+    || interpolateTemplate(calculatorUi?.layout?.helpfulText || "", { title, toolName: toolName || "this calculator" });
   const reportModalTitle = interpolateTemplate(
     calculatorUi?.layout?.reportModalTitle || "Get Your {title} Report",
     { title, toolName: toolName || title },
   );
-  const benefitStripItems: CalculatorBenefitStripItem[] = calculatorUi?.layout?.benefitStripItems?.length
-    ? calculatorUi.layout.benefitStripItems
-    : [
-        { icon: "accuracy", title: "Accuracy", description: "Based on real-time market data from 50+ cities." },
-        { icon: "speed", title: "Speed", description: "Get answers in seconds, not hours of spreadsheet work." },
-        { icon: "confidence", title: "Confidence", description: "Bank-grade formulas used by institutional investors." },
-      ];
-  const iconMap = {
-    accuracy: CheckCircle2,
-    speed: Zap,
-    confidence: ShieldCheck,
-  } as const;
+  // 2026-05-09 (CC↔Live True Parity v3, Phase 1):
+  // benefits are now passed directly from CC's sd.benefits[]. The hardcoded
+  // Accuracy/Speed/Confidence fallback is GONE — when CC has no benefits,
+  // the entire "How is X helpful?" section is suppressed (see render below).
+  // This closes the schema mismatch where CC wrote sd.benefits[] but the
+  // renderer read calculatorUi.layout.benefitStripItems (always empty).
+  const benefitItems: BenefitItem[] = benefits?.length
+    ? benefits
+    : (calculatorUi?.layout?.benefitStripItems || []).map((b) => ({
+        icon: b.icon, title: b.title, description: b.description,
+      }));
+  const showBenefitsSection = benefitItems.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,37 +193,43 @@ export function CalculatorLayout({ title, description, inputs, results, seoConte
             </div>
 
             <div className="max-w-4xl mx-auto space-y-20 text-center">
-              <div>
-                <h2 className="font-display text-3xl md:text-4xl font-extrabold mb-8 tracking-tight">
-                  {helpfulHeading.includes(toolName || "") ? (
-                    <>
-                      {helpfulHeading.split(toolName || "this calculator")[0]}
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">{toolName || "this calculator"}</span>
-                      {helpfulHeading.split(toolName || "this calculator").slice(1).join(toolName || "this calculator")}
-                    </>
-                  ) : (
-                    helpfulHeading
-                  )}
-                </h2>
-                <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-                  {helpfulText}
-                </p>
-              </div>
+              {showBenefitsSection && (
+                <>
+                  <div>
+                    <h2 className="font-display text-3xl md:text-4xl font-extrabold mb-8 tracking-tight">
+                      {helpfulHeading.includes(toolName || "") ? (
+                        <>
+                          {helpfulHeading.split(toolName || "this calculator")[0]}
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">{toolName || "this calculator"}</span>
+                          {helpfulHeading.split(toolName || "this calculator").slice(1).join(toolName || "this calculator")}
+                        </>
+                      ) : (
+                        helpfulHeading
+                      )}
+                    </h2>
+                    {helpfulText && (
+                      <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
+                        {helpfulText}
+                      </p>
+                    )}
+                  </div>
 
-              <div className="grid md:grid-cols-3 gap-8 text-center">
-                {benefitStripItems.map((item, i) => {
-                  const Icon = iconMap[item.icon] || CheckCircle2;
-                  return (
-                    <div key={`${item.icon}-${i}`} className="flex flex-col items-center p-6 bg-secondary/20 rounded-2xl">
-                      <div className="h-14 w-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-6">
-                        <Icon className="h-7 w-7" />
-                      </div>
-                      <h3 className="font-bold text-lg mb-3">{item.title}</h3>
-                      <p className="text-muted-foreground text-sm">{item.description}</p>
-                    </div>
-                  );
-                })}
-              </div>
+                  <div className="grid md:grid-cols-3 gap-8 text-center">
+                    {benefitItems.map((item, i) => {
+                      const Icon = resolveLucideIcon(item.icon);
+                      return (
+                        <div key={`${item.icon || 'b'}-${i}`} className="flex flex-col items-center p-6 bg-secondary/20 rounded-2xl">
+                          <div className="h-14 w-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-6">
+                            <Icon className="h-7 w-7" />
+                          </div>
+                          <h3 className="font-bold text-lg mb-3">{item.title}</h3>
+                          <p className="text-muted-foreground text-sm">{item.description}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
               {seoContent && (
                 <div className="prose prose-lg dark:prose-invert max-w-none mx-auto text-left">
