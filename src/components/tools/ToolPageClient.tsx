@@ -163,17 +163,31 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
           "How is Calculator Helpful?" sections + duplicate FAQ + Lucide icon name leakage
           ("DollarSign (Lucide)") rendering as prose. PF-23 closed by this removal too. */}
 
-      {/* How It Works — from structured_data if available, else static fallback */}
+      {/* How It Works — from structured_data if available, else static fallback.
+          2026-05-13 (CC↔Live True Parity v4): the H2, intro paragraph, and
+          per-field whyItMatters now come from BSD's body parser, not from
+          hardcoded strings here. Falls back to the legacy templated
+          "How the {toolName} Works" / "This calculator breaks down…" copy
+          only when BSD didn't populate the new fields (older pieces, or
+          piece body had no intro paragraph). When whyItMatters is empty
+          we suppress the second <p> so the live page doesn't show
+          synthetic copy that wasn't in the body. */}
       {page.howItWorks?.length ? (
         <div className="space-y-6">
-          <h2 className="font-display text-2xl md:text-3xl font-bold">How the {toolName} Works</h2>
-          <p className="text-muted-foreground">This calculator breaks down your estimate using key inputs. Each one refines the output.</p>
+          <h2 className="font-display text-2xl md:text-3xl font-bold">
+            {page.howItWorksTitle || `How the ${toolName} Works`}
+          </h2>
+          <p className="text-muted-foreground">
+            {page.howItWorksIntro || 'This calculator breaks down your estimate using key inputs. Each one refines the output.'}
+          </p>
           <div className="grid gap-6">
             {page.howItWorks.map((item, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-6">
                 <h3 className="font-bold text-lg mb-2">{item.fieldName}</h3>
                 <p className="text-muted-foreground text-sm mb-1">{item.measures}</p>
-                <p className="text-sm">{item.whyItMatters}</p>
+                {item.whyItMatters?.trim() ? (
+                  <p className="text-sm">{item.whyItMatters}</p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -229,6 +243,7 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
       introText={page.introText}
       benefits={page.benefits}
       benefitsIntro={page.benefitsIntro}
+      benefitsTitle={page.benefitsTitle}
       faqs={page.faqs}
       body={page.body}
     />

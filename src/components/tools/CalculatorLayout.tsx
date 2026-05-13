@@ -46,6 +46,15 @@ interface CalculatorLayoutProps {
    */
   benefits?: BenefitItem[];
   benefitsIntro?: string;
+  /**
+   * 2026-05-13 (CC↔Live True Parity v4): body-derived H2 verbatim for the
+   * "How is X helpful?" section. Passed from CC's sd.benefitsTitle through
+   * GenericCalculator. PRIORITY ORDER: prop `benefitsTitle` (body H2) >
+   * legacy `calculatorUi.layout.helpfulHeading` (template) > hardcoded
+   * "How is {toolName} helpful?" fallback. This makes the live page track
+   * the body verbatim instead of normalizing case/wording.
+   */
+  benefitsTitle?: string;
 }
 
 /**
@@ -81,7 +90,7 @@ function interpolateTemplate(template: string | undefined, replacements: Record<
 
 export function CalculatorLayout({
   title, description, inputs, results, seoContent, category = "General",
-  toolName, calculatorUi, benefits, benefitsIntro,
+  toolName, calculatorUi, benefits, benefitsIntro, benefitsTitle,
 }: CalculatorLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -89,10 +98,16 @@ export function CalculatorLayout({
   const primaryCtaLabel = calculatorUi?.layout?.primaryCtaLabel || "Start Free Trial";
   const primaryCtaHref = calculatorUi?.layout?.primaryCtaHref || "https://app.mrprops.io/register";
   const trustBadgeText = calculatorUi?.layout?.trustBadgeText || "Based on 2026 Market Data";
-  const helpfulHeading = interpolateTemplate(
-    calculatorUi?.layout?.helpfulHeading || "How is {toolName} helpful?",
-    { title, toolName: toolName || "this calculator" },
-  );
+  // 2026-05-13 (CC↔Live True Parity v4): prefer body-derived H2 verbatim
+  // (sd.benefitsTitle from BSD's extractBenefitsBlock) before falling back
+  // to the legacy template / hardcoded heading. Body H2 wins absolutely so
+  // case/wording changes in CC flow to the live page without code edits.
+  const helpfulHeading = benefitsTitle && benefitsTitle.trim()
+    ? benefitsTitle.trim()
+    : interpolateTemplate(
+        calculatorUi?.layout?.helpfulHeading || "How is {toolName} helpful?",
+        { title, toolName: toolName || "this calculator" },
+      );
   // 2026-05-09 (CC↔Live True Parity v3, Phase 1):
   // helpfulText is the lead paragraph between H2 "How is X helpful?" and the
   // 3 benefit cards. PRIORITY: prop `benefitsIntro` (from sd.benefitsIntro,

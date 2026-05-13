@@ -29,6 +29,14 @@ interface GenericCalculatorProps {
    */
   benefits?: Array<{ icon?: string; title: string; description: string }>;
   benefitsIntro?: string;
+  /**
+   * 2026-05-13 (CC↔Live True Parity v4): body-derived H2 verbatim for the
+   * "How is X helpful?" section. Forwarded to CalculatorLayout where it
+   * wins over `calculatorUi.layout.helpfulHeading` and the hardcoded
+   * "How is {toolName} helpful?" template. Populated from sd.benefitsTitle
+   * which BSD's extractBenefitsBlock writes from the body's H2.
+   */
+  benefitsTitle?: string;
   faqs?: Array<{ question: string; answer: string }>;
   body?: PortableTextBlock[];
 }
@@ -53,6 +61,7 @@ export function GenericCalculator({
   // Accuracy/Speed/Confidence. Prior comment "intentionally unused" is gone.
   benefits,
   benefitsIntro,
+  benefitsTitle,
   body,
 }: GenericCalculatorProps) {
   // Render article body directly — calculator pages should NOT use blog-style SEO wrappers.
@@ -324,6 +333,7 @@ export function GenericCalculator({
       calculatorUi={calculatorUi}
       benefits={benefits}
       benefitsIntro={benefitsIntro}
+      benefitsTitle={benefitsTitle}
     />
   );
 }
