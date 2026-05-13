@@ -246,56 +246,13 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
   };
 }
 
-async function fetchToolFromSupabase(category: string, slug: string): Promise<ToolPageContent | null> {
-  // Use local getSB() — don't import from supabase.ts (dynamic imports can fail in page components)
-  const sb = getSBSync();
-  if (!sb || !process.env.MR_PROPS_CLIENT_ID) return null;
-
-  const slugVariants = [`tools/${category}/${slug}`, `tools/${slug}`, slug];
-  const { data, error } = await sb
-    .from('content_pieces')
-    .select('id, custom_slug, title, type_of_work, content_body, structured_data, seo_title, meta_description, published_at')
-    .eq('client_id', process.env.MR_PROPS_CLIENT_ID)
-    .eq('writing_status', 'published')
-    .not('structured_data', 'is', null)
-    .in('custom_slug', slugVariants)
-    .single();
-
-  if (error || !data?.structured_data) return null;
-  const sd = data.structured_data as Record<string, any>;
-  const fallback = resolveToolFallback(category, slug);
-
-  return {
-    id: data.id,
-    category: category,
-    slug: slug,
-    title: sd.mainTitle || data.title || fallback?.title || '',
-    description: sd.introText || fallback?.description || '',
-    seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
-    seoDescription: sd.seoDescription || data.meta_description || fallback?.seoDescription || '',
-    mainTitle: sd.mainTitle || data.title || '',
-    introText: sd.introText || '',
-    benefits: sd.benefits || fallback?.benefits || [],
-    // 2026-05-09 (CC↔Live True Parity v3, Phase 1): benefitsIntro is the
-    // single-sentence lead between the "How is X helpful?" H2 and the 3
-    // benefit cards. BSD's body parser populates sd.benefitsIntro from the
-    // body's lead paragraph in that section. Live renderer uses it via
-    // GenericCalculator → CalculatorLayout (no hardcoded fallback).
-    benefitsIntro: sd.benefitsIntro || undefined,
-    faqs: sd.faqs || fallback?.faqs || [],
-    body: [],
-    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
-    calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
-    howItWorks: sd.howItWorks || undefined,
-    cta: sd.cta || undefined,
-    // 2026-05-13 (CC↔Live True Parity v4): mirror of normalizeToolRow.
-    // Keep both code paths in sync — both populate body-derived heading/intro
-    // fields when BSD wrote them.
-    benefitsTitle: typeof sd.benefitsTitle === 'string' ? sd.benefitsTitle : undefined,
-    howItWorksTitle: typeof sd.howItWorksTitle === 'string' ? sd.howItWorksTitle : undefined,
-    howItWorksIntro: typeof sd.howItWorksIntro === 'string' ? sd.howItWorksIntro : undefined,
-  };
-}
+// 2026-05-13 (CC↔Live True Parity v4): `fetchToolFromSupabase` was removed —
+// it was dead code (never called from anywhere) and its inline normalizer
+// had drifted out of sync with the shared `normalizeToolRow`. The
+// production /tools/[category]/[slug] page resolves through `fetchToolPage`
+// (line ~868), which now reuses `normalizeToolRow`. If you find yourself
+// adding a third inline tool-page normalizer, stop — extend
+// `normalizeToolRow` instead. See LESSON #285 (no duplicate normalizers).
 
 export interface LinkItem {
   label: string;
@@ -866,7 +823,14 @@ export async function fetchTemplatePage(category: string, slug: string) {
 }
 
 export async function fetchToolPage(category: string, slug: string) {
-  // Supabase direct query
+  // 2026-05-13 (CC↔Live True Parity v4): refactored to reuse the shared
+  // `normalizeToolRow` normalizer. The prior inline field map silently
+  // dropped `benefitsIntro`, `benefitsTitle`, `howItWorksTitle`,
+  // `howItWorksIntro` — every field the by-id path / shared normalizer
+  // adds gets missed here. That broke CC↔Live parity for the production
+  // /tools/[category]/[slug] page even after BSD populated the new sd
+  // fields. Same lesson as 2026-04-23's fetchTemplatePage refactor: there
+  // is exactly ONE normalizer — don't keep inline duplicates that drift.
   try {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -886,27 +850,7 @@ export async function fetchToolPage(category: string, slug: string) {
         .single();
 
       if (!error && data?.structured_data) {
-        const sd = data.structured_data as Record<string, any>;
-    const fallback = resolveToolFallback(category, slug);
-    return {
-      id: data.id,
-      category: category,
-      slug: slug,
-      title: sd.mainTitle || data.title || fallback?.title || '',
-      description: sd.introText || fallback?.description || '',
-      seoTitle: sd.seoTitle || data.seo_title || fallback?.seoTitle || '',
-      seoDescription: sd.seoDescription || data.meta_description || fallback?.seoDescription || '',
-      mainTitle: sd.mainTitle || data.title || '',
-      introText: sd.introText || '',
-      benefits: sd.benefits || fallback?.benefits || [],
-      faqs: sd.faqs || fallback?.faqs || [],
-      body: [],
-      bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
-      calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
-      howItWorks: sd.howItWorks || undefined,
-      cta: sd.cta || undefined,
-      featuredImage: typeof sd.featuredImage === 'string' ? sd.featuredImage : undefined,
-    } as ToolPageContent;
+        return normalizeToolRow(data, category, slug);
       }
     }
   } catch (sbErr) {
