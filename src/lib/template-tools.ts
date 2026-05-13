@@ -135,6 +135,14 @@ function normalizeToolRow(data: any, category: string, slug: string): ToolPageCo
     calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
+    // 2026-05-13 (CC↔Live True Parity v4): body-derived heading/intro fields
+    // — present iff the body had them. Renderer prefers these in priority
+    // over its hardcoded "How is {toolName} helpful?" / "How the {toolName}
+    // Works" / "This calculator breaks down…" strings, so CC body wording
+    // flows verbatim to the live page.
+    benefitsTitle: typeof sd.benefitsTitle === 'string' ? sd.benefitsTitle : undefined,
+    howItWorksTitle: typeof sd.howItWorksTitle === 'string' ? sd.howItWorksTitle : undefined,
+    howItWorksIntro: typeof sd.howItWorksIntro === 'string' ? sd.howItWorksIntro : undefined,
     featuredImage: typeof sd.featuredImage === 'string' ? sd.featuredImage : undefined,
   };
 }
@@ -280,6 +288,12 @@ async function fetchToolFromSupabase(category: string, slug: string): Promise<To
     calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
+    // 2026-05-13 (CC↔Live True Parity v4): mirror of normalizeToolRow.
+    // Keep both code paths in sync — both populate body-derived heading/intro
+    // fields when BSD wrote them.
+    benefitsTitle: typeof sd.benefitsTitle === 'string' ? sd.benefitsTitle : undefined,
+    howItWorksTitle: typeof sd.howItWorksTitle === 'string' ? sd.howItWorksTitle : undefined,
+    howItWorksIntro: typeof sd.howItWorksIntro === 'string' ? sd.howItWorksIntro : undefined,
   };
 }
 
@@ -360,6 +374,29 @@ export interface ToolPageContent {
   calculatorUi?: CalculatorUiCopy;
   howItWorks?: Array<{ fieldName: string; measures: string; whyItMatters: string }>;
   cta?: { headline: string; sentence: string; primaryButton: { label: string; href: string }; secondaryButton: { label: string; href: string }; trustMicrocopy: string };
+  /**
+   * 2026-05-13 (CC↔Live True Parity v4): body-derived H2 verbatim for the
+   * "How is X helpful?" section. BSD's extractBenefitsBlock returns it from
+   * the body's actual H2. Renderer reads this in priority over the legacy
+   * calculatorUi.layout.helpfulHeading and over its hardcoded
+   * "How is {toolName} helpful?" template — so the live page tracks the
+   * body verbatim with no code change required.
+   */
+  benefitsTitle?: string;
+  /**
+   * 2026-05-13: body-derived H2 for the "How the X Works" section. BSD's
+   * extractHowItWorksFromCalcFields returns it from the body's actual H2.
+   * Renderer reads this in priority over the hardcoded
+   * "How the {toolName} Works" template.
+   */
+  howItWorksTitle?: string;
+  /**
+   * 2026-05-13: body-derived first non-bullet <p> inside the "How the X
+   * Works" section — used as the section's lead/intro paragraph. Renderer
+   * reads this in priority over the hardcoded "This calculator breaks down
+   * your estimate using key inputs. Each one refines the output." string.
+   */
+  howItWorksIntro?: string;
   /**
    * URL of the listing-card / OG hero image. Sourced from
    * structured_data.featuredImage written by the image-pipeline. Used by
