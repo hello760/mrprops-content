@@ -20,7 +20,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendTemplate } from '@/lib/postmark';
+import { sendEmail } from '@/lib/resend';
+import { renderWelcomeEmail } from '@/lib/newsletter-render';
 import { signToken } from '@/lib/newsletter-tokens';
 import { countryToCurrency, fetchFxRates, buildLocalizedModel } from '@/lib/newsletter-localize';
 
@@ -166,33 +167,38 @@ export async function POST(req: NextRequest) {
     console.error('[newsletter/subscribe] localize failed (proceeding with EUR):', err);
   }
 
-  // Send Email 1 immediately via transactional stream
+  // Send Email 1 immediately via Resend (no approval gate, ships to any domain)
   try {
-    const sendResult = await sendTemplate({
-      To: email,
-      TemplateAlias: 'welcome-1',
-      TemplateModel: templateModel,
-      MessageStream: 'outbound',
-      Tag: 'welcome-sequence',
-      Metadata: { subscriber_id: subscriberId, source, sequence_id: 'welcome_v1', step: '1' },
-      TrackOpens: true,
-      TrackLinks: 'HtmlAndText',
+    const rendered = renderWelcomeEmail(1, {
+      ...(templateModel as Record<string, string>),
+      // ensure required fields are non-undefined for the renderer's typed model
+      confirm_url: (templateModel as Record<string, string>).confirm_url ?? '',
+      unsubscribe_url: (templateModel as Record<string, string>).unsubscribe_url ?? '',
     });
 
-    // Mark Email 1 sent + record Postmark MessageID
+    const sendResult = await sendEmail({
+      to: email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      tags: [
+        { name: 'sequence', value: 'welcome_v1' },
+        { name: 'step', value: '1' },
+        { name: 'source', value: source },
+      ],
+    });
+
+    // Mark Email 1 sent + record Resend message id (kept in same column for now)
     await sb
       .from('newsletter_subscribers')
       .update({
         current_step: 1,
         last_email_sent_at: new Date().toISOString(),
-        // postmark_message_ids: append (Postgres jsonb array — use rpc or do read+write)
-        postmark_message_ids: [{ step: 1, message_id: sendResult.MessageID, sent_at: sendResult.SubmittedAt }],
+        postmark_message_ids: [{ step: 1, message_id: sendResult.id, sent_at: new Date().toISOString(), provider: 'resend' }],
       })
       .eq('id', subscriberId);
   } catch (sendErr) {
     // Subscriber row exists but Email 1 failed — log + soft fail.
-    // Sequence cron won't retry Email 1 (it only handles step >= 1 → step 2+).
-    // Manual re-send if needed; for now, don't throw client-facing error.
     console.error('[newsletter/subscribe] welcome email send failed:', sendErr);
   }
 
