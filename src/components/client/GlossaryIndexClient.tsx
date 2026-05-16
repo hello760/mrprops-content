@@ -8,13 +8,28 @@ import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { Input } from "@/components/ui/input";
 import type { GlossaryTerm } from "@/lib/glossary";
 
+// Browse-by-letter bucketing: strip explanatory framings ("What is X",
+// "How to X", "Definition of X", etc.) before reading the first letter.
+// This determines which letter bucket the term lives in. The displayed
+// term name in the card is unchanged.
+function bucketLetter(term: string): string {
+  const stripped = term
+    .replace(/^(what\s+is|how\s+to|why|when\s+to|definition\s+of|understanding)\s+(a\s+|an\s+|the\s+)?/i, "")
+    .trim();
+  const first = stripped[0]?.toUpperCase() ?? "#";
+  return /[A-Z]/.test(first) ? first : "#";
+}
+
 export function GlossaryIndexClient({ terms }: { terms: GlossaryTerm[] }) {
   const [search, setSearch] = useState("");
+  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
+
   const filteredTerms = useMemo(() => {
     return terms
       .filter((t) => t.term.toLowerCase().includes(search.toLowerCase()) || t.definition.toLowerCase().includes(search.toLowerCase()))
+      .filter((t) => !selectedLetter || bucketLetter(t.term) === selectedLetter)
       .sort((a, b) => a.term.localeCompare(b.term));
-  }, [terms, search]);
+  }, [terms, search, selectedLetter]);
 
   const alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -42,7 +57,20 @@ export function GlossaryIndexClient({ terms }: { terms: GlossaryTerm[] }) {
             <div className="sticky top-24 space-y-6">
               <div className="font-bold text-lg flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary" /> Browse by Letter</div>
               <div className="flex flex-wrap gap-2">
-                {alphabet.map((letter) => <button key={letter} className="w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium hover:bg-primary/10 hover:text-primary transition-colors text-muted-foreground">{letter}</button>)}
+                {alphabet.map((letter) => {
+                  const isActive = selectedLetter === letter;
+                  return (
+                    <button
+                      key={letter}
+                      type="button"
+                      onClick={() => setSelectedLetter((prev) => (prev === letter ? null : letter))}
+                      aria-pressed={isActive}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-primary/10 hover:text-primary"}`}
+                    >
+                      {letter}
+                    </button>
+                  );
+                })}
               </div>
               <div className="bg-primary/5 p-6 rounded-xl border border-primary/10 mt-8">
                 <h3 className="font-bold text-primary mb-2">Need Help?</h3>
@@ -53,10 +81,10 @@ export function GlossaryIndexClient({ terms }: { terms: GlossaryTerm[] }) {
           </div>
           <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold font-display">{search ? `Search Results for "${search}"` : "All Terms"}</h2>
+              <h2 className="text-2xl font-bold font-display">{search ? `Search Results for "${search}"` : selectedLetter ? `Terms starting with "${selectedLetter}"` : "All Terms"}</h2>
               <span className="text-muted-foreground text-sm">{filteredTerms.length} definitions found</span>
             </div>
-            {filteredTerms.length > 0 ? <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredTerms.map((item, _newsletterIndex) => <Fragment key={item.id}>{_newsletterIndex === 9 && (<div className="col-span-full"><NewsletterCTA source="glossary_cta" /></div>)}<Link href={`/glossary/${item.slug}`}><div className="group h-full bg-card border border-border p-6 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer flex flex-col"><h3 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">{item.term}</h3><p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow line-clamp-3">{item.definition}</p><div className="flex items-center text-sm font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">Read Definition <ArrowRight className="ml-1 h-4 w-4" /></div></div></Link></Fragment>)}</div> : <div className="text-center py-20 bg-secondary/20 rounded-xl border border-dashed border-border"><p className="text-lg text-muted-foreground">No terms found matching "{search}"</p><Button variant="link" onClick={() => setSearch("")}>Clear Search</Button></div>}
+            {filteredTerms.length > 0 ? <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredTerms.map((item, _newsletterIndex) => <Fragment key={item.id}>{_newsletterIndex === 9 && (<div className="col-span-full"><NewsletterCTA source="glossary_cta" /></div>)}<Link href={`/glossary/${item.slug}`}><div className="group h-full bg-card border border-border p-6 rounded-xl shadow-sm hover:shadow-md hover:border-primary/50 transition-all cursor-pointer flex flex-col"><h3 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">{item.term}</h3><p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow line-clamp-3">{item.definition}</p><div className="flex items-center text-sm font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">Read Definition <ArrowRight className="ml-1 h-4 w-4" /></div></div></Link></Fragment>)}</div> : <div className="text-center py-20 bg-secondary/20 rounded-xl border border-dashed border-border"><p className="text-lg text-muted-foreground">No terms found{search ? ` matching "${search}"` : ""}{selectedLetter ? ` starting with "${selectedLetter}"` : ""}</p><Button variant="link" onClick={() => { setSearch(""); setSelectedLetter(null); }}>Clear filters</Button></div>}
           </div>
         </div>
       </div>
