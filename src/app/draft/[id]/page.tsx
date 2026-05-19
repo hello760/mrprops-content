@@ -179,7 +179,12 @@ export default async function DraftPreviewPage({
     if (!term) notFound();
     const related = term.relatedTerms?.length ? term.relatedTerms : [];
     const faqs = term.faqs?.length ? term.faqs : [];
-    const faqTitle = term.faqTitle || `Frequently Asked Questions about ${term.term}`;
+    // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop the
+    // `|| \`Frequently Asked Questions about ${term.term}\`` fallback. The
+    // FAQ block already gates on faqs.length > 0 inside SEOContentSkeleton,
+    // so when CC has no FAQs the title doesn't render anyway. Mirrors the
+    // same drop at src/app/glossary/[slug]/page.tsx:47 + glossary.ts:84,329.
+    const faqTitle = term.faqTitle;
     return (
       <>
         {bannerTop(verified.expiresAt)}

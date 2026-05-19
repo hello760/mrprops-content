@@ -18,14 +18,16 @@ function toGlossaryHref(value: string) {
 export function GlossaryTermPageClient({ term }: { term: GlossaryTerm }) {
   const pageSlug = term.slug;
   const relatedTerms = useMemo(() => term.relatedTerms || [], [term.relatedTerms]);
-  const faqTitle = term.faqTitle || `Frequently Asked Questions about ${term.term}`;
-  const faqs = term.faqs?.length
-    ? term.faqs
-    : [
-        { question: `Why does ${term.term} matter?`, answer: `${term.term} helps hosts make better operating decisions and understand how performance is changing over time.` },
-        { question: `How often should I review ${term.term}?`, answer: "Review it weekly for active operations and monthly for portfolio-level analysis." },
-        { question: `Is ${term.term} enough on its own?`, answer: "No. Pair it with occupancy, revenue, and cost data to get the full picture." },
-      ];
+  // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop both hardcoded
+  // faqTitle fallback AND the generic 3-FAQ array fallback. The FAQ block
+  // already gates on faqs.length > 0 inside SEOContentSkeleton, so when CC
+  // has no FAQs nothing renders. The generic "Why does ${term} matter?"
+  // questions were exactly the content Helvis flagged at Loom 13:08:
+  // "this is not in the command center". Note: this component is currently
+  // not imported anywhere — fixing for hygiene so the pattern doesn't
+  // resurrect if the component is wired back in.
+  const faqTitle = term.faqTitle;
+  const faqs = term.faqs?.length ? term.faqs : [];
 
   return (
     <div className="min-h-screen bg-background pb-20">
