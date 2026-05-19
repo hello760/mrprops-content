@@ -56,7 +56,12 @@ function deriveSneakPeekHtml(bodyHtml: string | undefined, wordTarget = 220): st
 function normalizeTemplateRow(data: any, category: string, slug: string): TemplatePageContent {
   const sd = (data.structured_data || {}) as Record<string, any>;
   const fallback = getTemplateFallback(category, slug) || templateFallbacks[0];
-  const bodyHtml = ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined;
+  // CC↔Live truth fix (2026-05-19, Phase 3): invert bodyHtml precedence. Same
+  // architectural fix shipped to guides + glossary in Phases 1+2. content_body
+  // is the editor's source of truth; sd.bodyHtml is a derived cache.
+  // Render-time stripDuplicateParagraphs + markdownToHtml run downstream so we
+  // don't lose duplicate-block protection.
+  const bodyHtml = (data.content_body || (data.structured_data as any)?.bodyHtml) || undefined;
   return {
     ...fallback,
     id: data.id,
@@ -131,7 +136,9 @@ function normalizeToolRow(data: any, category: string, slug: string): ToolPageCo
     benefitsIntro: sd.benefitsIntro || undefined,
     faqs: sd.faqs || fallback?.faqs || [],
     body: [],
-    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+    // CC↔Live truth fix (2026-05-19, Phase 3 — applies to calculator tools too):
+    // prefer content_body over sd.bodyHtml. Same fix as guides/glossary.
+    bodyHtml: (data.content_body || (data.structured_data as any)?.bodyHtml) || undefined,
     calculatorUi: sd.calculatorUi || fallback?.calculatorUi || (sd.calculatorType ? { type: sd.calculatorType } as any : undefined),
     howItWorks: sd.howItWorks || undefined,
     cta: sd.cta || undefined,
@@ -240,7 +247,12 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
     body: [],
-    bodyHtml: ((data.structured_data as any)?.bodyHtml || data.content_body) || undefined,
+    // CC↔Live truth fix (2026-05-19, Phase 3 — slug-based inline normalizer):
+    // same precedence flip as the shared normalizeTemplateRow above. This is
+    // the duplicate normalizer the file comment at line 249-255 warns about;
+    // future refactor should consolidate into normalizeTemplateRow. For now
+    // keeping it in sync.
+    bodyHtml: (data.content_body || (data.structured_data as any)?.bodyHtml) || undefined,
     heroImage: sd.featuredImage || sd.hero?.image || null,
     heroImageAlt: sd.hero?.headline || sd.hero?.previewTitle || data.title || null,
   };
