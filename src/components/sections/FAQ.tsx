@@ -6,36 +6,20 @@ interface FAQProps {
   items?: Array<{ question: string; answer: string }>;
 }
 
-const defaultFaqs = [
-  {
-    question: "How does the Unified Inbox work?",
-    answer: "It connects directly to Airbnb, Booking.com, VRBO, and WhatsApp. You get a single stream of messages and can reply to guests on any platform without switching apps."
-  },
-  {
-    question: "Can the AI Concierge handle complex guest requests?",
-    answer: "Yes. It uses context from your listing details and previous conversations to answer questions about check-in, wifi, parking, and house rules automatically, 24/7."
-  },
-  {
-    question: "Are the property calculators free to use?",
-    answer: "Our core calculators (Rental Yield, Renovation ROI, Airbnb Profit) are 100% free. Pro members get advanced export features and portfolio-wide analysis."
-  },
-  {
-    question: "How easy is it to migrate my listings to Mr. Props?",
-    answer: "Extremely easy. We have a one-click import for Airbnb and VRBO. Your calendar, pricing, and guest history sync automatically in under 2 minutes. Plus, if you need help, our team will jump in and assist you in 10 minutes or less."
-  }
-];
-
-export function FAQ({
-  title = "Frequently Asked Questions",
-  description = "Everything you need to know about scaling your portfolio with Mr. Props.",
-  items = defaultFaqs,
-}: FAQProps) {
+// CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded defaultFaqs
+// constant + default-param fallbacks. Section now hides when called with
+// no items[] — matches PageBits.FAQAndCTA gate. Callers (home page) pass
+// explicit brand FAQs; CC-driven render paths pass operator-managed faqs.
+export function FAQ({ title, description, items }: FAQProps) {
+  if (!items?.length) return null;
   return (
     <section className="py-24 bg-secondary/20">
       <div className="container mx-auto px-4 max-w-3xl">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{title}</h2>
-          <p className="text-muted-foreground text-lg">{description}</p>
+          <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">{title || "Frequently Asked Questions"}</h2>
+          {description ? (
+            <p className="text-muted-foreground text-lg">{description}</p>
+          ) : null}
         </div>
 
         <Accordion type="single" collapsible className="w-full space-y-4">

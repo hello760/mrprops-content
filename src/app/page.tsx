@@ -73,8 +73,26 @@ export default function HomePage() {
       <Benefits />
       <Testimonials />
       <Team />
-      <FAQ />
-      <CTA />
+      {/* Phase 4c (2026-05-19): pass explicit brand copy now that FAQ + CTA
+          shared components require props (no more default-param fallbacks).
+          Home page is a static brand-owned route, not a CC piece — explicit
+          brand strings here are intentional and not a CC↔Live violation. */}
+      <FAQ
+        title="Frequently Asked Questions"
+        description="Everything you need to know about scaling your portfolio with Mr. Props."
+        items={[
+          { question: "How does the Unified Inbox work?", answer: "It connects directly to Airbnb, Booking.com, VRBO, and WhatsApp. You get a single stream of messages and can reply to guests on any platform without switching apps." },
+          { question: "Can the AI Concierge handle complex guest requests?", answer: "Yes. It uses context from your listing details and previous conversations to answer questions about check-in, wifi, parking, and house rules automatically, 24/7." },
+          { question: "Are the property calculators free to use?", answer: "Our core calculators (Rental Yield, Renovation ROI, Airbnb Profit) are 100% free. Pro members get advanced export features and portfolio-wide analysis." },
+          { question: "How easy is it to migrate my listings to Mr. Props?", answer: "Extremely easy. We have a one-click import for Airbnb and VRBO. Your calendar, pricing, and guest history sync automatically in under 2 minutes. Plus, if you need help, our team will jump in and assist you in 10 minutes or less." },
+        ]}
+      />
+      <CTA
+        title="Ready to Build Your Real Estate Empire?"
+        text="Join 10,000+ investors who are using Mr. Props to calculate risks, automate management, and maximize returns."
+        primaryButton={{ label: "Get Started Free", href: "https://app.mrprops.io/register" }}
+        secondaryButton={{ label: "Talk to Sales", href: "/company/contact" }}
+      />
     </div>
   );
 }
