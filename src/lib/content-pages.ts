@@ -117,23 +117,34 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     trustBarLogos: sd.trustBar?.logos?.map((l: string) => ({ label: l })),
     spotlightTitle: sd.spotlight?.title,
     spotlightDescription: sd.spotlight?.description,
-    featuresTitle: 'Why Choose Mr. Props?',
-    features: sd.features,
+    // CC↔Live truth fix (2026-05-19, Phase 4): all section titles now read
+    // from structured_data only. Pre-fix the 4 hardcoded defaults below
+    // ('Why Choose Mr. Props?', 'How It Works', 'What Our Customers Say',
+    // 'Frequently Asked Questions') always rendered on live regardless of
+    // CC content — the LandingPageView render now skips sections whose CC
+    // title is unset, closing the parity violation identified by
+    // verify_mrprops_cc_live_parity_full.py on 2026-05-19 (38 phantom-heading
+    // hits, 7 in features/* family due to this code path).
+    featuresTitle: sd.featuresTitle || sd.features?.title,
+    featuresDescription: sd.featuresDescription || sd.features?.description,
+    features: sd.features?.items || sd.features,
     statsBar: sd.statsBar,
-    howItWorksTitle: 'How It Works',
-    howItWorksSteps: sd.howItWorks,
+    howItWorksTitle: sd.howItWorksTitle || sd.howItWorks?.title,
+    howItWorksIntro: sd.howItWorksIntro || sd.howItWorks?.intro,
+    howItWorksSteps: sd.howItWorks?.steps || sd.howItWorks,
     comparisonTitle: sd.comparison?.title,
+    comparisonDescription: sd.comparison?.description,
     comparisonPros: sd.comparison?.mrProps?.pros,
     comparisonCons: sd.comparison?.traditional?.cons,
-    // FIX-LP-COMP (2026-04-20): allow per-piece named competitor labels
-    // (PDF §features-services "compare vs 2 competitors"). Falls back to
-    // legacy "Traditional PM Software" when sd.comparison.traditional.name
-    // is not set — backward compatible.
+    // FIX-LP-COMP (2026-04-20): per-piece named competitor labels.
+    // Phase 4 (2026-05-19): no fallback string — undefined hides the H3.
+    comparisonProductName: sd.comparison?.mrProps?.name,
+    comparisonProductSubtitle: sd.comparison?.mrProps?.subtitle,
     comparisonCompetitorName: sd.comparison?.traditional?.name,
     comparisonCompetitorSubtitle: sd.comparison?.traditional?.subtitle,
-    testimonialsTitle: 'What Our Customers Say',
+    testimonialsTitle: sd.testimonialsTitle || sd.testimonialsHeading,
     testimonials: sd.testimonials,
-    faqTitle: 'Frequently Asked Questions',
+    faqTitle: sd.faqTitle,
     faqs: sd.faqs,
     ctaTitle: sd.finalCta?.headline,
     ctaText: sd.finalCta?.sentence,
@@ -185,19 +196,27 @@ async function fetchLandingListFromSupabase(pageType: "features" | "services"): 
         trustBarLogos: sd.trustBar?.logos?.map((l: string) => ({ label: l })),
         spotlightTitle: sd.spotlight?.title,
         spotlightDescription: sd.spotlight?.description,
-        featuresTitle: 'Why Choose Mr. Props?',
-        features: sd.features,
+        // CC↔Live truth fix (2026-05-19, Phase 4) — mirror of the detail
+        // fetcher fix above. No more hardcoded section titles; render layer
+        // skips sections whose CC title is unset.
+        featuresTitle: sd.featuresTitle || sd.features?.title,
+        featuresDescription: sd.featuresDescription || sd.features?.description,
+        features: sd.features?.items || sd.features,
         statsBar: sd.statsBar,
-        howItWorksTitle: 'How It Works',
-        howItWorksSteps: sd.howItWorks,
+        howItWorksTitle: sd.howItWorksTitle || sd.howItWorks?.title,
+        howItWorksIntro: sd.howItWorksIntro || sd.howItWorks?.intro,
+        howItWorksSteps: sd.howItWorks?.steps || sd.howItWorks,
         comparisonTitle: sd.comparison?.title,
+        comparisonDescription: sd.comparison?.description,
         comparisonPros: sd.comparison?.mrProps?.pros,
         comparisonCons: sd.comparison?.traditional?.cons,
+        comparisonProductName: sd.comparison?.mrProps?.name,
+        comparisonProductSubtitle: sd.comparison?.mrProps?.subtitle,
         comparisonCompetitorName: sd.comparison?.traditional?.name,
         comparisonCompetitorSubtitle: sd.comparison?.traditional?.subtitle,
-        testimonialsTitle: 'What Our Customers Say',
+        testimonialsTitle: sd.testimonialsTitle || sd.testimonialsHeading,
         testimonials: sd.testimonials,
-        faqTitle: 'Frequently Asked Questions',
+        faqTitle: sd.faqTitle,
         faqs: sd.faqs,
         ctaTitle: sd.finalCta?.headline,
         ctaText: sd.finalCta?.sentence,
@@ -520,8 +539,15 @@ export interface LandingContent {
   comparisonDescription?: string;
   comparisonPros?: string[];
   comparisonCons?: string[];
+  // CC↔Live truth fix (2026-05-19, Phase 4): the "🎩 Mr. Props" column
+  // heading is now CC-editable instead of hardcoded in LandingPageView.tsx.
+  comparisonProductName?: string;
+  comparisonProductSubtitle?: string;
   comparisonCompetitorName?: string;
   comparisonCompetitorSubtitle?: string;
+  // Phase 4: was previously fed by a hardcoded "Three simple steps to property
+  // nirvana." subtitle in LandingPageView; now read from CC field.
+  howItWorksIntro?: string;
   testimonialsTitle?: string;
   testimonials?: TestimonialConfig[];
   faqTitle?: string;

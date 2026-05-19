@@ -85,9 +85,14 @@ function normalizeTemplateRow(data: any, category: string, slug: string): Templa
     useCases: sd.useCases || fallback.useCases,
     customizeTitle: sd.customizeTitle || fallback.customizeTitle,
     customizeText: sd.customizeText || fallback.customizeText,
-    faqTitle: 'Frequently Asked Questions',
+    // CC↔Live truth fix (2026-05-19, Phase 4): drop the hardcoded
+    // 'Frequently Asked Questions' default + the resourcesTitle fallback
+    // chain through templateFallbacks. Render layer skips both sections
+    // when CC has no title set. Closes the parity-sweep finding of
+    // "More Free Resources" + faqTitle phantoms across template family.
+    faqTitle: sd.faqTitle,
     faqs: sd.faqs || fallback.faqs,
-    resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
+    resourcesTitle: sd.resourcesTitle,
     resources: (sd.resources || fallback.resources || []).filter((r: any) => r && r.href),
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
@@ -240,9 +245,14 @@ async function fetchTemplateFromSupabase(category: string, slug: string): Promis
     useCases: sd.useCases || fallback.useCases,
     customizeTitle: sd.customizeTitle || fallback.customizeTitle,
     customizeText: sd.customizeText || fallback.customizeText,
-    faqTitle: 'Frequently Asked Questions',
+    // CC↔Live truth fix (2026-05-19, Phase 4): drop the hardcoded
+    // 'Frequently Asked Questions' default + the resourcesTitle fallback
+    // chain through templateFallbacks. Render layer skips both sections
+    // when CC has no title set. Closes the parity-sweep finding of
+    // "More Free Resources" + faqTitle phantoms across template family.
+    faqTitle: sd.faqTitle,
     faqs: sd.faqs || fallback.faqs,
-    resourcesTitle: sd.resourcesTitle || fallback.resourcesTitle,
+    resourcesTitle: sd.resourcesTitle,
     resources: (sd.resources || fallback.resources || []).filter((r: any) => r && r.href),
     seoTitle: sd.seoTitle || data.seo_title || fallback.seoTitle,
     seoDescription: sd.seoDescription || data.meta_description || fallback.seoDescription,
