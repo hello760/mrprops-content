@@ -37,18 +37,20 @@ export default async function GlossaryTermPage({ params }: { params: Promise<{ s
 
   const relatedTerms = term.relatedTerms.length > 0 ? term.relatedTerms : (await fetchGlossaryTerms()).filter((item) => item.slug !== term.slug).slice(0, 5).map((item) => item.term);
   const faqTitle = term.faqTitle || `Frequently Asked Questions about ${term.term}`;
-  const faqs = term.faqs?.length
-    ? term.faqs
-    : [
-        { question: `Why does ${term.term} matter?`, answer: `${term.term} helps hosts make better operating decisions and understand how performance is changing over time.` },
-        { question: `How often should I review ${term.term}?`, answer: "Review it weekly for active operations and monthly for portfolio-level analysis." },
-        { question: `Is ${term.term} enough on its own?`, answer: "No. Pair it with occupancy, revenue, and cost data to get the full picture." },
-      ];
+  // CC↔Live truth fix (2026-05-19, Phase 2 Fix A): drop hardcoded FAQ fallback.
+  // When CC has no FAQs, the FAQ block doesn't render at all. Was injecting 3
+  // generic FAQs ("Why does ${term} matter?", "How often should I review…",
+  // "Is ${term} enough on its own?") that the team couldn't see or edit in CC
+  // — exactly Helvis's complaint at Loom 11:56 "FAQs are still kind of here"
+  // and 13:08 "this is not in the command center. This whole section is not
+  // in the command center."
+  const faqs = term.faqs?.length ? term.faqs : [];
 
   const structuredData = buildStructuredData(
     createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Glossary", path: "/glossary" }, { name: `What is ${term.term}?` }]),
     createDefinedTermSchema({ name: term.term, description: term.definition, path: `/glossary/${term.slug}` }),
-    createFaqSchema(faqs),
+    // Only emit FAQ JSON-LD when CC has real FAQs (faqs.length > 0).
+    faqs.length > 0 ? createFaqSchema(faqs) : null,
   );
 
   return (
@@ -121,16 +123,32 @@ export default async function GlossaryTermPage({ params }: { params: Promise<{ s
                 </div>
               </div>
 
-              <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
-                <div className="relative z-10">
-                  <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold mb-4 backdrop-blur-sm">{term.proTipBadge || "Pro Tip"}</div>
-                  <h3 className="font-display text-2xl font-bold mb-3 leading-tight">{term.proTipTitle || `Stop tracking ${term.term} manually.`}</h3>
-                  <p className="text-primary-foreground/90 text-sm mb-6 leading-relaxed">{term.proTipDescription || `Mr. Props automatically tracks ${term.term} alongside the other metrics that actually drive profit.`}</p>
-                  <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12">{term.proTipButtonLabel || "Try Mr. Props Free"}</Button>
-                  <p className="text-xs text-center mt-3 opacity-70">No credit card required</p>
+              {/* CC↔Live truth fix (2026-05-19, Phase 2 Fix A): the Pro Tip
+                  block was rendering 4 hardcoded generic fallbacks when CC had
+                  nothing — `term.proTipBadge || "Pro Tip"`, `term.proTipTitle
+                  || \`Stop tracking ${term.term} manually.\``, etc. Exactly the
+                  "Stop tracking what is a five-star rating on Airbnb" generic
+                  garbage Helvis flagged at Loom 13:43. Now the entire block
+                  only renders when CC has BOTH a proTipTitle AND a
+                  proTipDescription. No generic fallback content. */}
+              {term.proTipTitle && term.proTipDescription && (
+                <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
+                  <div className="relative z-10">
+                    {term.proTipBadge && (
+                      <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold mb-4 backdrop-blur-sm">{term.proTipBadge}</div>
+                    )}
+                    <h3 className="font-display text-2xl font-bold mb-3 leading-tight">{term.proTipTitle}</h3>
+                    <p className="text-primary-foreground/90 text-sm mb-6 leading-relaxed">{term.proTipDescription}</p>
+                    {term.proTipButtonLabel && (
+                      <>
+                        <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12">{term.proTipButtonLabel}</Button>
+                        <p className="text-xs text-center mt-3 opacity-70">No credit card required</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="bg-card border border-border p-6 rounded-xl shadow-sm">
                 <div className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Related Terms</div>

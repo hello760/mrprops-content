@@ -38,22 +38,37 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
   if (error || !data || !data.structured_data) return null;
 
   const sd = data.structured_data as Record<string, any>;
-  // Phase 5 L3 fix: prefer structured_data.bodyHtml (build-structured-data has
-  // already stripped duplicate paragraphs from it). Fall back to content_body
-  // for legacy pieces whose structured_data hasn't been rebuilt yet.
-  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
+  // CC↔Live truth fix (2026-05-19, Phase 2): invert Phase 5 L3 precedence.
+  // Helvis end goal: "content should not appear on the live Mr Props page if it
+  // is not visible in MMG Command Center." content_body is the editor's source
+  // of truth; sd.bodyHtml is a derived cache that drifts when BSD doesn't re-run.
+  // Render-time stripRedundantBodyBlocks(...) + markdownToHtml(...) still run in
+  // glossary/[slug]/page.tsx:99, so we don't lose the duplicate-H1 strip.
+  // See: .claude/specs/mrprops-cc-live-truth-fix-2026-05-18.md (Fix B, glossary).
+  const bodyHtml = (data.content_body || sd?.bodyHtml || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // CC↔Live truth fix (2026-05-19, Phase 2 Fix D): clean term fallback chain.
+  // Was: `sd.term || data.title || 'Term'` — when sd.term was null (most legacy
+  // pieces), this fell to `data.title` carrying "What Is X? A Simple Guide…",
+  // then page.tsx wrapped it as `<h1>What is ${term.term}?</h1>` producing
+  // "What is What Is X? A Simple Guide … ?" — the exact symptom Helvis showed
+  // at Loom 11:35-11:56. Listing fetcher at line 227-228 already uses this clean
+  // chain (PR #14); this mirrors it to the detail fetcher.
+  const cleanedTerm = sd.term || cleanTitleToTerm(data.seo_title || data.title) || startCaseSlugProper(data.custom_slug);
 
   // Map structured_data to GlossaryTerm interface (field-by-field)
   return {
     id: data.id,
     slug: normalizeGlossarySlug(data.custom_slug) || whatIsSlug,
-    term: sd.term || data.title || 'Term',
+    term: cleanedTerm,
     definition: sd.definition || '',
     body: [],
     bodyHtml: bodyHtml || undefined,
     relatedTerms: sd.relatedTerms || [],
-    seoTitle: sd.seoTitle || data.seo_title || `What is ${sd.term}? | Mr. Props`,
+    // Use cleanedTerm (not raw sd.term, which is often null) so the SEO title
+    // doesn't render as "What is undefined? | Mr. Props".
+    seoTitle: sd.seoTitle || data.seo_title || `What is ${cleanedTerm}? | Mr. Props`,
     seoDescription: sd.seoDescription || data.meta_description || sd.definition || '',
     publishedAt: data.published_at || undefined,
     updatedAt: data.published_at || undefined,
@@ -218,7 +233,9 @@ async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
     })
     .map((r: any) => {
       const sd = (r.structured_data || {}) as Record<string, any>;
-      const bodyHtml = (sd?.bodyHtml || r.content_body || '') as string;
+      // CC↔Live truth fix (2026-05-19, Phase 2 Fix B, listing fetcher): same
+      // precedence inversion — content_body first, sd.bodyHtml as legacy fallback.
+      const bodyHtml = (r.content_body || sd?.bodyHtml || '') as string;
       const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       const slug = normalizeGlossarySlug(r.custom_slug);
       // Term fallback chain: curated sd.term → cleaned title → titleized slug.
@@ -235,7 +252,7 @@ async function fetchGlossaryListFromSupabase(): Promise<GlossaryTerm[]> {
         // bodyHtml/content_body → meta_description → empty (filtered above).
         definition:
           sd.definition ||
-          firstSentence(sd?.bodyHtml || r.content_body) ||
+          firstSentence(r.content_body || sd?.bodyHtml) ||
           r.meta_description ||
           '',
         body: [],
@@ -279,20 +296,24 @@ export async function fetchGlossaryTermById(id: string): Promise<GlossaryTerm | 
   if (error || !data || data.client_id !== clientId) return null;
 
   const sd = (data.structured_data || {}) as Record<string, any>;
-  // Phase 5 L3 fix: prefer sd.bodyHtml (stripped) over content_body (authoritative source).
-  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
+  // CC↔Live truth fix (2026-05-19, Phase 2 Fix B): invert precedence — same
+  // reasoning as fetchGlossaryBySlug above. content_body is source of truth.
+  const bodyHtml = (data.content_body || sd?.bodyHtml || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const whatIsSlug = `what-is-${String(data.custom_slug || '').replace(/^(glossary\/)?/, '').replace(/^what-is-/, '')}`;
+  // CC↔Live truth fix (2026-05-19, Phase 2 Fix D): clean term fallback chain
+  // mirroring fetchGlossaryBySlug and the listing fetcher (line 227-228).
+  const cleanedTerm = sd.term || cleanTitleToTerm(data.seo_title || data.title) || startCaseSlugProper(data.custom_slug);
 
   return {
     id: data.id,
     slug: normalizeGlossarySlug(data.custom_slug) || whatIsSlug,
-    term: sd.term || data.title || 'Term',
+    term: cleanedTerm,
     definition: sd.definition || '',
     body: [],
     bodyHtml: bodyHtml || undefined,
     relatedTerms: sd.relatedTerms || [],
-    seoTitle: sd.seoTitle || data.seo_title || `What is ${sd.term}? | Mr. Props`,
+    seoTitle: sd.seoTitle || data.seo_title || `What is ${cleanedTerm}? | Mr. Props`,
     seoDescription: sd.seoDescription || data.meta_description || sd.definition || '',
     publishedAt: data.published_at || undefined,
     updatedAt: data.published_at || undefined,
