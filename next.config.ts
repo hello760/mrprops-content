@@ -40,12 +40,11 @@ const nextConfig: NextConfig = {
       },
       // 2026-04-29: Cap Rate calc was hijacking /tools/operations/cleaning-fee-calculator slug.
       // DB row moved to canonical /tools/finance/vacation-rental-cap-rate-calculator;
-      // old hijacked URL redirects to honest one.
-      {
-        source: "/tools/operations/cleaning-fee-calculator",
-        destination: "/tools/finance/vacation-rental-cap-rate-calculator",
-        permanent: true,
-      },
+      // old hijacked URL redirected to honest one.
+      // 2026-05-19 REMOVED: a new Cleaning-Fee Calculator CC piece (published
+      // 2026-05-12) reclaims this slug for its original honest topic.
+      // The matching content_redirects DB row was also deleted in the same
+      // change. The new piece now resolves directly at this URL.
       // Cannibalization cleanup 2026-04-19: new 207-topic batch superseded these published URLs.
       // 2026-04-29 partial revert: un-retired /tools/booking/airbnb-profit-calculator —
       // the original Airbnb Profit Calculator (different inputs/intent than Revenue Calculator)

@@ -15,13 +15,13 @@ function renderTableCell(value: any, isPrimary = false) {
 
 export function AlternativeView({ alternative, competitor }: { alternative: DirectoryEntry; competitor: string }) {
   const competitorName = alternative.competitorName || alternative.title.replace(/ Alternative$/i, "") || competitor.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  const alternativeCards = alternative.alternativeCards?.length ? alternative.alternativeCards : [
-    { title: "No Hidden Fees", description: `${competitorName} takes a % of every booking. We charge a flat monthly rate. Keep 100% of your revenue.` },
-    { title: "Modern Interface", description: "Clunky dashboards slow you down. Designed for 2026. Manage your portfolio with less operational drag." },
-    { title: "Better Data", description: "Limited reporting and confusing exports. Real-time financial analytics and tax-ready reports instantly." },
-  ];
+  // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded alternativeCards +
+  // faqs fallbacks. Was injecting 3 generic value-prop cards ("No Hidden Fees",
+  // "Modern Interface", "Better Data") + a generic "Why hosts are leaving X?"
+  // FAQ whenever CC was empty — operator-invisible content.
+  const alternativeCards = alternative.alternativeCards?.length ? alternative.alternativeCards : [];
   const comparisonTableRows = alternative.comparisonTableRows?.length ? alternative.comparisonTableRows : [];
-  const faqs = alternative.faqs?.length ? alternative.faqs : [{ question: `Why hosts are leaving ${competitorName}?`, answer: `Operators usually leave ${competitorName} when they want cleaner workflows, better visibility, and less operational drag.` }];
+  const faqs = alternative.faqs?.length ? alternative.faqs : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,9 +29,13 @@ export function AlternativeView({ alternative, competitor }: { alternative: Dire
       <div className="relative pt-24 pb-20 bg-secondary/10 border-b border-border overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
         <div className="container mx-auto px-4 text-center max-w-6xl relative z-10">
-          <div className="inline-flex items-center gap-2 bg-red-100 text-red-600 px-4 py-1.5 rounded-full font-bold text-sm mb-8">
-            <AlertCircle className="h-4 w-4" /> {alternative.heroBadge || "Stop Overpaying"}
-          </div>
+          {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate heroBadge on CC presence.
+              Was rendering "Stop Overpaying" unconditionally. */}
+          {alternative.heroBadge ? (
+            <div className="inline-flex items-center gap-2 bg-red-100 text-red-600 px-4 py-1.5 rounded-full font-bold text-sm mb-8">
+              <AlertCircle className="h-4 w-4" /> {alternative.heroBadge}
+            </div>
+          ) : null}
           <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 tracking-tight">
             {alternative.heroTitle || (
               <>
@@ -41,16 +45,24 @@ export function AlternativeView({ alternative, competitor }: { alternative: Dire
               </>
             )}
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
-            {alternative.heroDescription || alternative.excerpt || `Stop paying for features you do not use. Switch from ${competitorName} to the modern standard for property management.`}
-          </p>
+          {/* Phase 4c: prefer CC heroDescription or excerpt; drop the literal
+              "Stop paying for features..." fallback. If neither is set, hide the lead. */}
+          {(alternative.heroDescription || alternative.excerpt) ? (
+            <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
+              {alternative.heroDescription || alternative.excerpt}
+            </p>
+          ) : null}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Button size="lg" className="rounded-full px-8 h-14 text-lg font-bold shadow-xl shadow-primary/20 w-full sm:w-auto">
-              {alternative.primaryCtaLabel || `Migrate from ${competitorName} in 1 Click`}
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-full px-8 h-14 text-lg font-bold border-2 w-full sm:w-auto">
-              {alternative.secondaryCtaLabel || "See Comparison"}
-            </Button>
+            {alternative.primaryCtaLabel ? (
+              <Button size="lg" className="rounded-full px-8 h-14 text-lg font-bold shadow-xl shadow-primary/20 w-full sm:w-auto">
+                {alternative.primaryCtaLabel}
+              </Button>
+            ) : null}
+            {alternative.secondaryCtaLabel ? (
+              <Button variant="outline" size="lg" className="rounded-full px-8 h-14 text-lg font-bold border-2 w-full sm:w-auto">
+                {alternative.secondaryCtaLabel}
+              </Button>
+            ) : null}
           </div>
           <div className="relative mx-auto max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-border group">
             <div className="absolute inset-0 bg-gradient-to-r from-gray-100 to-background z-0" />
@@ -134,11 +146,15 @@ export function AlternativeView({ alternative, competitor }: { alternative: Dire
                 </tbody>
               </table>
             </div>
-            <div className="mt-6 text-center">
-              <Button size="lg" className="rounded-full px-8 h-12 text-base font-bold shadow-lg shadow-primary/20">
-                {alternative.primaryCtaLabel || `Switch from ${competitorName}`} <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+            {/* Phase 4c: gate the table-footer CTA on CC having a primaryCtaLabel.
+                Was unconditionally rendering "Switch from {competitor}". */}
+            {alternative.primaryCtaLabel ? (
+              <div className="mt-6 text-center">
+                <Button size="lg" className="rounded-full px-8 h-12 text-base font-bold shadow-lg shadow-primary/20">
+                  {alternative.primaryCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -153,21 +169,37 @@ export function AlternativeView({ alternative, competitor }: { alternative: Dire
           </div>
         ) : null}
 
-        <div className="bg-foreground text-background rounded-3xl p-8 md:p-16 mb-24 relative overflow-hidden">
-          <div className="grid lg:grid-cols-2 gap-12 items-center relative z-10">
-            <div className="space-y-6">
-              <h2 className="font-display text-3xl md:text-5xl font-bold">{alternative.migrationTitle || "Switching is instant."}</h2>
-              <p className="text-xl text-background/80 leading-relaxed">{alternative.migrationDescription || `Don't worry about your data. Our 1-click migration tool imports your listings, reviews, and future bookings from ${competitorName} in seconds.`}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-2xl">
-              <div className="w-full rounded-xl shadow-lg bg-white/20 aspect-[4/3]" />
-              <div className="mt-6 text-center">
-                <Button size="lg" className="bg-white text-black hover:bg-gray-200 font-bold rounded-full w-full">{alternative.migrationButtonLabel || "Start My Import"}</Button>
+        {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate entire migration section on
+            CC having either migrationTitle or migrationDescription. Was unconditionally
+            rendering "Switching is instant. / Don't worry about your data..." +
+            "Start My Import" whenever CC was empty — none of which the operator
+            could see. */}
+        {(alternative.migrationTitle || alternative.migrationDescription) ? (
+          <div className="bg-foreground text-background rounded-3xl p-8 md:p-16 mb-24 relative overflow-hidden">
+            <div className="grid lg:grid-cols-2 gap-12 items-center relative z-10">
+              <div className="space-y-6">
+                {alternative.migrationTitle ? (
+                  <h2 className="font-display text-3xl md:text-5xl font-bold">{alternative.migrationTitle}</h2>
+                ) : null}
+                {alternative.migrationDescription ? (
+                  <p className="text-xl text-background/80 leading-relaxed">{alternative.migrationDescription}</p>
+                ) : null}
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-2xl">
+                <div className="w-full rounded-xl shadow-lg bg-white/20 aspect-[4/3]" />
+                {alternative.migrationButtonLabel ? (
+                  <div className="mt-6 text-center">
+                    <Button size="lg" className="bg-white text-black hover:bg-gray-200 font-bold rounded-full w-full">{alternative.migrationButtonLabel}</Button>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
+        {/* CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded ctaTitle
+            "Ready to upgrade?" + ctaButtonText "Start Free Migration" fallbacks.
+            SEOContentSkeleton already gates the CTA section on ctaTitle. */}
         <SEOContentSkeleton
           seoTitle={alternative.seoTitle || `Best ${competitorName} Alternative | Mr. Props`}
           seoDescription={alternative.seoDescription || `Compare ${competitorName} vs Mr. Props.`}
@@ -176,9 +208,9 @@ export function AlternativeView({ alternative, competitor }: { alternative: Dire
           introText=""
           faqTitle={alternative.faqTitle}
           faqs={faqs}
-          ctaTitle={alternative.ctaTitle || "Ready to upgrade?"}
+          ctaTitle={alternative.ctaTitle}
           ctaText={alternative.ctaText}
-          ctaButtonText={alternative.ctaPrimaryButton?.label || "Start Free Migration"}
+          ctaButtonText={alternative.ctaPrimaryButton?.label}
           ctaButtonHref={alternative.ctaPrimaryButton?.href}
         />
       </div>

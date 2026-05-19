@@ -14,12 +14,13 @@ export function RegulationView({ regulation, platform, location }: { regulation:
   const platformName = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : "Rental";
   const isStrict = location.includes("new-york") || location.includes("san-francisco") || location.includes("berlin");
   const contentHeadings = portableTextHeadings(regulation.body, regulation.bodyHtml);
-  const checklistItems: ChecklistItem[] = regulation.checklistItems?.length ? regulation.checklistItems : ["Business License Application", "Fire Safety Inspection", "Liability Insurance ($1M min)", "Neighbor Notification Form"];
-  const faqs = regulation.faqs?.length ? regulation.faqs : [
-    { question: "Do I need a permit for 30+ day rentals?", answer: "Usually, mid-term rentals are exempt from STR laws." },
-    { question: "How much is the license fee?", answer: "Fees vary by market and permit class." },
-    { question: "Can I rent out my basement?", answer: "Only if it meets local fire code and occupancy rules." },
-  ];
+  // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded checklistItems +
+  // faqs fallbacks. Was injecting 4 generic checklist items ("Business License
+  // Application" etc.) + 3 generic FAQs ("Do I need a permit for 30+ day rentals?"
+  // etc.) whenever CC fields were empty — none of which the operator could see
+  // or edit. Mirrors Phase 2 glossary fix + PR #36 ToolPageClient.
+  const checklistItems: ChecklistItem[] = regulation.checklistItems?.length ? regulation.checklistItems : [];
+  const faqs = regulation.faqs?.length ? regulation.faqs : [];
   const checklistLabel = (item: ChecklistItem): string => typeof item === "string" ? item : (item.label || "");
 
   return (
@@ -75,12 +76,10 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                       {contentHeadings.map((heading, index) => (
                         <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 2}. {heading.label}</a></li>
                       ))}
-                      {contentHeadings.length === 0 ? (
-                        <>
-                          <li><a href="#licenses" className="text-primary hover:underline">2. Licensing Requirements</a></li>
-                          <li><a href="#zoning" className="text-primary hover:underline">3. Zoning Restrictions</a></li>
-                        </>
-                      ) : null}
+                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped hardcoded
+                          "2. Licensing Requirements" + "3. Zoning Restrictions" TOC
+                          items that fired when body had no headings. The TOC now
+                          mirrors actual body headings + the overview entry only. */}
                     </>
                   );
                 })()}
@@ -101,7 +100,13 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                   return (
                     <>
                       <h2 id="overview" className="font-display font-bold">1. {overviewLabel}</h2>
-                      <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt || `Operating a short-term rental in ${locName} requires navigating specific local laws.`}</p>
+                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped the
+                          `|| \`Operating a short-term rental in ${locName} requires
+                          navigating specific local laws.\`` fallback. Excerpt
+                          now only renders when CC has it populated. */}
+                      {regulation.excerpt ? (
+                        <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt}</p>
+                      ) : null}
                     </>
                   );
                 }
@@ -109,38 +114,60 @@ export function RegulationView({ regulation, platform, location }: { regulation:
               })()}
               <PortableTextContent blocks={regulation.body} html={markdownToHtml(stripRedundantBodyBlocks(regulation.bodyHtml))} />
             </div>
-            <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
-              <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
-              {checklistItems.map((item, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
-                  <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
-                  <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
-                </div>
-              ))}
-            </div>
+            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate entire checklist
+                card on CC having at least one checklistItems entry. Was rendering
+                4 hardcoded items + a generated title whenever CC was empty. */}
+            {checklistItems.length > 0 ? (
+              <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
+                <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
+                {checklistItems.map((item, i) => (
+                  <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
+                    <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
+                    <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="sticky top-24 space-y-8">
-            <div className="bg-primary text-primary-foreground rounded-2xl p-6 border border-primary/20 shadow-xl relative overflow-hidden group">
-              <div className="relative z-10">
-                <h3 className="font-display font-bold text-xl mb-2">{regulation.sidebarCtaTitle || "Automate Compliance"}</h3>
-                <p className="text-sm text-primary-foreground/90 mb-6 leading-relaxed">{regulation.sidebarCtaDescription || "Don’t risk fines. Mr. Props automatically tracks local regulations and alerts you to changes."}</p>
-                <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12 text-primary" asChild>
-                  <a href={regulation.ctaPrimaryButton?.href || "https://app.mrprops.io/register"}>{regulation.sidebarCtaButtonLabel || "Start Free Trial"}</a>
-                </Button>
+            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate sidebar CTA card on
+                CC field presence. Was rendering "Automate Compliance / Don't risk
+                fines. Mr. Props automatically tracks..." + "Start Free Trial"
+                whenever CC fields were empty — none of which the operator could see. */}
+            {(regulation.sidebarCtaTitle || regulation.sidebarCtaDescription) ? (
+              <div className="bg-primary text-primary-foreground rounded-2xl p-6 border border-primary/20 shadow-xl relative overflow-hidden group">
+                <div className="relative z-10">
+                  {regulation.sidebarCtaTitle ? (
+                    <h3 className="font-display font-bold text-xl mb-2">{regulation.sidebarCtaTitle}</h3>
+                  ) : null}
+                  {regulation.sidebarCtaDescription ? (
+                    <p className="text-sm text-primary-foreground/90 mb-6 leading-relaxed">{regulation.sidebarCtaDescription}</p>
+                  ) : null}
+                  {regulation.sidebarCtaButtonLabel ? (
+                    <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12 text-primary" asChild>
+                      <a href={regulation.ctaPrimaryButton?.href || "https://app.mrprops.io/register"}>{regulation.sidebarCtaButtonLabel}</a>
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
+        {/* CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded fallbacks
+            for seoTitle/seoDescription/faqTitle/ctaTitle/ctaText. Pass
+            undefined when CC has nothing; SEOContentSkeleton + SEO meta
+            handle their own sensible defaults (or hide the CTA section
+            entirely when ctaTitle is undefined). */}
         <SEOContentSkeleton
           seoTitle={regulation.seoTitle || `${platformName} Laws in ${locName} | Compliance Guide`}
           seoDescription={regulation.seoDescription || `Complete guide to short-term rental regulations in ${locName}.`}
           slug={`/regulations/${platform}/${location}`}
           mainTitle=""
           introText=""
-          faqTitle={regulation.faqTitle || "Regulation FAQs"}
+          faqTitle={regulation.faqTitle}
           faqs={faqs}
-          ctaTitle={regulation.ctaTitle || "Stay Compliant Automatically"}
-          ctaText={regulation.ctaText || "Mr. Props monitors regulatory changes in real-time and alerts you before you get fined."}
+          ctaTitle={regulation.ctaTitle}
+          ctaText={regulation.ctaText}
           ctaButtonText={regulation.ctaPrimaryButton?.label}
           ctaButtonHref={regulation.ctaPrimaryButton?.href}
         />
