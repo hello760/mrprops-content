@@ -320,7 +320,12 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
     sidebarCtaDescription: sd.sidebarCtaDescription || undefined,
     sidebarCtaButtonLabel: sd.sidebarCtaButtonLabel || undefined,
     // FAQ
-    faqTitle: sd.faqTitle || 'Frequently Asked Questions',
+    // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop the
+    // `|| 'Frequently Asked Questions'` fallback chain here. The render
+    // layer (SEOContentSkeleton.tsx) already has its own sensible default
+    // for the section label — keeping it in two places creates the same
+    // antipattern Phase 4 fixed for body content. Section gates on faqs.length.
+    faqTitle: sd.faqTitle || undefined,
     faqs: sd.faqs || [],
     ctaTitle: sd.ctaTitle || sd.finalCta?.headline || undefined,
     ctaText: sd.ctaText || sd.finalCta?.sentence || undefined,
