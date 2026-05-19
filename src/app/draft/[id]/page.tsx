@@ -85,7 +85,9 @@ async function fetchPieceById(id: string): Promise<Record<string, any> | null> {
 // that the production renderer is fed by the slug-based fetcher.
 function toDirectoryEntry(data: Record<string, any>): DirectoryEntry {
   const sd = (data.structured_data || {}) as Record<string, any>;
-  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
+  // CC↔Live truth fix (2026-05-19, Phase 2 mirror): same precedence flip as
+  // production fetchers — content_body is source of truth.
+  const bodyHtml = (data.content_body || sd?.bodyHtml || '') as string;
   const slug = String(data.custom_slug || '').replace(/^[^/]+\//, '');
   const title = sd.heroTitle || sd.title || data.title || '';
   return {
@@ -226,16 +228,28 @@ export default async function DraftPreviewPage({
                     <input className="w-full bg-secondary/50 rounded-lg py-3 pl-10 pr-4 text-sm border-transparent focus:ring-2 focus:ring-primary outline-none transition-all" placeholder="Find a term..." />
                   </div>
                 </div>
-                <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
-                  <div className="relative z-10">
-                    <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold mb-4 backdrop-blur-sm">{term.proTipBadge || 'Pro Tip'}</div>
-                    <h3 className="font-display text-2xl font-bold mb-3 leading-tight">{term.proTipTitle || `Stop tracking ${term.term} manually.`}</h3>
-                    <p className="text-primary-foreground/90 text-sm mb-6 leading-relaxed">{term.proTipDescription || `Mr. Props automatically tracks ${term.term} alongside the other metrics that actually drive profit.`}</p>
-                    <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12">{term.proTipButtonLabel || 'Try Mr. Props Free'}</Button>
-                    <p className="text-xs text-center mt-3 opacity-70">No credit card required</p>
+                {/* CC↔Live truth fix (2026-05-19, Phase 2 mirror): outer block
+                    wrap so the whole Pro Tip card hides when CC has no
+                    proTipTitle + proTipDescription. Mirrors production
+                    glossary/[slug]/page.tsx. */}
+                {term.proTipTitle && term.proTipDescription && (
+                  <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
+                    <div className="relative z-10">
+                      {term.proTipBadge && (
+                        <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold mb-4 backdrop-blur-sm">{term.proTipBadge}</div>
+                      )}
+                      <h3 className="font-display text-2xl font-bold mb-3 leading-tight">{term.proTipTitle}</h3>
+                      <p className="text-primary-foreground/90 text-sm mb-6 leading-relaxed">{term.proTipDescription}</p>
+                      {term.proTipButtonLabel && (
+                        <>
+                          <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12">{term.proTipButtonLabel}</Button>
+                          <p className="text-xs text-center mt-3 opacity-70">No credit card required</p>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 {related.length > 0 && (
                   <div className="bg-card border border-border p-6 rounded-xl shadow-sm">
                     <div className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Related Terms</div>
@@ -271,7 +285,9 @@ export default async function DraftPreviewPage({
   const data = await fetchPieceById(id);
   if (!data) notFound();
   const sd = (data.structured_data || {}) as Record<string, any>;
-  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
+  // CC↔Live truth fix (2026-05-19, Phase 2 mirror): same precedence flip as
+  // production fetchers — content_body is source of truth.
+  const bodyHtml = (data.content_body || sd?.bodyHtml || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   // ─── Calculator → ToolPageClient (shared normalizer + fallback chain) ───
