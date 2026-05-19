@@ -26,15 +26,20 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
 
   const allGuides = await fetchGuides();
   const relatedGuides = allGuides.filter((item) => item.slug !== guide.slug).slice(0, 3);
-  const faqs = guide.faqs?.length ? guide.faqs : [
-    { question: `How do I apply ${guide.title}?`, answer: "Start with the workflow that creates the most operational friction, then layer in the next improvement after it is stable." },
-    { question: "Is this relevant for smaller portfolios?", answer: "Yes. Most of these systems matter even more when a small team is wearing every hat." },
-  ];
+  // CC↔Live truth fix (2026-05-18): drop hardcoded FAQ fallback. If CC has no
+  // FAQs in this guide, the FAQ block doesn't render at all. Previously this
+  // injected 2 generic FAQs ("How do I apply…", "Is this relevant for smaller
+  // portfolios?") that the team couldn't see or edit in CC — exactly the
+  // class of issue Helvis flagged: "content on live that's not in CC."
+  // See: .claude/specs/mrprops-cc-live-truth-fix-2026-05-18.md (Fix A part 1).
+  const faqs = guide.faqs?.length ? guide.faqs : [];
 
   const structuredData = buildStructuredData(
     createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Guides", path: "/guides" }, { name: guide.title }]),
     createArticleSchema({ headline: guide.title, description: guide.excerpt, path: `/guides/${guide.slug}`, datePublished: guide.publishedAt, dateModified: guide.updatedAt }),
-    createFaqSchema(faqs),
+    // Only inject FAQ schema when CC has actual FAQs. buildStructuredData
+    // filters null/undefined automatically — no spread needed.
+    faqs.length > 0 ? createFaqSchema(faqs) : null,
   );
 
   return (

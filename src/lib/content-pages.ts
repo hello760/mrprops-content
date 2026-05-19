@@ -32,7 +32,10 @@ async function fetchSupabaseListings(slugPrefix: string): Promise<DirectoryEntry
     .filter((r: any) => r.custom_slug && !/-\d{8,}$/.test(r.custom_slug))
     .map((r: any) => {
       const sd = (r.structured_data || {}) as Record<string, any>;
-      const bodyHtml = ((r.structured_data as any)?.bodyHtml || r.content_body || '') as string;
+      // CC↔Live truth fix (2026-05-18): prefer content_body (source of truth)
+      // over sd.bodyHtml (derived cache). See Fix B in
+      // .claude/specs/mrprops-cc-live-truth-fix-2026-05-18.md.
+      const bodyHtml = (r.content_body || (r.structured_data as any)?.bodyHtml || '') as string;
       const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
       return {
@@ -87,10 +90,23 @@ async function fetchLandingFromSupabase(pageType: "features" | "services", slug:
     headline: sd.hero?.headline || data.title || '',
     subheadline: sd.hero?.subheadline || '',
     body: [],
-    bodyHtml: (sd.bodyHtml || data.content_body) || undefined,
+    // CC↔Live truth fix (2026-05-18): invert bodyHtml precedence. content_body
+    // is the source of truth (what the editor writes); sd.bodyHtml is a derived
+    // cache that can drift if BSD didn't re-run. Closes "republish doesn't
+    // reflect" (Gu4) and phantom heading "What you need before you publish"
+    // (Gu3). The render-time `stripRedundantBodyBlocks(...)` + `markdownToHtml(...)`
+    // in GuidePostClient still runs, so we don't lose the strip-duplicate-H1
+    // protection. See: .claude/specs/mrprops-cc-live-truth-fix-2026-05-18.md (Fix B).
+    bodyHtml: (data.content_body || sd.bodyHtml) || undefined,
+    // CC↔Live truth fix (2026-05-18): extend hero image fallback chain to match
+    // fetchGuides listing at line 49. Previously this returned '' when both
+    // sd.featuredImage AND sd.hero.image were null → <img src=""> → broken
+    // image icon (Gu1 from team Loom call at 01:55 + 03:24). The 6 of 28
+    // guides without sd.featuredImage now fall through to images[0].url then
+    // fallbackImageForSlug. URLs verified HTTP 200 via curl before merge.
     // FIX-HERO-IMG (2026-04-20): pull hero image from structured_data.featuredImage
     // (generate-images writes there) with sd.hero?.image fallback.
-    image: sd.featuredImage || sd.hero?.image || '',
+    image: sd.featuredImage || sd.hero?.image || (Array.isArray(data.images) && data.images.length > 0 ? data.images[0]?.url : undefined) || fallbackImageForSlug(data.custom_slug),
     seoTitle: sd.seoTitle || data.seo_title || '',
     seoDescription: sd.seoDescription || data.meta_description || '',
     publishedAt: data.published_at || undefined,
@@ -155,7 +171,9 @@ async function fetchLandingListFromSupabase(pageType: "features" | "services"): 
         headline: sd.hero?.headline || r.title || '',
         subheadline: sd.hero?.subheadline || '',
         body: [],
-        bodyHtml: ((sd as any)?.bodyHtml || r.content_body) || undefined,
+        // CC↔Live truth fix (2026-05-18): prefer content_body over sd.bodyHtml.
+        // See Fix B in .claude/specs/mrprops-cc-live-truth-fix-2026-05-18.md.
+        bodyHtml: (r.content_body || (sd as any)?.bodyHtml) || undefined,
         image: sd.featuredImage || sd.hero?.image || '',
         seoTitle: sd.seoTitle || r.seo_title || '',
         seoDescription: sd.seoDescription || r.meta_description || '',
@@ -212,8 +230,14 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
   if (error || !data || !data.structured_data) return null;
 
   const sd = data.structured_data as Record<string, any>;
-  // Phase 5 L3 fix: prefer structured_data.bodyHtml (stripped) over content_body.
-  const bodyHtml = (sd?.bodyHtml || data.content_body || '') as string;
+  // CC↔Live truth fix (2026-05-18): inverted Phase 5 L3 precedence.
+  // Helvis end goal: "content should not appear on the live Mr Props page if
+  // it is not visible in MMG Command Center." content_body is the editor's
+  // source of truth; sd.bodyHtml is a derived cache that drifts when BSD
+  // doesn't re-run. Render-time stripRedundantBodyBlocks(...) still cleans
+  // duplicate H1s — the strip happens at render, not at fetch.
+  // See: .claude/specs/mrprops-cc-live-truth-fix-2026-05-18.md (Fix B).
+  const bodyHtml = (data.content_body || sd?.bodyHtml || '') as string;
   const plainText = bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   return {
