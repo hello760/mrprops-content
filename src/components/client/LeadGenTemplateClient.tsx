@@ -230,20 +230,35 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
                 </div>
               )}
 
-              <div className="bg-transparent mt-12">
-                <h2 className="font-display font-bold text-3xl mb-8">{page.faqTitle}</h2>
-                <Accordion type="single" collapsible className="w-full space-y-4">
-                  {faqs.map((faq, index) => (
-                    <AccordionItem key={faq.question} value={`item-${index}`} className="border border-border bg-card rounded-xl px-6">
-                      <AccordionTrigger className="font-display font-semibold text-lg hover:text-primary hover:no-underline py-6">{faq.question}</AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground text-base pb-6 leading-relaxed">{faq.answer}</AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
+              {/* CC↔Live truth fix (2026-05-19, Phase 4): only render the
+                  FAQ section when CC has BOTH a faqTitle AND at least one
+                  FAQ. Pre-fix the heading rendered with a hardcoded
+                  "Frequently Asked Questions" fallback the team couldn't
+                  edit (template-tools.ts:88,243 + 430). Same Phase 2
+                  pattern as Glossary Pro Tip. */}
+              {faqs.length > 0 && page.faqTitle && (
+                <div className="bg-transparent mt-12">
+                  <h2 className="font-display font-bold text-3xl mb-8">{page.faqTitle}</h2>
+                  <Accordion type="single" collapsible className="w-full space-y-4">
+                    {faqs.map((faq, index) => (
+                      <AccordionItem key={faq.question} value={`item-${index}`} className="border border-border bg-card rounded-xl px-6">
+                        <AccordionTrigger className="font-display font-semibold text-lg hover:text-primary hover:no-underline py-6">{faq.question}</AccordionTrigger>
+                        <AccordionContent className="text-muted-foreground text-base pb-6 leading-relaxed">{faq.answer}</AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* CC↔Live truth fix (2026-05-19, Phase 4): the "More Free Resources"
+              sidebar only renders when CC has BOTH a resourcesTitle AND at
+              least one resource item. Pre-fix the heading rendered with a
+              hardcoded fallback (template-tools.ts:436 "More Free Resources")
+              that the team couldn't edit — picked up by the full sweep on
+              2026-05-19 in 2 template pieces. */}
+          {resources.length > 0 && page.resourcesTitle && (
           <div className="hidden lg:block sticky top-24 space-y-6">
             <div className="bg-card rounded-2xl p-6 border border-border shadow-md">
               <h3 className="font-bold text-lg mb-4">{page.resourcesTitle}</h3>
@@ -260,6 +275,7 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
               <Link href="/templates"><Button variant="outline" className="w-full mt-6 font-bold">View All Templates</Button></Link>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
