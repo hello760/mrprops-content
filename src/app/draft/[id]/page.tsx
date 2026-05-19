@@ -139,7 +139,10 @@ function toDirectoryEntry(data: Record<string, any>): DirectoryEntry {
     sidebarCtaTitle: sd.sidebarCtaTitle || undefined,
     sidebarCtaDescription: sd.sidebarCtaDescription || undefined,
     sidebarCtaButtonLabel: sd.sidebarCtaButtonLabel || undefined,
-    faqTitle: sd.faqTitle || 'Frequently Asked Questions',
+    // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop the
+    // `|| 'Frequently Asked Questions'` fallback (parallel to content-pages.ts:323).
+    // Single source of section-chrome default is SEOContentSkeleton.
+    faqTitle: sd.faqTitle || undefined,
     faqs: sd.faqs || [],
     ctaTitle: sd.ctaTitle || sd.finalCta?.headline || undefined,
     ctaText: sd.ctaText || sd.finalCta?.sentence || undefined,

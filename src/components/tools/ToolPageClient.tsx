@@ -77,20 +77,21 @@ function ToolCTA() {
   );
 }
 
-/** Tool-specific FAQ section (spec requirement T-7: 4-6 questions, no blog-article skeleton) */
-function ToolFAQSection({ faqs, toolName }: { faqs?: FAQItem[]; toolName: string }) {
-  const items = faqs?.length ? faqs : [
-    { question: `How accurate is the ${toolName}?`, answer: "Our calculations use industry-standard formulas and are calibrated against real market data from 50+ cities. Results are estimates — always verify with local data before making investment decisions." },
-    { question: `Is the ${toolName} free to use?`, answer: "Yes, completely free with no account required. For detailed PDF reports and portfolio tracking, you can sign up for a free Mr. Props trial." },
-    { question: `What data do I need to use this tool?`, answer: "You'll need basic property financials: expected rental income, monthly expenses, and property value or purchase price. The more accurate your inputs, the more useful the output." },
-    { question: "Can I save or export my results?", answer: "Click 'Email me this detailed report' below the results panel to receive a comprehensive PDF breakdown of your analysis." },
-  ];
-
+/** Tool-specific FAQ section (spec requirement T-7: 4-6 questions, no blog-article skeleton)
+ *
+ * CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop the hardcoded
+ * 4-FAQ fallback array. Was injecting generic "How accurate is the X?",
+ * "Is X free to use?", "What data do I need?", "Can I save my results?"
+ * FAQs whenever CC had no faqs[] populated. Exactly the Helvis-flagged
+ * class of bug Phase 2 fixed for glossary. Now: when CC has no FAQs,
+ * the entire section hides. */
+function ToolFAQSection({ faqs }: { faqs?: FAQItem[] }) {
+  if (!faqs?.length) return null;
   return (
     <div className="space-y-6">
       <h2 className="font-display text-3xl font-extrabold tracking-tight text-center">Frequently Asked Questions</h2>
       <div className="max-w-3xl mx-auto divide-y divide-border">
-        {items.map((faq) => (
+        {faqs.map((faq) => (
           <details key={faq.question} className="group py-4">
             <summary className="flex items-center justify-between cursor-pointer font-bold text-foreground hover:text-primary transition-colors">
               {faq.question}
@@ -221,7 +222,7 @@ export function ToolPageClient({ page }: ToolPageClientProps) {
         <ToolCTA />
       )}
 
-      <ToolFAQSection faqs={page.faqs} toolName={toolName} />
+      <ToolFAQSection faqs={page.faqs} />
     </div>
   );
 
