@@ -36,7 +36,15 @@ export default async function GlossaryTermPage({ params }: { params: Promise<{ s
   if (!term) notFound();
 
   const relatedTerms = term.relatedTerms.length > 0 ? term.relatedTerms : (await fetchGlossaryTerms()).filter((item) => item.slug !== term.slug).slice(0, 5).map((item) => item.term);
-  const faqTitle = term.faqTitle || `Frequently Asked Questions about ${term.term}`;
+  // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): the `|| \`Frequently
+  // Asked Questions about ${term.term}\`` fallback was rendering an
+  // unconditional H2 prefix even when CC had no faqs[] populated. Caught
+  // by the full sweep as 7 glossary pieces phantom-heading violations.
+  // Drop the fallback — the FAQ section already gates on faqs.length>0
+  // (SEOContentSkeleton inspects), so when CC has no FAQs the title goes
+  // through but the block doesn't render. Plus glossary.ts:84,329 now
+  // also drops the same fallback chain.
+  const faqTitle = term.faqTitle;
   // CC↔Live truth fix (2026-05-19, Phase 2 Fix A): drop hardcoded FAQ fallback.
   // When CC has no FAQs, the FAQ block doesn't render at all. Was injecting 3
   // generic FAQs ("Why does ${term} matter?", "How often should I review…",

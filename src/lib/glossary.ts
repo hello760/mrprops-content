@@ -81,7 +81,12 @@ async function fetchGlossaryFromSupabase(slug: string): Promise<GlossaryTerm | n
     proTipTitle: sd.proTip?.title || undefined,
     proTipDescription: sd.proTip?.description || undefined,
     proTipButtonLabel: sd.proTip?.buttonLabel || undefined,
-    faqTitle: `Frequently Asked Questions about ${sd.term || data.title}`,
+    // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop the
+    // unconditional `Frequently Asked Questions about ${term}` fallback —
+    // it rendered an H2 even when CC had no faqs[]. Now reads directly
+    // from sd.faqTitle (which the CC editor exposes via the Pro Tip / FAQ
+    // panel). When unset, the consumer render skips the FAQ section.
+    faqTitle: sd.faqTitle,
     faqs: (sd.faqs || []).map((f: any) => ({ question: f.question, answer: f.answer })),
     ctaTitle: sd.cta?.title || undefined,
     ctaText: sd.cta?.text || undefined,
@@ -326,7 +331,12 @@ export async function fetchGlossaryTermById(id: string): Promise<GlossaryTerm | 
     proTipTitle: sd.proTip?.title || undefined,
     proTipDescription: sd.proTip?.description || undefined,
     proTipButtonLabel: sd.proTip?.buttonLabel || undefined,
-    faqTitle: `Frequently Asked Questions about ${sd.term || data.title}`,
+    // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): drop the
+    // unconditional `Frequently Asked Questions about ${term}` fallback —
+    // it rendered an H2 even when CC had no faqs[]. Now reads directly
+    // from sd.faqTitle (which the CC editor exposes via the Pro Tip / FAQ
+    // panel). When unset, the consumer render skips the FAQ section.
+    faqTitle: sd.faqTitle,
     faqs: (sd.faqs || []).map((f: any) => ({ question: f.question, answer: f.answer })),
     ctaTitle: sd.cta?.title || undefined,
     ctaText: sd.cta?.text || undefined,
