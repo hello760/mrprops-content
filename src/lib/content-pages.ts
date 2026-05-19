@@ -252,7 +252,13 @@ async function fetchDirectoryEntryFromSupabase(urlPrefix: string, slug: string):
     publishedAt: data.published_at || undefined,
     updatedAt: data.published_at || undefined,
     updated: formatDisplayDate(data.published_at),
-    image: sd.featuredImage || (Array.isArray(data.images) && data.images.length > 0 ? data.images[0]?.url : undefined) || undefined,
+    // CC↔Live truth fix (2026-05-18, follow-up): this is the REAL detail
+    // fetcher for guides (fetchGuideBySlug routes here, not fetchLandingFromSupabase).
+    // Post-merge live verify showed market-vacation-rental-property + how-to-become-an-airbnb-co-host
+    // were rendering <img> with no src because the chain ended at `|| undefined`.
+    // Extending to fall through to fallbackImageForSlug ensures every piece has a
+    // non-null hero src (DEFAULT_GUIDE_IMAGE for guides without a curated image).
+    image: sd.featuredImage || (Array.isArray(data.images) && data.images.length > 0 ? data.images[0]?.url : undefined) || fallbackImageForSlug(data.custom_slug),
     // Type-specific fields from structured_data
     platform: sd.platform || undefined,
     location: sd.location || undefined,
