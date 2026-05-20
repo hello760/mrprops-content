@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { TaxView } from "@/components/content/views/TaxView";
 import { fetchTaxes, fetchTaxBySlug, splitNestedSlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
@@ -24,7 +24,9 @@ export async function generateMetadata({ params }: { params: Promise<{ platform:
 export default async function TaxPage({ params }: { params: Promise<{ platform: string; region: string }> }) {
   const { platform, region } = await params;
   const taxPage = await fetchTaxBySlug(platform, region);
-  if (!taxPage) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent.
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!taxPage) permanentRedirect(`/taxes/${platform}`);
   const faqs = taxPage.faqs?.length ? taxPage.faqs : [];
   const structuredData = buildStructuredData(
     createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Taxes", path: "/taxes" }, { name: taxPage.title }]),

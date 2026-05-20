@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { JsonLd } from "@/components/content/PageBits";
 import { LeadGenTemplateClient } from "@/components/client/LeadGenTemplateClient";
 import { buildMetadata } from "@/lib/metadata";
@@ -21,7 +21,9 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
 export default async function TemplatePage({ params }: { params: Promise<{ category: string; slug: string }> }) {
   const { category, slug } = await params;
   const page = (await fetchTemplatePage(category, slug)) || getTemplateFallback(category, slug);
-  if (!page) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent.
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!page) permanentRedirect(`/templates/${category}`);
   const structuredData = buildStructuredData(
     createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Templates", path: "/templates" }, { name: page.title }]),
     createFaqSchema(page.faqs),

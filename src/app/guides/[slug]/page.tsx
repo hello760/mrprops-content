@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { buildMetadata } from "@/lib/metadata";
 import { buildStructuredData, createArticleSchema, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 import { fetchGuideBySlug, fetchGuides } from "@/lib/content-pages";
@@ -22,7 +22,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const guide = await fetchGuideBySlug(slug);
-  if (!guide) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent.
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!guide) permanentRedirect("/guides");
 
   const allGuides = await fetchGuides();
   const relatedGuides = allGuides.filter((item) => item.slug !== guide.slug).slice(0, 3);

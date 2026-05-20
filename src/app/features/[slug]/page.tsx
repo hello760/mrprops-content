@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { LandingPageView } from "@/components/content/LandingPageView";
 import { fetchLandingPageBySlug, fetchLandingPages } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
@@ -21,7 +21,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function FeaturePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const page = await fetchLandingPageBySlug("features", slug);
-  if (!page) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent.
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!page) permanentRedirect("/features");
 
   const structuredData = buildStructuredData(
     createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Features", path: "/features" }, { name: page.title }]),
