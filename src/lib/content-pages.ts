@@ -1304,13 +1304,21 @@ export const fetchRegulations = cache(async () => {
   // 2026-04-30: same prefix-strip pattern as fetchGuides.
   // DB stores `regulations/<platform>/<location>` — listing card hrefs need
   // bare `<platform>/<location>` so /regulations/[platform]/[location] resolves.
+  // Phase 4d (2026-05-19): support N-segment slugs (legacy 2-seg + new
+  // 3-seg `<country>/<city>` or US `<state>/<city>`). locationSlug now joins
+  // ALL tail segments after platform — was previously `parts[1]` only which
+  // emitted broken hrefs like /regulations/airbnb/spain for 3-segment pieces.
   return dedupeBySlug(sbEntries.map((entry) => {
     const bareSlug = entry.slug.replace(/^regulations\//, '');
     const parts = bareSlug.split('/').filter(Boolean);
     const platform = entry.platform || parts[0] || 'airbnb';
-    const locationSlug = parts[1] || parts[0] || bareSlug;
-    const locationLabel = entry.location || deriveLocationLabel(locationSlug, entry.title);
-    const region = entry.region || deriveRegionFromLocation(locationSlug, entry.title);
+    const locationSlug = parts.slice(1).join('/') || parts[0] || bareSlug;
+    // For deriving the location label + region from the slug we want the
+    // CITY segment (the last segment), not the full path. Cities are
+    // operator-facing display strings on the listing card.
+    const citySlug = parts[parts.length - 1] || bareSlug;
+    const locationLabel = entry.location || deriveLocationLabel(citySlug, entry.title);
+    const region = entry.region || deriveRegionFromLocation(citySlug, entry.title);
     return {
       ...entry,
       slug: bareSlug,
