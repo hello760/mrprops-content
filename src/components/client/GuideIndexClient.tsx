@@ -34,7 +34,9 @@ export function GuideIndexClient({
 
   const filteredPosts = useMemo(() => {
     return guides.filter((post) => {
-      const category = post.category || "Operations";
+      // Phase 5 P0 (2026-05-19): drop fake "Operations" default — empty
+      // string here means "uncategorized" and matches the "All" filter only.
+      const category = post.category || "";
       const categoryMatch = selectedCategory === "All" || category === selectedCategory;
       const haystack = `${post.title} ${post.excerpt} ${category}`.toLowerCase();
       const searchMatch =
@@ -151,28 +153,32 @@ export function GuideIndexClient({
 
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-16">
           {currentPosts.map((post) => {
-            const category = post.category || "Operations";
+            // Phase 5 P0 (2026-05-19): drop fake "Operations" default.
+            // Category badge only renders when CC has a category set.
+            const category = post.category || "";
             return (
               <Link key={post.id} href={`/guides/${post.slug}`}>
                 <div className="group cursor-pointer flex flex-col h-full bg-card border border-border rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300">
                   <div className="aspect-[16/10] overflow-hidden bg-muted relative">
-                    <div className="absolute top-4 left-4 z-10">
-                      <span className="bg-background/90 backdrop-blur text-foreground px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            category === "Finance"
-                              ? "bg-green-500"
-                              : category === "Marketing"
-                                ? "bg-purple-500"
-                                : category === "Legal"
-                                  ? "bg-red-500"
-                                  : "bg-blue-500",
-                          )}
-                        />
-                        {category}
-                      </span>
-                    </div>
+                    {category ? (
+                      <div className="absolute top-4 left-4 z-10">
+                        <span className="bg-background/90 backdrop-blur text-foreground px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              category === "Finance"
+                                ? "bg-green-500"
+                                : category === "Marketing"
+                                  ? "bg-purple-500"
+                                  : category === "Legal"
+                                    ? "bg-red-500"
+                                    : "bg-blue-500",
+                            )}
+                          />
+                          {category}
+                        </span>
+                      </div>
+                    ) : null}
                     {post.image && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img

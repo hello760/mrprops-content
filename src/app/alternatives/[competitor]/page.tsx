@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { AlternativeView } from "@/components/content/views/AlternativeView";
 import { fetchAlternatives, fetchAlternativeBySlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
@@ -21,7 +21,9 @@ export async function generateMetadata({ params }: { params: Promise<{ competito
 export default async function AlternativePage({ params }: { params: Promise<{ competitor: string }> }) {
   const { competitor } = await params;
   const alternative = await fetchAlternativeBySlug(competitor);
-  if (!alternative) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent (alternatives index).
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!alternative) permanentRedirect("/alternatives");
   const competitorName = alternative.competitorName || alternative.title.replace(/ Alternative$/i, "") || competitor;
   const faqs = alternative.faqs?.length ? alternative.faqs : [{ question: `Why hosts are leaving ${competitorName}?`, answer: `Operators usually leave ${competitorName} when they want cleaner workflows, better visibility, and less operational drag.` }];
   const structuredData = buildStructuredData(

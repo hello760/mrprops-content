@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { ChevronRight, Printer, Search, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
@@ -33,7 +33,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function GlossaryTermPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const term = await fetchGlossaryTermBySlug(slug);
-  if (!term) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent.
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!term) permanentRedirect("/glossary");
 
   const relatedTerms = term.relatedTerms.length > 0 ? term.relatedTerms : (await fetchGlossaryTerms()).filter((item) => item.slug !== term.slug).slice(0, 5).map((item) => item.term);
   // CC↔Live truth fix (2026-05-19, Phase 4 follow-up): the `|| \`Frequently

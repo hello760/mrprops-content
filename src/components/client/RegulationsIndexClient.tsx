@@ -272,16 +272,23 @@ export function RegulationsIndexClient({
                     ) : (
                       <Globe className="h-16 w-16 text-primary/40" aria-hidden />
                     )}
-                    <div className="absolute top-3 left-3 z-10">
-                      <span className="bg-background/90 backdrop-blur text-foreground px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm">
-                        {item.region || "Other"}
-                      </span>
-                    </div>
+                    {/* Phase 5 P0 (2026-05-19): drop fake-default fallbacks
+                        ("Other", "Airbnb", "Updated"). Operator-set fields
+                        now hide when absent instead of fabricating data. */}
+                    {item.region ? (
+                      <div className="absolute top-3 left-3 z-10">
+                        <span className="bg-background/90 backdrop-blur text-foreground px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide shadow-sm">
+                          {item.region}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="relative z-10 p-6 md:p-7 flex flex-col flex-grow">
-                    <div className="text-xs text-muted-foreground font-medium mb-2 uppercase tracking-wider">
-                      {item.platform || "Airbnb"} · {item.date || "Updated"}
-                    </div>
+                    {(item.platform || item.date) ? (
+                      <div className="text-xs text-muted-foreground font-medium mb-2 uppercase tracking-wider">
+                        {[item.platform, item.date].filter(Boolean).join(" · ")}
+                      </div>
+                    ) : null}
                     <h3 className="font-display text-xl font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">
                       {item.location || item.title}
                     </h3>

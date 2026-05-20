@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { JsonLd } from "@/components/content/PageBits";
 import { ComparisonView } from "@/components/content/views/ComparisonView";
 import { fetchComparisons, fetchComparisonBySlug } from "@/lib/content-pages";
@@ -22,7 +22,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ComparePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const comparison = await fetchComparisonBySlug(slug);
-  if (!comparison) notFound();
+  // Phase 5 P1 (2026-05-19): no 404s — 308 to nearest parent.
+  // Google treats 308 identically to 301 for SEO ranking transfer.
+  if (!comparison) permanentRedirect("/compare");
   const structuredData = buildStructuredData(
     createBreadcrumbSchema([{ name: "Home", path: "/" }, { name: "Compare", path: "/compare" }, { name: comparison.title }]),
     createFaqSchema(comparison.faqs),
