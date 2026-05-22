@@ -1,0 +1,44 @@
+# mrprops-content — CC↔Live parity gate
+# Phase 5 P6 (2026-05-19). Closes "publish gate reflects CC's CURRENT state,
+# never a stale snapshot" by running the 20-piece sample parity verifier on
+# every PR + push to main. Catches regressions that introduce hardcoded
+# render-layer fallbacks (the Phase 4 antipattern).
+#
+# Initial state (2026-05-22): `continue-on-error: true` while 1 known
+# calculator outlier (airbnb-depreciation-calculator) is below the 88%
+# calculator threshold. Promote to blocking once known-issue cleared.
+
+name: Parity Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cc-live-parity:
+    name: CC↔Live parity (20-piece sample)
+    runs-on: ubuntu-latest
+    continue-on-error: true  # 1 known outlier; promote to blocking after P8 backlog clears
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run parity verifier
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          if [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
+            echo "::warning::SUPABASE_SECRET_KEY not set in repo secrets — skipping parity check"
+            echo "To activate: GitHub repo Settings → Secrets → Actions → New secret"
+            echo "Name: SUPABASE_SECRET_KEY"
+            exit 0
+          fi
+          python3 .claude/tests/verify_mrprops_cc_live_parity.py
