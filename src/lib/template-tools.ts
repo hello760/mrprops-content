@@ -32,8 +32,13 @@ function deriveSneakPeekHtml(bodyHtml: string | undefined, wordTarget = 220): st
   if (!bodyHtml || typeof bodyHtml !== 'string') return '';
   // Drop H1 + H2 + H3 + their content (preview is prose-only so H2/H3 don't
   // duplicate with the full bodyHtml render below the gate). Also strip
-  // <article> wrappers.
+  // <article> wrappers. 2026-05-22: also strip the body LLM's hero-widget
+  // <section> (Rule 6 in markdown-to-html.ts) — the gate widget at
+  // LeadGenTemplateClient.tsx:96-160 is the canonical hero, and surfacing
+  // the body's hero-widget inside the preview created the leftover noise
+  // that the post-merge verify_template_no_duplication.py picked up.
   let html = bodyHtml
+    .replace(/<section\b[^>]*class="[^"]*\btemplate-hero-widget\b[^"]*"[^>]*>[\s\S]*?<\/section>/gi, '')
     .replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi, '')
     .replace(/<h2\b[^>]*>[\s\S]*?<\/h2>/gi, '')
     .replace(/<h3\b[^>]*>[\s\S]*?<\/h3>/gi, '')
