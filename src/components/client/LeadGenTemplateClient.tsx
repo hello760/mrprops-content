@@ -10,6 +10,10 @@ import { PortableTextContent } from "@/components/content/PortableTextContent";
 import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
 import { Lock, FileText, CheckCircle2, Home, ChevronRight, Download, X, Check } from "lucide-react";
 import type { TemplatePageContent } from "@/lib/template-tools";
+import {
+  trackTemplateDownloadAttempt,
+  trackTemplateDownloadSuccess,
+} from "@/lib/analytics";
 
 type TemplatePage = TemplatePageContent;
 
@@ -33,6 +37,14 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
     const fileUrl = page.templateFile?.url;
     if (!fileUrl) return; // form should be disabled; defensive no-op
     setIsSubmitting(true);
+    const templateEventBase = {
+      template_slug: (page as { slug?: string }).slug ?? String(page.id ?? "unknown"),
+      template_category: page.category,
+      content_piece_id: page.id,
+      file_name: page.templateFile?.fileName || undefined,
+      file_extension: (page.templateFile?.fileName || "").split(".").pop() || undefined,
+    };
+    trackTemplateDownloadAttempt(templateEventBase);
     // 2026-04-23: MVP lead capture. POST to /api/leads/template-download which
     // stores (email, content_piece_id, source_url, ip, ua) and returns the same
     // download URL we already have client-side. Capture happens even if the
@@ -54,6 +66,7 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    trackTemplateDownloadSuccess(templateEventBase);
     setEmail("");
     setIsSubmitting(false);
   };

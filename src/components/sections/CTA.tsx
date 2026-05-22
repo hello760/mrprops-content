@@ -32,12 +32,40 @@ export function CTA({ title, text, primaryButton, secondaryButton }: CTAProps) {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           {primaryButton?.label ? (
             <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-xl shadow-primary/30 w-full sm:w-auto" asChild>
-              <a href={primaryHref}>{primaryButton.label} <ArrowRight className="ml-2 h-5 w-5" /></a>
+              <a
+                href={primaryHref}
+                data-analytics-cta="section_cta_primary"
+                data-analytics-cta-label={primaryButton.label}
+                data-analytics-cta-location="cta_section"
+                data-analytics-cta-destination={primaryHref}
+              >
+                {primaryButton.label} <ArrowRight className="ml-2 h-5 w-5" />
+              </a>
             </Button>
           ) : null}
           {secondaryButton?.label ? (
             <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-border bg-background hover:bg-muted w-full sm:w-auto" asChild>
-              {secondaryIsInternal ? <Link href={secondaryHref}>{secondaryButton.label}</Link> : <a href={secondaryHref}>{secondaryButton.label}</a>}
+              {secondaryIsInternal ? (
+                <Link
+                  href={secondaryHref}
+                  data-analytics-cta="section_cta_secondary"
+                  data-analytics-cta-label={secondaryButton.label}
+                  data-analytics-cta-location="cta_section"
+                  data-analytics-cta-destination={secondaryHref}
+                >
+                  {secondaryButton.label}
+                </Link>
+              ) : (
+                <a
+                  href={secondaryHref}
+                  data-analytics-cta="section_cta_secondary"
+                  data-analytics-cta-label={secondaryButton.label}
+                  data-analytics-cta-location="cta_section"
+                  data-analytics-cta-destination={secondaryHref}
+                >
+                  {secondaryButton.label}
+                </a>
+              )}
             </Button>
           ) : null}
         </div>

@@ -3,6 +3,12 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import {
+  AnalyticsListener,
+  AnalyticsTracker,
+  ConsentBanner,
+  GoogleAnalytics,
+} from "@/components/analytics";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -34,12 +40,25 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
+      <head>
+        {/*
+          Google Analytics 4 (GA4) — Property: mrprops.io (G-WEBEM9Z3BP).
+          See src/lib/analytics.ts + src/components/analytics/* for the
+          full Gold Standard CRO event taxonomy. EU Consent Mode v2 wired:
+          analytics_storage is denied by default for EEA + UK + CH until the
+          visitor accepts via <ConsentBanner />.
+        */}
+        <GoogleAnalytics />
+      </head>
       <body>
         <div className="min-h-screen flex flex-col bg-background font-sans antialiased text-foreground">
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
         </div>
+        <AnalyticsListener />
+        <AnalyticsTracker />
+        <ConsentBanner />
       </body>
     </html>
   );

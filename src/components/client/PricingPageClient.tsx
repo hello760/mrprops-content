@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, ShieldCheck, Zap, Database, Minus } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import {
+  trackPricingPlanClick,
+  trackPricingSliderChange,
+} from "@/lib/analytics";
 
 export function PricingPageClient() {
   const [unitCount, setUnitCount] = useState(25);
@@ -38,6 +42,24 @@ export function PricingPageClient() {
       setTier("scale");
     }
   }, [unitCount]);
+
+  // Debounced GA4 slider tracker. We don't fire on every onChange (would
+  // produce 100+ events per drag) — instead, on slider settle the user's
+  // chosen unit count is recorded with their derived monthly_total + tier.
+  const sliderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (sliderTimer.current) clearTimeout(sliderTimer.current);
+    sliderTimer.current = setTimeout(() => {
+      trackPricingSliderChange({
+        units: unitCount,
+        monthly_total: unitCount * pricePerUnit,
+        tier,
+      });
+    }, 500);
+    return () => {
+      if (sliderTimer.current) clearTimeout(sliderTimer.current);
+    };
+  }, [unitCount, pricePerUnit, tier]);
 
   const totalMonthlyCost = unitCount * pricePerUnit;
 
@@ -134,7 +156,25 @@ export function PricingPageClient() {
                 {unitCount >= 5 && <li className="flex gap-3 text-sm font-bold text-green-600 animate-in fade-in"><Check className="h-5 w-5 text-green-600 flex-shrink-0" /> Free White Glove Migration</li>}
               </ul>
               <Button variant={tier === key ? "default" : "outline"} className="w-full font-bold rounded-xl" asChild>
-                <a href="https://app.mrprops.io/register">Start Free Trial</a>
+                <a
+                  href="https://app.mrprops.io/register"
+                  data-analytics-cta={`pricing_tier_${String(key)}`}
+                  data-analytics-cta-label="Start Free Trial"
+                  data-analytics-cta-location="pricing_tier_card"
+                  data-analytics-cta-destination="https://app.mrprops.io/register"
+                  data-analytics-cta-variant={String(key)}
+                  onClick={() =>
+                    trackPricingPlanClick({
+                      units: unitCount,
+                      monthly_total: unitCount * pricePerUnit,
+                      tier: String(key),
+                      source: "tier_card",
+                      destination: "https://app.mrprops.io/register",
+                    })
+                  }
+                >
+                  Start Free Trial
+                </a>
               </Button>
             </div>
           ))}
@@ -269,7 +309,31 @@ export function PricingPageClient() {
         <div className="bg-primary text-primary-foreground rounded-3xl p-12 text-center shadow-2xl shadow-primary/30">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">Ready to automate your portfolio?</h2>
           <p className="text-xl text-primary-foreground/80 mb-8 max-w-xl mx-auto">Join thousands of hosts who are scaling faster with less work.</p>
-          <Button size="lg" variant="secondary" className="rounded-full px-8 h-14 text-lg font-bold shadow-lg w-full sm:w-auto">Start Your 14-Day Free Trial</Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="rounded-full px-8 h-14 text-lg font-bold shadow-lg w-full sm:w-auto"
+            asChild
+          >
+            <a
+              href="https://app.mrprops.io/register"
+              data-analytics-cta="pricing_bottom_trial"
+              data-analytics-cta-label="Start Your 14-Day Free Trial"
+              data-analytics-cta-location="pricing_bottom"
+              data-analytics-cta-destination="https://app.mrprops.io/register"
+              onClick={() =>
+                trackPricingPlanClick({
+                  units: unitCount,
+                  monthly_total: unitCount * pricePerUnit,
+                  tier,
+                  source: "bottom_cta",
+                  destination: "https://app.mrprops.io/register",
+                })
+              }
+            >
+              Start Your 14-Day Free Trial
+            </a>
+          </Button>
           <div className="mt-6 text-sm opacity-70">No credit card required. Cancel anytime.</div>
         </div>
       </section>

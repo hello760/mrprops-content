@@ -15,6 +15,11 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  trackNewsletterAttempt,
+  trackNewsletterError,
+  trackNewsletterSuccess,
+} from "@/lib/analytics";
 
 interface Props {
   source?: string;
@@ -41,6 +46,9 @@ export function NewsletterCTA({ source = "guides_cta", headline, subhead }: Prop
     if (state === "loading") return;
     setState("loading");
     setErrorMsg("");
+    const sourceUrl =
+      typeof window !== "undefined" ? window.location.pathname : undefined;
+    trackNewsletterAttempt({ source, source_url: sourceUrl });
     try {
       const res = await fetch("/api/newsletter/subscribe", {
         method: "POST",
@@ -56,12 +64,28 @@ export function NewsletterCTA({ source = "guides_cta", headline, subhead }: Prop
       if (!res.ok) {
         setState("error");
         setErrorMsg(json?.error || "Something went wrong — try again.");
+        trackNewsletterError({
+          source,
+          source_url: sourceUrl,
+          error_message: json?.error || "http_error",
+        });
         return;
       }
-      setState(json?.alreadyMember ? "alreadyMember" : "success");
+      const alreadyMember = Boolean(json?.alreadyMember);
+      setState(alreadyMember ? "alreadyMember" : "success");
+      trackNewsletterSuccess({
+        source,
+        source_url: sourceUrl,
+        already_member: alreadyMember,
+      });
     } catch {
       setState("error");
       setErrorMsg("Network error — try again.");
+      trackNewsletterError({
+        source,
+        source_url: sourceUrl,
+        error_message: "network_error",
+      });
     }
   }
 

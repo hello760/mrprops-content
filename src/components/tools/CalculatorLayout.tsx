@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 import { LeadGenModal } from "./LeadGenModal";
 import Link from "next/link";
+import {
+  trackCalculatorReportRequest,
+  trackCalculatorView,
+} from "@/lib/analytics";
 
 
 import type { CalculatorUiCopy } from "./calculatorCopy";
@@ -93,6 +97,29 @@ export function CalculatorLayout({
   toolName, calculatorUi, benefits, benefitsIntro, benefitsTitle,
 }: CalculatorLayoutProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Stable identifiers for analytics. Slug is derived from toolName when an
+  // explicit slug isn't passed (matches /tools/[category]/[slug] URL casing).
+  const analyticsSlug = (toolName || title || "calculator")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const calculatorEvent = {
+    calculator_slug: analyticsSlug,
+    calculator_category: category,
+    calculator_name: toolName || title,
+  };
+
+  useEffect(() => {
+    trackCalculatorView(calculatorEvent);
+    // We intentionally only fire on mount per calculator mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyticsSlug]);
+
+  const openReportModal = () => {
+    setIsModalOpen(true);
+    trackCalculatorReportRequest(calculatorEvent);
+  };
 
   const reportButtonLabel = calculatorUi?.layout?.reportButtonLabel || "Email me this detailed report";
   const primaryCtaLabel = calculatorUi?.layout?.primaryCtaLabel || "Start Free Trial";
@@ -177,8 +204,11 @@ export function CalculatorLayout({
 
                           <div className="pt-8 space-y-3">
                             <Button
-                              onClick={() => setIsModalOpen(true)}
+                              onClick={openReportModal}
                               variant="secondary"
+                              data-analytics-cta={`calculator_report_${analyticsSlug}`}
+                              data-analytics-cta-label={reportButtonLabel}
+                              data-analytics-cta-location="calculator"
                               className="w-full font-bold rounded-xl gap-2 h-12 shadow-sm border border-border/50"
                             >
                               <Download className="h-4 w-4" /> {reportButtonLabel}
@@ -259,7 +289,12 @@ export function CalculatorLayout({
       
       
 
-      <LeadGenModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={reportModalTitle} />
+      <LeadGenModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={reportModalTitle}
+        analyticsContext={calculatorEvent}
+      />
     </div>
   );
 }

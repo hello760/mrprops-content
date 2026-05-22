@@ -5,14 +5,22 @@ import { Check, Loader2, Mail, Lock, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  trackCalculatorReportSubmit,
+  type CalculatorEventParams,
+} from "@/lib/analytics";
 
 interface LeadGenModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  /** GA4 analytics context — typically the parent calculator. Passed through
+   *  CalculatorLayout. When provided, a successful submit fires
+   *  `calculator_report_submit` + `generate_lead`. */
+  analyticsContext?: CalculatorEventParams;
 }
 
-export function LeadGenModal({ isOpen, onClose, title = "Get Your Report" }: LeadGenModalProps) {
+export function LeadGenModal({ isOpen, onClose, title = "Get Your Report", analyticsContext }: LeadGenModalProps) {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -25,6 +33,9 @@ export function LeadGenModal({ isOpen, onClose, title = "Get Your Report" }: Lea
     setTimeout(() => {
       setIsLoading(false);
       setIsSuccess(true);
+      if (analyticsContext) {
+        trackCalculatorReportSubmit(analyticsContext);
+      }
       setTimeout(() => {
         setIsSuccess(false);
         onClose();
