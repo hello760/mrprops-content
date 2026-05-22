@@ -166,7 +166,9 @@ export function LeadGenTemplateClient({ page }: { page: TemplatePage }) {
                   Last Updated paragraphs, and converts **bold** markdown to <strong> HTML. */}
               {page.bodyHtml ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary"
-                     dangerouslySetInnerHTML={{ __html: markdownToHtml(stripRedundantBodyBlocks(page.bodyHtml)) }} />
+                     /* 2026-05-22 (P1): pass briefClosing.title to enable Rule 9
+                        Conclusion-duplicate strip when the widget at L226-231 renders. */
+                     dangerouslySetInnerHTML={{ __html: markdownToHtml(stripRedundantBodyBlocks(page.bodyHtml, { briefClosingTitle: page.briefClosing?.title })) }} />
               ) : deduplicatedBody?.length ? (
                 <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-display prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-a:text-primary prose-img:rounded-xl prose-li:marker:text-primary">
                   <PortableTextContent blocks={deduplicatedBody} html={page.bodyHtml} />

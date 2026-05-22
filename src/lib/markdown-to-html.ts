@@ -48,8 +48,40 @@ export function markdownToHtml(html: string | undefined | null): string {
  * This is a surgical runtime scrub, not a generator-level fix. The generator should
  * also be updated (separate commit) to not emit these blocks — but doing it here
  * first closes the user-facing bug immediately without touching generation.
+ *
+ * 2026-05-22 (P1 — Helvis screenshots 2026-05-21):
+ *   Added Rules 6, 7, 8, 9 to close 4 new template-family duplications between
+ *   the body LLM's emitted HTML and the structured_data widgets rendered by
+ *   `LeadGenTemplateClient.tsx:96-231`. Mirrors the proven Rule 5 pattern
+ *   (Best Practices, live since 2026-05-04, zero regressions). Cross-family
+ *   collision check 2026-05-22: zero non-template Mr Props pieces have H2
+ *   "Trust Signals" or "Common Mistakes to Avoid" or class
+ *   `template-hero-widget` in body — safe to apply globally.
+ *
+ *   Rule 9 (briefClosing) is opt-in via the `briefClosingTitle` option because
+ *   the Conclusion-section heading varies per piece (per the LLM prompt at
+ *   `mmg-wrk/src/lib/family-modifiers-mrprops.ts:219` — "Short declarative
+ *   title summarizing the core value proposition (NOT 'Conclusion')").
  */
-export function stripRedundantBodyBlocks(html: string | undefined | null): string {
+export interface StripRedundantBodyBlocksOptions {
+  /** Pass `sd.briefClosing.title` from the template piece. When provided AND
+   *  the briefClosing widget is rendering (the renderer gates on the title +
+   *  body both being present), Rule 9 strips the body's duplicate Conclusion
+   *  section. Two strategies:
+   *    (a) Title-match: H2 whose text equals the title or shares ≥3 substantial
+   *        (≥4-char) words with the title is stripped.
+   *    (b) Positional fallback: if title-match misses, the LAST H2 between
+   *        the "Common Mistakes to Avoid"/"Best Practices for Implementation"
+   *        anchor and the FAQ section / </article> is the LLM-prompted
+   *        Conclusion slot — strip it.
+   *  No-op when not provided. */
+  briefClosingTitle?: string;
+}
+
+export function stripRedundantBodyBlocks(
+  html: string | undefined | null,
+  options?: StripRedundantBodyBlocksOptions,
+): string {
   if (!html) return "";
   let cleaned = html;
 
@@ -106,5 +138,143 @@ export function stripRedundantBodyBlocks(html: string | undefined | null): strin
     ""
   );
 
+  // 6. Strip body's `<section class="template-hero-widget">…</section>` block.
+  //    The renderer at `LeadGenTemplateClient.tsx:96-160` renders a styled
+  //    gate widget (badge + preview title/meta + email gate + disclaimer)
+  //    from sd.{badge,previewTitle,previewMeta,gateTitle,gateDescription,
+  //    formPlaceholder,formButtonLabel,formDisclaimer,templateFile}. The
+  //    body LLM also emits an equivalent <section class="template-hero-widget">
+  //    via the family-modifiers-mrprops.ts prompt, producing two gate UIs
+  //    stacked. Class-based strip is safe — DB cross-family scan 2026-05-22:
+  //    0 non-template Mr Props pieces contain this class.
+  cleaned = cleaned.replace(
+    /<section\b[^>]*class="[^"]*\btemplate-hero-widget\b[^"]*"[^>]*>[\s\S]*?<\/section>/gi,
+    ""
+  );
+
+  // 7. Strip `<h2>Trust Signals</h2>` + its content. The renderer at
+  //    `LeadGenTemplateClient.tsx:101-105` renders trust pills from
+  //    sd.trustItems[]. The body LLM emits a Trust Signals H2 + 3 paragraphs
+  //    (often wrapped in a plain `<section>`). Two-stage strip:
+  //      7a. Wrapped form: `<section>\s*<h2>Trust Signals</h2>…</section>`
+  //      7b. Bare form: `<h2>Trust Signals</h2>…(?=next H2 boundary)` (Rule 5 shape)
+  //    DB cross-family scan 2026-05-22: 0 non-template Mr Props pieces have
+  //    H2 "Trust Signals" — paragraph mentions of "trust signals" don't match
+  //    the H2-only regex.
+  cleaned = cleaned.replace(
+    /<section\b[^>]*>\s*<h2[^>]*>\s*[^<]*Trust Signals[^<]*<\/h2>[\s\S]*?<\/section>/gi,
+    ""
+  );
+  cleaned = cleaned.replace(
+    /<h2[^>]*>\s*[^<]*Trust Signals[^<]*<\/h2>[\s\S]*?(?=<h2|<\/section|<\/article|<\/main|$)/gi,
+    ""
+  );
+
+  // 8. Strip `<h2>Common Mistakes to Avoid</h2>` + its content. The renderer
+  //    at `LeadGenTemplateClient.tsx:204-223` renders the 2-column Do/Don't
+  //    card from sd.commonMistakes.{doList,dontList}. Body LLM emits the
+  //    same content as bullets under an H2. Same Rule 5 shape — strip until
+  //    next H2/section/article boundary.
+  cleaned = cleaned.replace(
+    /<h2[^>]*>\s*[^<]*Common Mistakes to Avoid[^<]*<\/h2>[\s\S]*?(?=<h2|<\/section|<\/article|<\/main|$)/gi,
+    ""
+  );
+
+  // 9. Strip body's "Conclusion" H2 + content (the LLM-prompted closing
+  //    section per family-modifiers-mrprops.ts:219). Renderer's briefClosing
+  //    widget at `LeadGenTemplateClient.tsx:226-231` renders the same intent
+  //    from sd.briefClosing.{title,body}. Title varies per piece, so this
+  //    rule is opt-in via options.briefClosingTitle.
+  //
+  //    Strategy: pass 1 = title-match (exact case-insensitive OR ≥3 substantial
+  //    shared words); pass 2 = positional fallback if no title-match fired
+  //    (LLM prompt structure guarantees the Conclusion appears AFTER "Common
+  //    Mistakes to Avoid" or "Best Practices for Implementation" anchor and
+  //    BEFORE the FAQ section/end-of-article).
+  const briefClosingTitle = (options?.briefClosingTitle || "").trim();
+  if (briefClosingTitle) {
+    cleaned = stripBriefClosingDuplicate(cleaned, briefClosingTitle);
+  }
+
   return cleaned;
+}
+
+/**
+ * Helper — internal to markdown-to-html.ts. Strips the body's Conclusion H2
+ * that duplicates the structured_data.briefClosing widget. Two passes:
+ *
+ *   1. Title-match: H2 whose text exactly equals (case-insensitive trim) OR
+ *      shares ≥3 substantial (≥4-char) words with `briefClosingTitle`.
+ *   2. Positional fallback: a single H2 between the "Common Mistakes to
+ *      Avoid" / "Best Practices for Implementation" anchor and the FAQ
+ *      section / </article>. Per family-modifiers-mrprops.ts:219, the LLM
+ *      emits a Conclusion in that slot.
+ *
+ * Returns cleaned HTML. Never throws.
+ */
+function stripBriefClosingDuplicate(html: string, briefClosingTitle: string): string {
+  const titleNorm = briefClosingTitle.trim().toLowerCase();
+  const titleWords = new Set(
+    Array.from(briefClosingTitle.matchAll(/\w{4,}/g), (m) => m[0].toLowerCase()),
+  );
+
+  // Pass 1: title-match. Iterate H2s; strip the FIRST match.
+  const h2Re = /<h2[^>]*>([^<]*)<\/h2>/gi;
+  const matches: Array<{ start: number; end: number; text: string }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = h2Re.exec(html)) !== null) {
+    matches.push({ start: m.index, end: m.index + m[0].length, text: m[1] });
+  }
+
+  let stripTargetIdx = -1;
+  for (let i = 0; i < matches.length; i++) {
+    const text = matches[i].text.trim();
+    if (text.toLowerCase() === titleNorm) {
+      stripTargetIdx = i;
+      break;
+    }
+    const tWords = new Set(
+      Array.from(text.matchAll(/\w{4,}/g), (mm) => mm[0].toLowerCase()),
+    );
+    let shared = 0;
+    for (const w of titleWords) if (tWords.has(w)) shared++;
+    if (shared >= 3 && titleWords.size > 0) {
+      stripTargetIdx = i;
+      break;
+    }
+  }
+
+  // Pass 2: positional fallback if title-match missed.
+  if (stripTargetIdx === -1) {
+    const anchorRe =
+      /<h2[^>]*>\s*[^<]*(?:Common Mistakes to Avoid|Best Practices for Implementation)[^<]*<\/h2>/gi;
+    let lastAnchor: RegExpExecArray | null = null;
+    let am: RegExpExecArray | null;
+    while ((am = anchorRe.exec(html)) !== null) lastAnchor = am;
+    if (lastAnchor) {
+      const anchorEnd = lastAnchor.index + lastAnchor[0].length;
+      const endRe =
+        /<section[^>]*id=["']faq["']|<h2[^>]*>\s*[^<]*Frequently Asked Questions[^<]*<\/h2>|<\/article|<\/main/i;
+      const endMatch = endRe.exec(html.slice(anchorEnd));
+      const endIdx = endMatch ? anchorEnd + endMatch.index : html.length;
+      for (let i = 0; i < matches.length; i++) {
+        if (matches[i].start > anchorEnd && matches[i].start < endIdx) {
+          stripTargetIdx = i;
+          break;
+        }
+      }
+    }
+  }
+
+  if (stripTargetIdx === -1) return html;
+
+  // Strip from H2 start up to next H2 / section / article boundary.
+  const target = matches[stripTargetIdx];
+  const tail = html.slice(target.start);
+  const boundaryRe = /<h2[^>]*>|<\/section|<\/article|<\/main/i;
+  const boundaryMatch = boundaryRe.exec(tail.slice(target.end - target.start));
+  const endOffset = boundaryMatch
+    ? target.end - target.start + boundaryMatch.index
+    : tail.length;
+  return html.slice(0, target.start) + tail.slice(endOffset);
 }
