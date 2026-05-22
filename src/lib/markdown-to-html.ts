@@ -123,6 +123,30 @@ export function stripRedundantBodyBlocks(
   //    title it should read structured_data.title.
   cleaned = cleaned.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, "");
 
+  // 9. Strip body's "Conclusion" H2 + content (the LLM-prompted closing
+  //    section per family-modifiers-mrprops.ts:219). Renderer's briefClosing
+  //    widget at `LeadGenTemplateClient.tsx:226-231` renders the same intent
+  //    from sd.briefClosing.{title,body}. Title varies per piece, so this
+  //    rule is opt-in via options.briefClosingTitle.
+  //
+  //    Strategy: pass 1 = title-match (exact case-insensitive OR ≥3 substantial
+  //    shared words); pass 2 = positional fallback if no title-match fired
+  //    (LLM prompt structure guarantees the Conclusion appears AFTER "Common
+  //    Mistakes to Avoid" or "Best Practices for Implementation" anchor and
+  //    BEFORE the FAQ section/end-of-article).
+  //
+  //    IMPORTANT: Rule 9 runs BEFORE Rules 5/8 because the positional fallback
+  //    uses those H2s as anchors — stripping them first leaves Rule 9 unable
+  //    to locate the Conclusion slot. Each rule operates on the running
+  //    `cleaned` value but the order is deliberate. Verified 2026-05-22 on
+  //    pet-policy-template where the body's "Conclusion — Why Every Business
+  //    Needs a Pet Policy" wasn't being stripped because Rule 5 had already
+  //    removed the Best Practices anchor.
+  const briefClosingTitle = (options?.briefClosingTitle || "").trim();
+  if (briefClosingTitle) {
+    cleaned = stripBriefClosingDuplicate(cleaned, briefClosingTitle);
+  }
+
   // 5. Strip body H2 "Best Practices for Implementation" + section content
   //    (until next H2 or end of body). The template wrapper (LeadGenTemplateClient
   //    line 194) hardcodes `<h2>Best Practices for Implementation</h2>` followed
@@ -174,51 +198,55 @@ export function stripRedundantBodyBlocks(
   //    at `LeadGenTemplateClient.tsx:204-223` renders the 2-column Do/Don't
   //    card from sd.commonMistakes.{doList,dontList}. Body LLM emits the
   //    same content as bullets under an H2. Same Rule 5 shape — strip until
-  //    next H2/section/article boundary.
+  //    next H2/section/article boundary. (See order note above Rule 9.)
   cleaned = cleaned.replace(
     /<h2[^>]*>\s*[^<]*Common Mistakes to Avoid[^<]*<\/h2>[\s\S]*?(?=<h2|<\/section|<\/article|<\/main|$)/gi,
     ""
   );
-
-  // 9. Strip body's "Conclusion" H2 + content (the LLM-prompted closing
-  //    section per family-modifiers-mrprops.ts:219). Renderer's briefClosing
-  //    widget at `LeadGenTemplateClient.tsx:226-231` renders the same intent
-  //    from sd.briefClosing.{title,body}. Title varies per piece, so this
-  //    rule is opt-in via options.briefClosingTitle.
-  //
-  //    Strategy: pass 1 = title-match (exact case-insensitive OR ≥3 substantial
-  //    shared words); pass 2 = positional fallback if no title-match fired
-  //    (LLM prompt structure guarantees the Conclusion appears AFTER "Common
-  //    Mistakes to Avoid" or "Best Practices for Implementation" anchor and
-  //    BEFORE the FAQ section/end-of-article).
-  const briefClosingTitle = (options?.briefClosingTitle || "").trim();
-  if (briefClosingTitle) {
-    cleaned = stripBriefClosingDuplicate(cleaned, briefClosingTitle);
-  }
 
   return cleaned;
 }
 
 /**
  * Helper — internal to markdown-to-html.ts. Strips the body's Conclusion H2
- * that duplicates the structured_data.briefClosing widget. Two passes:
+ * that duplicates the structured_data.briefClosing widget. Three passes:
  *
  *   1. Title-match: H2 whose text exactly equals (case-insensitive trim) OR
  *      shares ≥3 substantial (≥4-char) words with `briefClosingTitle`.
- *   2. Positional fallback: a single H2 between the "Common Mistakes to
+ *   2. Keyword-match: H2 whose text contains classic LLM-closing keywords
+ *      ("Conclusion", "Final Thoughts", "Bottom Line", "In Closing", "Wrap
+ *      Up", "Closing Thoughts", "Key Takeaways", "Summary"). Catches body
+ *      pieces where the LLM ignored the "NOT 'Conclusion'" instruction in
+ *      family-modifiers-mrprops.ts:219.
+ *   3. Positional fallback: a single H2 between the "Common Mistakes to
  *      Avoid" / "Best Practices for Implementation" anchor and the FAQ
  *      section / </article>. Per family-modifiers-mrprops.ts:219, the LLM
- *      emits a Conclusion in that slot.
+ *      emits a Conclusion in that slot when those anchors exist.
  *
- * Returns cleaned HTML. Never throws.
+ * Returns cleaned HTML. Never throws. Single-strip semantics — only one H2
+ * is removed per call, even if multiple match (the FIRST one). The runtime
+ * widget's H2 (rendered separately by LeadGenTemplateClient.tsx:226-231)
+ * is OUTSIDE the bodyHtml input, so it's never matched here.
  */
+const CONCLUSION_KEYWORDS = [
+  "conclusion",
+  "final thoughts",
+  "bottom line",
+  "in closing",
+  "wrap up",
+  "wrapping up",
+  "closing thoughts",
+  "key takeaways",
+  "in summary",
+];
+
 function stripBriefClosingDuplicate(html: string, briefClosingTitle: string): string {
   const titleNorm = briefClosingTitle.trim().toLowerCase();
   const titleWords = new Set(
     Array.from(briefClosingTitle.matchAll(/\w{4,}/g), (m) => m[0].toLowerCase()),
   );
 
-  // Pass 1: title-match. Iterate H2s; strip the FIRST match.
+  // Enumerate H2s
   const h2Re = /<h2[^>]*>([^<]*)<\/h2>/gi;
   const matches: Array<{ start: number; end: number; text: string }> = [];
   let m: RegExpExecArray | null;
@@ -227,6 +255,8 @@ function stripBriefClosingDuplicate(html: string, briefClosingTitle: string): st
   }
 
   let stripTargetIdx = -1;
+
+  // Pass 1: title-match
   for (let i = 0; i < matches.length; i++) {
     const text = matches[i].text.trim();
     if (text.toLowerCase() === titleNorm) {
@@ -244,7 +274,22 @@ function stripBriefClosingDuplicate(html: string, briefClosingTitle: string): st
     }
   }
 
-  // Pass 2: positional fallback if title-match missed.
+  // Pass 2: keyword-match — only check H2s in the bottom half of the body
+  // (closing sections are always near the end). Avoids false positives on
+  // intro H2s like "In Summary of the Problem" appearing early.
+  if (stripTargetIdx === -1) {
+    const halfwayMark = Math.floor(html.length / 2);
+    for (let i = 0; i < matches.length; i++) {
+      if (matches[i].start < halfwayMark) continue;
+      const lower = matches[i].text.toLowerCase();
+      if (CONCLUSION_KEYWORDS.some((kw) => lower.includes(kw))) {
+        stripTargetIdx = i;
+        break;
+      }
+    }
+  }
+
+  // Pass 3: positional fallback
   if (stripTargetIdx === -1) {
     const anchorRe =
       /<h2[^>]*>\s*[^<]*(?:Common Mistakes to Avoid|Best Practices for Implementation)[^<]*<\/h2>/gi;
