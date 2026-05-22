@@ -9,6 +9,7 @@ import {
   ConsentBanner,
   GoogleAnalytics,
 } from "@/components/analytics";
+import { GoogleTagManagerNoScript } from "@/components/analytics/GoogleAnalytics";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -42,15 +43,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
       <head>
         {/*
-          Google Analytics 4 (GA4) — Property: mrprops.io (G-WEBEM9Z3BP).
-          See src/lib/analytics.ts + src/components/analytics/* for the
-          full Gold Standard CRO event taxonomy. EU Consent Mode v2 wired:
-          analytics_storage is denied by default for EEA + UK + CH until the
-          visitor accepts via <ConsentBanner />.
+          Single-tag setup: only GTM (GTM-5WXR93CR) loads here. GA4
+          (G-WEBEM9Z3BP) is configured INSIDE the GTM container as a
+          Google tag with send_page_view=false (we own SPA pageviews via
+          <AnalyticsListener />). EU Consent Mode v2 defaults set BEFORE
+          GTM boots so EEA + UK + CH analytics_storage is denied until the
+          visitor accepts via <ConsentBanner />. Full event taxonomy lives
+          in src/lib/analytics.ts.
         */}
         <GoogleAnalytics />
       </head>
       <body>
+        {/* GTM <noscript> fallback — must be the first <body> child. */}
+        <GoogleTagManagerNoScript />
         <div className="min-h-screen flex flex-col bg-background font-sans antialiased text-foreground">
           <Header />
           <main className="flex-1">{children}</main>

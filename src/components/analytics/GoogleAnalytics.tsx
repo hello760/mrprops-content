@@ -3,24 +3,28 @@ import Script from "next/script";
 import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 
 /**
- * Loads gtag.js with Consent Mode v2 defaults set BEFORE the script runs.
+ * Loads Google Tag Manager (GTM-XXXXXXX) with Consent Mode v2 defaults set
+ * BEFORE GTM boots. GA4 (`G-WEBEM9Z3BP`) is configured INSIDE GTM as a
+ * "Google tag" — there is no separate gtag.js script on the page, so only
+ * ONE network request hits *.googletagmanager.com (the GTM container).
  *
- * EU-default-deny posture (Mr Props is operated from Latvia):
- *  - `analytics_storage` is denied by default for the EEA + UK + CH region
- *    set. The `<ConsentBanner />` flips this to "granted" when the visitor
- *    consents.
- *  - Cookieless pings still fire under denied state so GA4 can run "Behavioural
- *    Modeling" / consent-mode reporting. This keeps directional traffic
- *    metrics visible while staying GDPR-compliant.
- *  - We also call `gtag('config', ..., { send_page_view: false })` because the
- *    Next.js App Router needs SPA navigations tracked manually — see
- *    <AnalyticsListener />.
+ * Why this shape:
+ *   - All our `trackEvent` calls write to `window.dataLayer` via the
+ *     `gtag()` shim defined below. GTM listens to dataLayer and forwards
+ *     events to GA4 automatically through the in-GTM Google tag.
+ *   - EU-default-deny posture (Mr Props is operated from Latvia): GTM
+ *     Consent Mode v2 defaults block `analytics_storage` for EEA + UK + CH
+ *     until the visitor accepts via <ConsentBanner />. Outside EU we keep
+ *     defaults at denied to be conservative; the banner grants on opt-in.
+ *   - When `NEXT_PUBLIC_GTM_CONTAINER_ID` is unset (preview / dev), the
+ *     component renders nothing so previews don't pollute the property.
  *
- * If `NEXT_PUBLIC_GA_MEASUREMENT_ID` is not set (preview builds, local dev),
- * the component renders nothing.
+ * The `<noscript>` iframe pair lives in `app/layout.tsx` so it can be a
+ * direct child of `<body>`.
  */
 export function GoogleAnalytics() {
-  if (!GA_MEASUREMENT_ID) return null;
+  const containerId = process.env.NEXT_PUBLIC_GTM_CONTAINER_ID;
+  if (!containerId) return null;
 
   // EU + EEA + UK + Switzerland — denied-by-default region set.
   const euRegions = [
@@ -29,6 +33,7 @@ export function GoogleAnalytics() {
     "GB","CH",
   ];
 
+  // Consent defaults — set BEFORE GTM loads so GTM picks them up.
   const consentDefault = `
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
@@ -50,39 +55,63 @@ gtag('consent', 'default', {
   analytics_storage: 'denied',
   wait_for_update: 500,
 });
-// Outside the EU default-deny region we grant analytics_storage so the
-// majority of (non-EU) traffic is measured without a banner click. This
-// matches the "denied-by-default for EU, granted-elsewhere" Google guidance.
 try {
-  const stored = (window.localStorage && window.localStorage.getItem('mrprops_analytics_consent')) || null;
+  var stored = (window.localStorage && window.localStorage.getItem('mrprops_analytics_consent')) || null;
   if (stored === 'granted') {
     gtag('consent', 'update', { analytics_storage: 'granted' });
-  } else if (stored !== 'denied') {
-    // No prior choice — opportunistically grant outside EU regions only.
-    // The IP-based region overrides above keep EU visitors denied until they
-    // tap Accept in the banner.
   }
-} catch (_e) { /* noop */ }
+} catch (_e) { /* localStorage blocked — fall back to denied default */ }
 gtag('js', new Date());
-gtag('config', '${GA_MEASUREMENT_ID}', {
-  send_page_view: false,
-  anonymize_ip: true,
-  cookie_flags: 'SameSite=None;Secure',
-});
+`;
+
+  // GTM snippet (the head half of the standard install). We split it from
+  // the snippet GTM gives in the UI because next/script handles async load.
+  const gtmBootstrap = `
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${containerId}');
 `;
 
   return (
     <>
       <Script
-        id="ga4-consent-default"
+        id="gtm-consent-default"
         strategy="beforeInteractive"
         dangerouslySetInnerHTML={{ __html: consentDefault }}
       />
       <Script
-        id="ga4-gtag"
+        id="gtm-bootstrap"
         strategy="afterInteractive"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        dangerouslySetInnerHTML={{ __html: gtmBootstrap }}
       />
     </>
   );
 }
+
+/**
+ * <noscript> fallback iframe — must be a direct child of <body>. Imported
+ * separately in app/layout.tsx because Script can't render server-side
+ * <noscript> tags.
+ */
+export function GoogleTagManagerNoScript() {
+  const containerId = process.env.NEXT_PUBLIC_GTM_CONTAINER_ID;
+  if (!containerId) return null;
+  return (
+    <noscript>
+      <iframe
+        src={`https://www.googletagmanager.com/ns.html?id=${containerId}`}
+        height="0"
+        width="0"
+        style={{ display: "none", visibility: "hidden" }}
+      />
+    </noscript>
+  );
+}
+
+/**
+ * Backward-compat: re-export the GA measurement ID constant so any module
+ * that needs to detect "is analytics on" can still rely on it.
+ */
+export { GA_MEASUREMENT_ID };
