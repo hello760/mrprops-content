@@ -58,36 +58,19 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                     is still available to CMS/structured-data consumers. */}
               </div>
             </div>
-            {/* FIX-027 (PF-27): TOC dedup — if the first body H2 label matches overviewTitle, use
-                the body H2 as chapter 1 (no hardcoded 'Regulatory Overview' duplicate). Also handle
-                the case where overviewTitle itself is the same string as contentHeadings[0]. */}
             <div className="bg-secondary/20 border border-border rounded-xl p-6 mb-12">
               <h3 className="font-bold text-lg mb-4">{regulation.tocTitle || "Table of Contents"}</h3>
               <ul className="space-y-2 text-sm">
-                {(() => {
-                  const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
-                  const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
-                  const hardcodedOverviewMatchesBody =
-                    firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
-                  if (hardcodedOverviewMatchesBody) {
-                    // Use body headings directly — no hardcoded first item.
-                    return contentHeadings.map((heading, index) => (
-                      <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 1}. {heading.label}</a></li>
-                    ));
-                  }
-                  return (
-                    <>
-                      <li><a href="#overview" className="text-primary hover:underline">1. {overviewLabel}</a></li>
-                      {contentHeadings.map((heading, index) => (
-                        <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 2}. {heading.label}</a></li>
-                      ))}
-                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped hardcoded
-                          "2. Licensing Requirements" + "3. Zoning Restrictions" TOC
-                          items that fired when body had no headings. The TOC now
-                          mirrors actual body headings + the overview entry only. */}
-                    </>
-                  );
-                })()}
+                {/* Single-source TOC (2026-06-10): mirror the body's own section
+                    headings 1:1. The body already carries numbered sections
+                    ("1. Regulatory Overview", "2. ...") so labels render as-is with
+                    no injected/index prefix. Removes the old hardcoded
+                    "1. {overviewTitle}" entry (which duplicated the body's first
+                    section + double-numbered the rest as "2. 1. ...") and its
+                    orphaned #overview anchor. */}
+                {contentHeadings.map((heading) => (
+                  <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{heading.label}</a></li>
+                ))}
               </ul>
             </div>
             {/* Single-checklist fix (2026-06-10): the compliance checklist now
@@ -108,33 +91,15 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 ))}
               </div>
             ) : null}
-            {/* FIX-022 (PF-22 cluster A) + FIX-020 (PF-20 markdown leak):
-                - If the first body H2 equals the hardcoded overviewTitle, skip the teaser H2+excerpt
-                  entirely (body already carries it) — removes dual-render.
-                - Otherwise keep the hardcoded teaser as a prose intro above bodyHtml.
-                - bodyHtml is piped through markdownToHtml so literal `**bold**` becomes <strong>. */}
+            {/* Body is the single source of truth (2026-06-10): removed the
+                hardcoded "overview teaser" — an injected `<h2>1. {overviewTitle}</h2>`
+                plus the SEO meta-description excerpt — that rendered above the body.
+                It duplicated the body's own first section (and on pages where
+                overviewTitle was the article title, repeated the H1) and pushed the
+                meta description into the visible copy. The body already begins with
+                its own "1. Regulatory Overview", so it renders directly after the
+                checklist. */}
             <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-              {(() => {
-                const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
-                const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
-                const hardcodedOverviewMatchesBody =
-                  firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
-                if (!hardcodedOverviewMatchesBody) {
-                  return (
-                    <>
-                      <h2 id="overview" className="font-display font-bold">1. {overviewLabel}</h2>
-                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped the
-                          `|| \`Operating a short-term rental in ${locName} requires
-                          navigating specific local laws.\`` fallback. Excerpt
-                          now only renders when CC has it populated. */}
-                      {regulation.excerpt ? (
-                        <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt}</p>
-                      ) : null}
-                    </>
-                  );
-                }
-                return null;
-              })()}
               <PortableTextContent blocks={regulation.body} html={markdownToHtml(strippedBodyHtml)} />
             </div>
           </div>
