@@ -13,7 +13,12 @@ export function RegulationView({ regulation, platform, location }: { regulation:
   const locName = regulation.location || location.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const platformName = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : "Rental";
   const isStrict = location.includes("new-york") || location.includes("san-francisco") || location.includes("berlin");
-  const contentHeadings = portableTextHeadings(regulation.body, regulation.bodyHtml);
+  // Single-checklist fix (2026-06-10): strip the body's duplicate "…Compliance
+  // Checklist" section ONCE, then derive both the Table of Contents and the
+  // rendered body from the stripped HTML. Deriving the TOC from the stripped
+  // HTML keeps it in sync — no orphaned anchor for the removed body checklist.
+  const strippedBodyHtml = stripRedundantBodyBlocks(regulation.bodyHtml);
+  const contentHeadings = portableTextHeadings(regulation.body, strippedBodyHtml);
   // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded checklistItems +
   // faqs fallbacks. Was injecting 4 generic checklist items ("Business License
   // Application" etc.) + 3 generic FAQs ("Do I need a permit for 30+ day rentals?"
@@ -85,6 +90,24 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 })()}
               </ul>
             </div>
+            {/* Single-checklist fix (2026-06-10): the compliance checklist now
+                renders directly under the Table of Contents (above the body prose)
+                as the single interactive checklist. Real-checkbox markup + the
+                length>0 gate are preserved; the duplicate body checklist is
+                stripped via stripRedundantBodyBlocks (markdown-to-html Rule 10).
+                CC↔Live truth (2026-05-19, Phase 4c): card is gated on CC having
+                at least one checklistItems entry. */}
+            {checklistItems.length > 0 ? (
+              <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
+                <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
+                {checklistItems.map((item, i) => (
+                  <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
+                    <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
+                    <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {/* FIX-022 (PF-22 cluster A) + FIX-020 (PF-20 markdown leak):
                 - If the first body H2 equals the hardcoded overviewTitle, skip the teaser H2+excerpt
                   entirely (body already carries it) — removes dual-render.
@@ -112,22 +135,8 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 }
                 return null;
               })()}
-              <PortableTextContent blocks={regulation.body} html={markdownToHtml(stripRedundantBodyBlocks(regulation.bodyHtml))} />
+              <PortableTextContent blocks={regulation.body} html={markdownToHtml(strippedBodyHtml)} />
             </div>
-            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate entire checklist
-                card on CC having at least one checklistItems entry. Was rendering
-                4 hardcoded items + a generated title whenever CC was empty. */}
-            {checklistItems.length > 0 ? (
-              <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
-                <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
-                {checklistItems.map((item, i) => (
-                  <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
-                    <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
-                    <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
-                  </div>
-                ))}
-              </div>
-            ) : null}
           </div>
           <div className="sticky top-24 space-y-8">
             {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate sidebar CTA card on

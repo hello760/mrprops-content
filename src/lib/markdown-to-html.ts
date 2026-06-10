@@ -194,6 +194,29 @@ export function stripRedundantBodyBlocks(
     ""
   );
 
+  // 10. Strip the body's "…Compliance Checklist" section. Mr Props regulation
+  //     pieces emit a compliance checklist INSIDE content_body (an H2 such as
+  //     "Tennessee Airbnb Compliance Checklist" followed by ☐-prefixed items),
+  //     while RegulationView.tsx ALSO renders an interactive checklist card from
+  //     structured_data.checklistItems. That produced two checklists per page
+  //     (audit 2026-06-10: 134/135 published regulation pieces). The structured
+  //     card is the single source of truth (reconciled to be body-faithful), so
+  //     the body copy is stripped here at render time — same surgical pattern as
+  //     Rules 5/7/8. Cohort scan 2026-06-10: every body checklist heading is an
+  //     H2 whose text contains "Compliance Checklist" (some wrap it in
+  //     <strong>, so the heading match tolerates inner tags); none carry H3s
+  //     before the next H2, so bounding at the next H2 captures the whole block.
+  //     The H3 variant is handled defensively (bounds at next H2 OR H3). The
+  //     structured card is rendered OUTSIDE bodyHtml, so it is never matched here.
+  cleaned = cleaned.replace(
+    /<h2[^>]*>(?:(?!<\/h2>)[\s\S])*?Compliance Checklist(?:(?!<\/h2>)[\s\S])*?<\/h2>[\s\S]*?(?=<h2|<\/section|<\/article|<\/main|$)/gi,
+    ""
+  );
+  cleaned = cleaned.replace(
+    /<h3[^>]*>(?:(?!<\/h3>)[\s\S])*?Compliance Checklist(?:(?!<\/h3>)[\s\S])*?<\/h3>[\s\S]*?(?=<h2|<h3|<\/section|<\/article|<\/main|$)/gi,
+    ""
+  );
+
   // 8. Strip `<h2>Common Mistakes to Avoid</h2>` + its content. The renderer
   //    at `LeadGenTemplateClient.tsx:204-223` renders the 2-column Do/Don't
   //    card from sd.commonMistakes.{doList,dontList}. Body LLM emits the
