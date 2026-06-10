@@ -1,10 +1,10 @@
 // Phase 5: shared regulation page renderer. Imported by both production and draft routes.
 import Link from "next/link";
 import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
 import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
+import { NewsletterSidebar } from "@/components/newsletter/NewsletterSidebar";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
 type ChecklistItem = string | { label?: string; checked?: boolean };
@@ -13,7 +13,12 @@ export function RegulationView({ regulation, platform, location }: { regulation:
   const locName = regulation.location || location.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const platformName = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : "Rental";
   const isStrict = location.includes("new-york") || location.includes("san-francisco") || location.includes("berlin");
-  const contentHeadings = portableTextHeadings(regulation.body, regulation.bodyHtml);
+  // Single-checklist fix (2026-06-10): strip the body's duplicate "…Compliance
+  // Checklist" section ONCE, then derive both the Table of Contents and the
+  // rendered body from the stripped HTML. Deriving the TOC from the stripped
+  // HTML keeps it in sync — no orphaned anchor for the removed body checklist.
+  const strippedBodyHtml = stripRedundantBodyBlocks(regulation.bodyHtml);
+  const contentHeadings = portableTextHeadings(regulation.body, strippedBodyHtml);
   // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded checklistItems +
   // faqs fallbacks. Was injecting 4 generic checklist items ("Business License
   // Application" etc.) + 3 generic FAQs ("Do I need a permit for 30+ day rentals?"
@@ -53,70 +58,28 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                     is still available to CMS/structured-data consumers. */}
               </div>
             </div>
-            {/* FIX-027 (PF-27): TOC dedup — if the first body H2 label matches overviewTitle, use
-                the body H2 as chapter 1 (no hardcoded 'Regulatory Overview' duplicate). Also handle
-                the case where overviewTitle itself is the same string as contentHeadings[0]. */}
             <div className="bg-secondary/20 border border-border rounded-xl p-6 mb-12">
               <h3 className="font-bold text-lg mb-4">{regulation.tocTitle || "Table of Contents"}</h3>
               <ul className="space-y-2 text-sm">
-                {(() => {
-                  const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
-                  const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
-                  const hardcodedOverviewMatchesBody =
-                    firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
-                  if (hardcodedOverviewMatchesBody) {
-                    // Use body headings directly — no hardcoded first item.
-                    return contentHeadings.map((heading, index) => (
-                      <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 1}. {heading.label}</a></li>
-                    ));
-                  }
-                  return (
-                    <>
-                      <li><a href="#overview" className="text-primary hover:underline">1. {overviewLabel}</a></li>
-                      {contentHeadings.map((heading, index) => (
-                        <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 2}. {heading.label}</a></li>
-                      ))}
-                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped hardcoded
-                          "2. Licensing Requirements" + "3. Zoning Restrictions" TOC
-                          items that fired when body had no headings. The TOC now
-                          mirrors actual body headings + the overview entry only. */}
-                    </>
-                  );
-                })()}
+                {/* Single-source TOC (2026-06-10): mirror the body's own section
+                    headings 1:1. The body already carries numbered sections
+                    ("1. Regulatory Overview", "2. ...") so labels render as-is with
+                    no injected/index prefix. Removes the old hardcoded
+                    "1. {overviewTitle}" entry (which duplicated the body's first
+                    section + double-numbered the rest as "2. 1. ...") and its
+                    orphaned #overview anchor. */}
+                {contentHeadings.map((heading) => (
+                  <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{heading.label}</a></li>
+                ))}
               </ul>
             </div>
-            {/* FIX-022 (PF-22 cluster A) + FIX-020 (PF-20 markdown leak):
-                - If the first body H2 equals the hardcoded overviewTitle, skip the teaser H2+excerpt
-                  entirely (body already carries it) — removes dual-render.
-                - Otherwise keep the hardcoded teaser as a prose intro above bodyHtml.
-                - bodyHtml is piped through markdownToHtml so literal `**bold**` becomes <strong>. */}
-            <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-              {(() => {
-                const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
-                const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
-                const hardcodedOverviewMatchesBody =
-                  firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
-                if (!hardcodedOverviewMatchesBody) {
-                  return (
-                    <>
-                      <h2 id="overview" className="font-display font-bold">1. {overviewLabel}</h2>
-                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped the
-                          `|| \`Operating a short-term rental in ${locName} requires
-                          navigating specific local laws.\`` fallback. Excerpt
-                          now only renders when CC has it populated. */}
-                      {regulation.excerpt ? (
-                        <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt}</p>
-                      ) : null}
-                    </>
-                  );
-                }
-                return null;
-              })()}
-              <PortableTextContent blocks={regulation.body} html={markdownToHtml(stripRedundantBodyBlocks(regulation.bodyHtml))} />
-            </div>
-            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate entire checklist
-                card on CC having at least one checklistItems entry. Was rendering
-                4 hardcoded items + a generated title whenever CC was empty. */}
+            {/* Single-checklist fix (2026-06-10): the compliance checklist now
+                renders directly under the Table of Contents (above the body prose)
+                as the single interactive checklist. Real-checkbox markup + the
+                length>0 gate are preserved; the duplicate body checklist is
+                stripped via stripRedundantBodyBlocks (markdown-to-html Rule 10).
+                CC↔Live truth (2026-05-19, Phase 4c): card is gated on CC having
+                at least one checklistItems entry. */}
             {checklistItems.length > 0 ? (
               <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
                 <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
@@ -128,29 +91,28 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 ))}
               </div>
             ) : null}
+            {/* Body is the single source of truth (2026-06-10): removed the
+                hardcoded "overview teaser" — an injected `<h2>1. {overviewTitle}</h2>`
+                plus the SEO meta-description excerpt — that rendered above the body.
+                It duplicated the body's own first section (and on pages where
+                overviewTitle was the article title, repeated the H1) and pushed the
+                meta description into the visible copy. The body already begins with
+                its own "1. Regulatory Overview", so it renders directly after the
+                checklist. */}
+            <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
+              <PortableTextContent blocks={regulation.body} html={markdownToHtml(strippedBodyHtml)} />
+            </div>
           </div>
           <div className="sticky top-24 space-y-8">
-            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate sidebar CTA card on
-                CC field presence. Was rendering "Automate Compliance / Don't risk
-                fines. Mr. Props automatically tracks..." + "Start Free Trial"
-                whenever CC fields were empty — none of which the operator could see. */}
-            {(regulation.sidebarCtaTitle || regulation.sidebarCtaDescription) ? (
-              <div className="bg-primary text-primary-foreground rounded-2xl p-6 border border-primary/20 shadow-xl relative overflow-hidden group">
-                <div className="relative z-10">
-                  {regulation.sidebarCtaTitle ? (
-                    <h3 className="font-display font-bold text-xl mb-2">{regulation.sidebarCtaTitle}</h3>
-                  ) : null}
-                  {regulation.sidebarCtaDescription ? (
-                    <p className="text-sm text-primary-foreground/90 mb-6 leading-relaxed">{regulation.sidebarCtaDescription}</p>
-                  ) : null}
-                  {regulation.sidebarCtaButtonLabel ? (
-                    <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12 text-primary" asChild>
-                      <a href={regulation.ctaPrimaryButton?.href || "https://app.mrprops.io/register"}>{regulation.sidebarCtaButtonLabel}</a>
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
+            {/* Uniform newsletter CTA (2026-06-10): replaced the per-page
+                sidebar CTA (sidebarCtaTitle/Description/ButtonLabel — the
+                machine-written "Track {Location} STR Compliance…" box that
+                varied per page) with a single vertical newsletter signup that
+                is IDENTICAL across every regulation page. Real subscribe wiring
+                (POST /api/newsletter/subscribe) via NewsletterSidebar. The old
+                sidebarCta* fields remain in structured_data but are no longer
+                read here. */}
+            <NewsletterSidebar source="regulations_sidebar" />
           </div>
         </div>
         {/* CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded fallbacks
