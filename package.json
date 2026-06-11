@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:recipes": "tsx --test src/lib/calculator-recipes.test.ts",
+    "test:headings": "tsx --test src/components/content/portable-text-headings.test.ts",
     "check:parity": "bash scripts/check-recipe-parity.sh"
   },
   "dependencies": {

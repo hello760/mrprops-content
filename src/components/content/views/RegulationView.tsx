@@ -53,65 +53,31 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                     is still available to CMS/structured-data consumers. */}
               </div>
             </div>
-            {/* FIX-027 (PF-27): TOC dedup — if the first body H2 label matches overviewTitle, use
-                the body H2 as chapter 1 (no hardcoded 'Regulatory Overview' duplicate). Also handle
-                the case where overviewTitle itself is the same string as contentHeadings[0]. */}
-            <div className="bg-secondary/20 border border-border rounded-xl p-6 mb-12">
-              <h3 className="font-bold text-lg mb-4">{regulation.tocTitle || "Table of Contents"}</h3>
-              <ul className="space-y-2 text-sm">
-                {(() => {
-                  const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
-                  const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
-                  const hardcodedOverviewMatchesBody =
-                    firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
-                  if (hardcodedOverviewMatchesBody) {
-                    // Use body headings directly — no hardcoded first item.
-                    return contentHeadings.map((heading, index) => (
-                      <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 1}. {heading.label}</a></li>
-                    ));
-                  }
-                  return (
-                    <>
-                      <li><a href="#overview" className="text-primary hover:underline">1. {overviewLabel}</a></li>
-                      {contentHeadings.map((heading, index) => (
-                        <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{index + 2}. {heading.label}</a></li>
-                      ))}
-                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped hardcoded
-                          "2. Licensing Requirements" + "3. Zoning Restrictions" TOC
-                          items that fired when body had no headings. The TOC now
-                          mirrors actual body headings + the overview entry only. */}
-                    </>
-                  );
-                })()}
-              </ul>
-            </div>
-            {/* FIX-022 (PF-22 cluster A) + FIX-020 (PF-20 markdown leak):
-                - If the first body H2 equals the hardcoded overviewTitle, skip the teaser H2+excerpt
-                  entirely (body already carries it) — removes dual-render.
-                - Otherwise keep the hardcoded teaser as a prose intro above bodyHtml.
-                - bodyHtml is piped through markdownToHtml so literal `**bold**` becomes <strong>. */}
+            {/* FIX-CCX (2026-06-10, Sentry MMG-COMMAND-CENTER-X/-Q): TOC mirrors body headings
+                VERBATIM — no hardcoded first item, no re-numbering. FIX-027's string-match dedup
+                failed in production because body headings carry their own "N." prefix
+                ("1. Regulatory Overview" != "Regulatory Overview"), so the hardcoded item
+                duplicated on all published regulation pages. Body (CC) is the single source
+                of truth; labels render as-authored. Card gated on having >=1 heading
+                (mirrors TaxView Phase 4c gating). */}
+            {contentHeadings.length > 0 ? (
+              <div className="bg-secondary/20 border border-border rounded-xl p-6 mb-12">
+                <h3 className="font-bold text-lg mb-4">{regulation.tocTitle || "Table of Contents"}</h3>
+                <ul className="space-y-2 text-sm">
+                  {contentHeadings.map((heading) => (
+                    <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{heading.label}</a></li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {/* FIX-CCX (2026-06-10, Sentry MMG-COMMAND-CENTER-X/-Q): removed the hardcoded
+                "1. {overviewTitle}" teaser H2 + excerpt (meta description) injection entirely.
+                It rendered operator-invisible content (the phantom H2 with the SEO description
+                as body) on every page whose first H2 didn't string-match overviewTitle — which
+                was ALL published regulation pages, because body headings carry "N." prefixes.
+                Body (CC) is the single source of truth; bodyHtml still pipes through
+                markdownToHtml (FIX-020) + stripRedundantBodyBlocks. Mirrors TaxView FIX-022. */}
             <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-              {(() => {
-                const overviewLabel = regulation.overviewTitle || "Regulatory Overview";
-                const firstBodyHeading = contentHeadings[0]?.label?.trim().toLowerCase();
-                const hardcodedOverviewMatchesBody =
-                  firstBodyHeading && overviewLabel.trim().toLowerCase() === firstBodyHeading;
-                if (!hardcodedOverviewMatchesBody) {
-                  return (
-                    <>
-                      <h2 id="overview" className="font-display font-bold">1. {overviewLabel}</h2>
-                      {/* CC↔Live truth fix (2026-05-19, Phase 4c): dropped the
-                          `|| \`Operating a short-term rental in ${locName} requires
-                          navigating specific local laws.\`` fallback. Excerpt
-                          now only renders when CC has it populated. */}
-                      {regulation.excerpt ? (
-                        <p className="lead text-xl text-muted-foreground leading-relaxed mb-8">{regulation.excerpt}</p>
-                      ) : null}
-                    </>
-                  );
-                }
-                return null;
-              })()}
               <PortableTextContent blocks={regulation.body} html={markdownToHtml(stripRedundantBodyBlocks(regulation.bodyHtml))} />
             </div>
             {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate entire checklist
