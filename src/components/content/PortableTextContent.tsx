@@ -118,11 +118,20 @@ export function portableTextHeadings(blocks?: PortableTextBlock[], html?: string
   // Extract headings from HTML content (Supabase flow)
   if (html) {
     const headings: { id: string; label: string }[] = [];
-    const regex = /<h2[^>]*(?:id="([^"]*)")?[^>]*>(.*?)<\/h2>/gi;
+    // FIX-CCX (2026-06-10): capture the h2's explicit id attribute when present.
+    // The previous pattern /<h2[^>]*(?:id="([^"]*)")?[^>]*>/ never captured it -
+    // the greedy [^>]* consumed the id attr, so the optional group was always
+    // undefined and every id was re-derived from text. Published Supabase bodies
+    // carry id="section-N" on their h2s, so TOC/scrollspy anchors pointed at ids
+    // that don't exist in the DOM. Parsing attrs separately fixes anchor targeting
+    // for RegulationView, ComparisonView, and GuidePostClient; behavior is
+    // unchanged for h2s without an id attr (derived from text, as before).
+    const regex = /<h2([^>]*)>(.*?)<\/h2>/gi;
     let match;
     while ((match = regex.exec(html)) !== null) {
       const text = match[2].replace(/<[^>]+>/g, '').trim();
-      const id = match[1] || headingId(text);
+      const explicitId = /\sid="([^"]*)"/.exec(match[1] || '');
+      const id = explicitId?.[1] || headingId(text);
       if (text) headings.push({ id, label: text });
     }
     return headings;
