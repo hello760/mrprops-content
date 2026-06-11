@@ -25,7 +25,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendTemplate } from '@/lib/postmark';
+import { sendEmail } from '@/lib/resend';
+import { renderWelcomeEmail } from '@/lib/newsletter-render';
 import { signToken } from '@/lib/newsletter-tokens';
 import { fetchFxRates, buildLocalizedModel } from '@/lib/newsletter-localize';
 
@@ -35,11 +36,6 @@ export const maxDuration = 60; // 60s for batch sends
 // Days offset from CONFIRMATION for each step (Email 1 already sent on subscribe → confirmed counts as anchor)
 const STEP_DAYS_OFFSET: Record<number, number> = {
   2: 2, 3: 4, 4: 7, 5: 10, 6: 14, 7: 18, 8: 23, 9: 28, 10: 35,
-};
-
-const SEQUENCE_TEMPLATES: Record<number, string> = {
-  2: 'welcome-2', 3: 'welcome-3', 4: 'welcome-4', 5: 'welcome-5',
-  6: 'welcome-6', 7: 'welcome-7', 8: 'welcome-8', 9: 'welcome-9', 10: 'welcome-10',
 };
 
 const MAX_BATCH = 50; // soft warming cap — we won't send more than 50/run during the first 2 weeks
@@ -68,7 +64,7 @@ async function POST_handler(req: NextRequest) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
-  if (!process.env.POSTMARK_SERVER_TOKEN) return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
+  if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
   if (!process.env.NEWSLETTER_CONFIRM_SECRET) return NextResponse.json({ error: 'Token secret not configured' }, { status: 500 });
 
   const sb = createClient(url, key);
@@ -101,14 +97,13 @@ async function POST_handler(req: NextRequest) {
 
   for (const row of rows) {
     const nextStep = row.current_step + 1;
-    const templateAlias = SEQUENCE_TEMPLATES[nextStep];
-    if (!templateAlias) {
-      results.push({ id: row.id, step: nextStep, ok: false, message: 'no template for step' });
+    if (nextStep < 2 || nextStep > 10) {
+      results.push({ id: row.id, step: nextStep, ok: false, message: 'step out of range' });
       continue;
     }
 
     try {
-      const confirmToken = signToken(row.id, 'confirm'); // not used after step 1 but harmless
+      const confirmToken = signToken(row.id, 'confirm');
       const unsubToken = signToken(row.id, 'unsub');
       const model = buildLocalizedModel(row.currency || 'EUR', rates, {
         confirm_url: `https://mrprops.io/api/newsletter/confirm?token=${confirmToken}`,
@@ -116,18 +111,27 @@ async function POST_handler(req: NextRequest) {
         first_name: 'there',
       });
 
-      const sendResult = await sendTemplate({
-        To: row.email,
-        TemplateAlias: templateAlias,
-        TemplateModel: model,
-        MessageStream: 'broadcast',
-        Tag: `welcome-step-${nextStep}`,
-        Metadata: { subscriber_id: row.id, sequence_id: row.sequence_id, step: String(nextStep) },
-        TrackOpens: true,
-        TrackLinks: 'HtmlAndText',
+      const rendered = renderWelcomeEmail(nextStep, {
+        ...(model as Record<string, string>),
+        confirm_url: (model as Record<string, string>).confirm_url ?? '',
+        unsubscribe_url: (model as Record<string, string>).unsubscribe_url ?? '',
       });
 
-      const newMsgIds = [...(row.postmark_message_ids ?? []), { step: nextStep, message_id: sendResult.MessageID, sent_at: sendResult.SubmittedAt }];
+      const sendResult = await sendEmail({
+        to: row.email,
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
+        tags: [
+          { name: 'sequence', value: row.sequence_id },
+          { name: 'step', value: String(nextStep) },
+        ],
+      });
+
+      const newMsgIds = [
+        ...(row.postmark_message_ids ?? []),
+        { step: nextStep, message_id: sendResult.id, sent_at: new Date().toISOString(), provider: 'resend' },
+      ];
 
       // Compute next scheduled_next_at if there IS a next step
       const nextNextStep = nextStep + 1;
@@ -161,7 +165,7 @@ async function POST_handler(req: NextRequest) {
       if (updErr) {
         results.push({ id: row.id, step: nextStep, ok: false, message: `update failed: ${updErr.message}` });
       } else {
-        results.push({ id: row.id, step: nextStep, ok: true, message: sendResult.MessageID });
+        results.push({ id: row.id, step: nextStep, ok: true, message: sendResult.id });
       }
     } catch (sendErr: unknown) {
       const msg = sendErr instanceof Error ? sendErr.message : String(sendErr);
