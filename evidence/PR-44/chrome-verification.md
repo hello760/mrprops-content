@@ -25,3 +25,13 @@ Document order observed (top → bottom):
 
 read_page(interactive): newsletter textbox[type=email] + Subscribe[type=submit] present;
 TOC links resolve to body section ids.
+
+---
+## Refinements (commit c618e4c) — verified on preview mrprops-content-l3nr0m4qq…
+1. Checkbox sizes: all checklist checkboxes now uniform 24×24 (shrink-0). Screenshot
+   confirms equal boxes across 1-, 2-, and 3-line labels (previously squished).
+2. TOC entry for the relocated detailed checklist: read_page(interactive) shows the
+   TOC tail = "11. Resources…" → "Disclaimer" → "Tennessee Airbnb Compliance Checklist"
+   [ref_28] href="#tennessee-airbnb-compliance-checklist", and the bottom block carries
+   id="tennessee-airbnb-compliance-checklist" (+ scroll-mt-24) → anchor resolves & scrolls.
+Fresh-context Layer-4 on the increment: APPROVED (evidence/PR-44/peer-review-increment.md).
