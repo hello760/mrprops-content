@@ -27,7 +27,7 @@ type State = "idle" | "loading" | "success" | "alreadyMember" | "error";
 
 const HEADLINE = "Join hosts running smarter portfolios";
 const SUBHEAD =
-  "Weekly tips on hybrid portfolios, off-season flips, and the unit economics most operators miss — from Helvis, who runs 6 STR + LTR units in Europe.";
+  "Weekly tips on hybrid portfolios, off-season flips, and the unit economics most operators miss - from Helvis and our community, who run 100s of STRs + LTRs around the Globe.";
 
 export function NewsletterSidebar({ source = "regulations_sidebar" }: Props) {
   const [email, setEmail] = useState("");

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
 import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
-import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
+import { markdownToHtml, stripRedundantBodyBlocks, extractComplianceChecklistSection } from "@/lib/markdown-to-html";
 import { NewsletterSidebar } from "@/components/newsletter/NewsletterSidebar";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
@@ -18,6 +18,12 @@ export function RegulationView({ regulation, platform, location }: { regulation:
   // rendered body from the stripped HTML. Deriving the TOC from the stripped
   // HTML keeps it in sync — no orphaned anchor for the removed body checklist.
   const strippedBodyHtml = stripRedundantBodyBlocks(regulation.bodyHtml);
+  // Detailed checklist relocated to the bottom (2026-06-11): extract the body's
+  // long "…Compliance Checklist" section (kept verbatim, like every live page)
+  // so it can render after the Disclaimer / before the FAQ. Rule 10 in
+  // stripRedundantBodyBlocks removes the same section from the in-place body so
+  // it does not also render at the top. Same shared matcher in both paths.
+  const detailedChecklistHtml = extractComplianceChecklistSection(regulation.bodyHtml);
   const contentHeadings = portableTextHeadings(regulation.body, strippedBodyHtml);
   // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded checklistItems +
   // faqs fallbacks. Was injecting 4 generic checklist items ("Business License
@@ -102,6 +108,17 @@ export function RegulationView({ regulation, platform, location }: { regulation:
             <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
               <PortableTextContent blocks={regulation.body} html={markdownToHtml(strippedBodyHtml)} />
             </div>
+            {/* Detailed checklist at the bottom (2026-06-11): the rich body
+                checklist (non-interactive ☐ reference list, as on every live
+                page) renders HERE — after the article body (Disclaimer) and
+                before the FAQ accordion below the grid — while the short
+                interactive structured_data card stays near the top. Both
+                checklists are kept; they just sit in different places. */}
+            {detailedChecklistHtml ? (
+              <div className="prose prose-lg dark:prose-invert max-w-none font-sans border-t border-border pt-10 mb-4">
+                <PortableTextContent html={markdownToHtml(detailedChecklistHtml)} />
+              </div>
+            ) : null}
           </div>
           <div className="sticky top-24 space-y-8">
             {/* Uniform newsletter CTA (2026-06-10): replaced the per-page

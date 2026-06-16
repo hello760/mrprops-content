@@ -78,6 +78,35 @@ export interface StripRedundantBodyBlocksOptions {
   briefClosingTitle?: string;
 }
 
+/**
+ * The body's "…Compliance Checklist" section — an H2/H3 whose text contains
+ * "Compliance Checklist" (sometimes wrapped in <strong>), plus everything up to
+ * the next sibling heading. Shared by two paths so the matcher never diverges:
+ *   - stripRedundantBodyBlocks (Rule 10) REMOVES it from the in-place body, so
+ *     the detailed checklist does not render at the top.
+ *   - extractComplianceChecklistSection RETURNS it so a caller can render it
+ *     elsewhere. On /regulations, RegulationView.tsx renders it at the BOTTOM
+ *     (after the Disclaimer, before the FAQ); the short interactive
+ *     structured_data checklist card stays near the top.
+ * Stored as source strings and compiled per use to avoid shared-lastIndex bugs
+ * between the global .replace() (strip) and single .match() (extract) paths.
+ */
+const COMPLIANCE_CHECKLIST_SECTION_SOURCES = [
+  String.raw`<h2[^>]*>(?:(?!</h2>)[\s\S])*?Compliance Checklist(?:(?!</h2>)[\s\S])*?</h2>[\s\S]*?(?=<h2|</section|</article|</main|$)`,
+  String.raw`<h3[^>]*>(?:(?!</h3>)[\s\S])*?Compliance Checklist(?:(?!</h3>)[\s\S])*?</h3>[\s\S]*?(?=<h2|<h3|</section|</article|</main|$)`,
+];
+
+/** Return the body's "…Compliance Checklist" section HTML (H2/H3 + items), or
+ *  "" if none. Used to relocate the detailed checklist to the page bottom. */
+export function extractComplianceChecklistSection(html: string | undefined | null): string {
+  if (!html) return "";
+  for (const src of COMPLIANCE_CHECKLIST_SECTION_SOURCES) {
+    const m = html.match(new RegExp(src, "i"));
+    if (m) return m[0];
+  }
+  return "";
+}
+
 export function stripRedundantBodyBlocks(
   html: string | undefined | null,
   options?: StripRedundantBodyBlocksOptions,
@@ -194,28 +223,18 @@ export function stripRedundantBodyBlocks(
     ""
   );
 
-  // 10. Strip the body's "…Compliance Checklist" section. Mr Props regulation
-  //     pieces emit a compliance checklist INSIDE content_body (an H2 such as
-  //     "Tennessee Airbnb Compliance Checklist" followed by ☐-prefixed items),
-  //     while RegulationView.tsx ALSO renders an interactive checklist card from
-  //     structured_data.checklistItems. That produced two checklists per page
-  //     (audit 2026-06-10: 134/135 published regulation pieces). The structured
-  //     card is the single source of truth (reconciled to be body-faithful), so
-  //     the body copy is stripped here at render time — same surgical pattern as
-  //     Rules 5/7/8. Cohort scan 2026-06-10: every body checklist heading is an
-  //     H2 whose text contains "Compliance Checklist" (some wrap it in
-  //     <strong>, so the heading match tolerates inner tags); none carry H3s
-  //     before the next H2, so bounding at the next H2 captures the whole block.
-  //     The H3 variant is handled defensively (bounds at next H2 OR H3). The
-  //     structured card is rendered OUTSIDE bodyHtml, so it is never matched here.
-  cleaned = cleaned.replace(
-    /<h2[^>]*>(?:(?!<\/h2>)[\s\S])*?Compliance Checklist(?:(?!<\/h2>)[\s\S])*?<\/h2>[\s\S]*?(?=<h2|<\/section|<\/article|<\/main|$)/gi,
-    ""
-  );
-  cleaned = cleaned.replace(
-    /<h3[^>]*>(?:(?!<\/h3>)[\s\S])*?Compliance Checklist(?:(?!<\/h3>)[\s\S])*?<\/h3>[\s\S]*?(?=<h2|<h3|<\/section|<\/article|<\/main|$)/gi,
-    ""
-  );
+  // 10. Remove the body's "…Compliance Checklist" section from the IN-PLACE body.
+  //     On /regulations BOTH checklists are kept but repositioned: the detailed
+  //     body checklist is relocated to the BOTTOM (after the Disclaimer, before
+  //     the FAQ) by RegulationView via extractComplianceChecklistSection(), and
+  //     the short interactive structured_data card sits near the top. Stripping
+  //     the section here prevents the detailed list from ALSO rendering at the
+  //     top of the body. Same matcher as the extractor (shared sources), so the
+  //     two never diverge. The structured card is rendered OUTSIDE bodyHtml, so
+  //     it is never matched here.
+  for (const src of COMPLIANCE_CHECKLIST_SECTION_SOURCES) {
+    cleaned = cleaned.replace(new RegExp(src, "gi"), "");
+  }
 
   // 8. Strip `<h2>Common Mistakes to Avoid</h2>` + its content. The renderer
   //    at `LeadGenTemplateClient.tsx:204-223` renders the 2-column Do/Don't
