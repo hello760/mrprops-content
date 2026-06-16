@@ -98,6 +98,14 @@ const COMPLIANCE_CHECKLIST_SECTION_SOURCES = [
 
 /** Return the body's "…Compliance Checklist" section HTML (H2/H3 + items), or
  *  "" if none. Used to relocate the detailed checklist to the page bottom. */
+/** Plain-text of the first H2/H3 heading in an HTML fragment (inner tags
+ *  stripped), or "" if none. Used to label/anchor the relocated checklist. */
+export function firstHeadingText(html: string | undefined | null): string {
+  if (!html) return "";
+  const m = html.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i);
+  return m ? m[1].replace(/<[^>]+>/g, "").trim() : "";
+}
+
 export function extractComplianceChecklistSection(html: string | undefined | null): string {
   if (!html) return "";
   for (const src of COMPLIANCE_CHECKLIST_SECTION_SOURCES) {

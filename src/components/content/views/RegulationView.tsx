@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
-import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
-import { markdownToHtml, stripRedundantBodyBlocks, extractComplianceChecklistSection } from "@/lib/markdown-to-html";
+import { PortableTextContent, portableTextHeadings, headingId } from "@/components/content/PortableTextContent";
+import { markdownToHtml, stripRedundantBodyBlocks, extractComplianceChecklistSection, firstHeadingText } from "@/lib/markdown-to-html";
 import { NewsletterSidebar } from "@/components/newsletter/NewsletterSidebar";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
@@ -24,6 +24,11 @@ export function RegulationView({ regulation, platform, location }: { regulation:
   // stripRedundantBodyBlocks removes the same section from the in-place body so
   // it does not also render at the top. Same shared matcher in both paths.
   const detailedChecklistHtml = extractComplianceChecklistSection(regulation.bodyHtml);
+  // The relocated detailed checklist gets a real anchor so it can appear in the
+  // TOC like any other section (its H2 was stripped from strippedBodyHtml, so it
+  // is not in contentHeadings). Reuse the canonical headingId() slug.
+  const detailedChecklistHeading = firstHeadingText(detailedChecklistHtml);
+  const detailedChecklistId = detailedChecklistHeading ? headingId(detailedChecklistHeading) : "";
   const contentHeadings = portableTextHeadings(regulation.body, strippedBodyHtml);
   // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded checklistItems +
   // faqs fallbacks. Was injecting 4 generic checklist items ("Business License
@@ -77,6 +82,11 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 {contentHeadings.map((heading) => (
                   <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{heading.label}</a></li>
                 ))}
+                {/* Relocated detailed checklist (bottom of page, after Disclaimer):
+                    list it in the TOC like any other section, linking to its anchor. */}
+                {detailedChecklistHeading ? (
+                  <li key="detailed-checklist"><a href={`#${detailedChecklistId}`} className="text-primary hover:underline">{detailedChecklistHeading}</a></li>
+                ) : null}
               </ul>
             </div>
             {/* Single-checklist fix (2026-06-10): the compliance checklist now
@@ -91,7 +101,7 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
                 {checklistItems.map((item, i) => (
                   <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
-                    <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
+                    <input type="checkbox" className="h-6 w-6 shrink-0 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
                     <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
                   </div>
                 ))}
@@ -115,7 +125,7 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 interactive structured_data card stays near the top. Both
                 checklists are kept; they just sit in different places. */}
             {detailedChecklistHtml ? (
-              <div className="prose prose-lg dark:prose-invert max-w-none font-sans border-t border-border pt-10 mb-4">
+              <div id={detailedChecklistId || undefined} className="prose prose-lg dark:prose-invert max-w-none font-sans border-t border-border pt-10 mb-4 scroll-mt-24">
                 <PortableTextContent html={markdownToHtml(detailedChecklistHtml)} />
               </div>
             ) : null}
