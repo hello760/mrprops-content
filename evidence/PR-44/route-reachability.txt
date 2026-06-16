@@ -1,0 +1,13 @@
+NAILS evidence — route reachability for RegulationView.tsx
+
+Rendered by (grep RegulationView, excluding the component file):
+  src/app/regulations/[platform]/[...slug]/page.tsx:3   import { RegulationView }
+  src/app/regulations/[platform]/[...slug]/page.tsx:91  <RegulationView regulation={reg} platform={platform} location={location} />
+  src/app/draft/[id]/page.tsx:22                         import { RegulationView }
+  src/app/draft/[id]/page.tsx:434                        <RegulationView ... />
+
+=> Production path: /regulations/<platform>/<...slug> (ISR, revalidate=3600).
+   Draft preview path: /draft/<id>. Both render the same component, so both
+   get all three changes. Verified live on the branch preview deployment
+   (commit cf3084a) at:
+   https://mrprops-content-f5wj90oy2-helvijs-schmoteks-projects.vercel.app/regulations/general/airbnb-rules-tennessee

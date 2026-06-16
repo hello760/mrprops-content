@@ -1,0 +1,28 @@
+NAILS evidence — consumer grep (contract item 6: nothing breaks what shipped)
+Branch: fix/regulations-single-checklist   PR #44   repo: hello760/mrprops-content
+
+# Symbols touched and their consumers:
+
+stripRedundantBodyBlocks (behavior unchanged — see byte-identical proof below):
+  src/components/client/GuidePostClient.tsx
+  src/components/client/LeadGenTemplateClient.tsx
+  src/components/client/GlossaryTermPageClient.tsx
+  src/components/content/views/TaxView.tsx
+  src/components/content/views/RegulationView.tsx
+  src/app/glossary/[slug]/page.tsx
+  src/lib/glossary.ts
+  src/lib/content-pages.ts
+
+extractComplianceChecklistSection (NEW export — single consumer):
+  src/components/content/views/RegulationView.tsx
+
+NewsletterSidebar (NEW component — single consumer):
+  src/components/content/views/RegulationView.tsx
+
+# PROOF: Rule 10 refactor is byte-identical to the prior inline regexes.
+# Old (two inline .replace) vs New (loop over shared COMPLIANCE_CHECKLIST_SECTION_SOURCES),
+# run on the live Tennessee content_body:
+#   OLD strip === NEW strip : true   (len 23540)
+# => every other stripRedundantBodyBlocks consumer is unaffected; Rule 10 only
+#    matches "Compliance Checklist" H2/H3, which exists only on regulation bodies,
+#    and no-ops elsewhere (as it did before).
