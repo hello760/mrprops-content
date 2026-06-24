@@ -1,0 +1,21 @@
+NAILS evidence — consumer grep (Contract #6). PR #46, branch fix/regulations-checklist-relocation.
+
+stripRedundantBodyBlocks consumers (behavior unchanged for all EXCEPT RegulationView, which opts in):
+  src/components/client/GuidePostClient.tsx        — calls WITHOUT relocateComplianceChecklist → checklist NOT stripped
+  src/components/client/LeadGenTemplateClient.tsx  — calls WITHOUT flag → not stripped
+  src/components/client/GlossaryTermPageClient.tsx — calls WITHOUT flag → not stripped
+  src/components/content/views/TaxView.tsx         — calls WITHOUT flag → not stripped
+  src/app/glossary/[slug]/page.tsx                 — calls WITHOUT flag → not stripped
+  src/lib/glossary.ts                              — calls WITHOUT flag → not stripped
+  src/components/content/views/RegulationView.tsx  — opts IN (relocateComplianceChecklist:true) AND re-renders the section at the bottom
+
+extractComplianceChecklistSection / firstHeadingText (NEW exports): single consumer = RegulationView.
+NewsletterSidebar: NOT present in this PR (split to a separate PR).
+
+Blast-radius guarantee proven by committed test src/lib/markdown-to-html.test.ts:
+  "DEFAULT (no flag) does NOT strip the checklist" — 6/6 tests pass (npx tsx --test).
+Content probe (live Supabase): published mrprops pages with "Compliance Checklist" in body
+  = 136, all regulations/; NON-regulation published = 0.
+src/components/content/views/TaxView.tsx:97:              <PortableTextContent blocks={taxPage.body} html={markdownToHtml(stripRedundantBodyBlocks(taxPage.bodyHtml))} />
+src/components/client/GuidePostClient.tsx:76:          <PortableTextContent blocks={guide.body} html={markdownToHtml(stripRedundantBodyBlocks(guide.bodyHtml))} />
+src/components/client/GlossaryTermPageClient.tsx:75:              <PortableTextContent blocks={term.body} html={markdownToHtml(stripRedundantBodyBlocks(term.bodyHtml))} />
