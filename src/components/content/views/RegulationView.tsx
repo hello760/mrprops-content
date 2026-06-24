@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
-import { PortableTextContent, portableTextHeadings } from "@/components/content/PortableTextContent";
-import { markdownToHtml, stripRedundantBodyBlocks } from "@/lib/markdown-to-html";
+import { PortableTextContent, portableTextHeadings, headingId } from "@/components/content/PortableTextContent";
+import { markdownToHtml, stripRedundantBodyBlocks, extractComplianceChecklistSection, firstHeadingText } from "@/lib/markdown-to-html";
 import type { DirectoryEntry } from "@/lib/content-pages";
 
 type ChecklistItem = string | { label?: string; checked?: boolean };
@@ -13,7 +13,15 @@ export function RegulationView({ regulation, platform, location }: { regulation:
   const locName = regulation.location || location.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const platformName = platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : "Rental";
   const isStrict = location.includes("new-york") || location.includes("san-francisco") || location.includes("berlin");
-  const contentHeadings = portableTextHeadings(regulation.body, regulation.bodyHtml);
+  // Relocate the detailed body checklist to the page bottom (opt-in strip: only
+  // RegulationView re-renders it, so only RegulationView passes the flag — other
+  // stripRedundantBodyBlocks consumers are untouched). Strip once; derive both the
+  // TOC and the rendered body from the stripped HTML.
+  const strippedBodyHtml = stripRedundantBodyBlocks(regulation.bodyHtml, { relocateComplianceChecklist: true });
+  const contentHeadings = portableTextHeadings(regulation.body, strippedBodyHtml);
+  const detailedChecklistHtml = extractComplianceChecklistSection(regulation.bodyHtml);
+  const detailedChecklistHeading = firstHeadingText(detailedChecklistHtml);
+  const detailedChecklistId = detailedChecklistHeading ? headingId(detailedChecklistHeading) : "";
   // CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded checklistItems +
   // faqs fallbacks. Was injecting 4 generic checklist items ("Business License
   // Application" etc.) + 3 generic FAQs ("Do I need a permit for 30+ day rentals?"
@@ -67,7 +75,28 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                   {contentHeadings.map((heading) => (
                     <li key={heading.id}><a href={`#${heading.id}`} className="text-primary hover:underline">{heading.label}</a></li>
                   ))}
+                  {/* Relocated detailed checklist (bottom of page, after Disclaimer):
+                      listed in the TOC like any other section, linked to its anchor. */}
+                  {detailedChecklistHeading ? (
+                    <li key="detailed-checklist"><a href={`#${detailedChecklistId}`} className="text-primary hover:underline">{detailedChecklistHeading}</a></li>
+                  ) : null}
                 </ul>
+              </div>
+            ) : null}
+            {/* Single interactive checklist (2026-06-11): the short, clickable
+                structured_data checklist card renders directly under the Table of
+                Contents (above the body). Real <input type=checkbox>; gated on CC
+                having >=1 checklistItems entry. shrink-0 keeps every box 24x24 even
+                when the label wraps. */}
+            {checklistItems.length > 0 ? (
+              <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
+                <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
+                {checklistItems.map((item, i) => (
+                  <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
+                    <input type="checkbox" className="h-6 w-6 shrink-0 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
+                    <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
+                  </div>
+                ))}
               </div>
             ) : null}
             {/* FIX-CCX (2026-06-10, Sentry MMG-COMMAND-CENTER-X/-Q): removed the hardcoded
@@ -78,20 +107,17 @@ export function RegulationView({ regulation, platform, location }: { regulation:
                 Body (CC) is the single source of truth; bodyHtml still pipes through
                 markdownToHtml (FIX-020) + stripRedundantBodyBlocks. Mirrors TaxView FIX-022. */}
             <div className="prose prose-lg dark:prose-invert mb-12 max-w-none font-sans">
-              <PortableTextContent blocks={regulation.body} html={markdownToHtml(stripRedundantBodyBlocks(regulation.bodyHtml))} />
+              <PortableTextContent blocks={regulation.body} html={markdownToHtml(strippedBodyHtml)} />
             </div>
-            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate entire checklist
-                card on CC having at least one checklistItems entry. Was rendering
-                4 hardcoded items + a generated title whenever CC was empty. */}
-            {checklistItems.length > 0 ? (
-              <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-6 mb-12">
-                <h3 className="font-bold text-xl mb-4">{regulation.checklistTitle || `${platformName} compliance checklist for ${locName}`}</h3>
-                {checklistItems.map((item, i) => (
-                  <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
-                    <input type="checkbox" className="h-6 w-6 mt-0.5 rounded border-primary text-primary focus:ring-primary" />
-                    <label className="font-medium cursor-pointer">{checklistLabel(item)}</label>
-                  </div>
-                ))}
+            {/* Detailed checklist at the bottom (2026-06-11): the rich body
+                checklist (non-interactive ☐ reference list, as on every live page)
+                renders HERE — after the article body (Disclaimer) and before the
+                FAQ accordion below the grid. The short interactive structured_data
+                card is moved up under the TOC. Both checklists are kept; they just
+                sit in different places. */}
+            {detailedChecklistHtml ? (
+              <div id={detailedChecklistId || undefined} className="prose prose-lg dark:prose-invert max-w-none font-sans border-t border-border pt-10 mb-4 scroll-mt-24">
+                <PortableTextContent html={markdownToHtml(detailedChecklistHtml)} />
               </div>
             ) : null}
           </div>

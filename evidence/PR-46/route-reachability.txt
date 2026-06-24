@@ -1,0 +1,6 @@
+NAILS evidence — route reachability (PR #46).
+RegulationView.tsx rendered by:
+  src/app/regulations/[platform]/[...slug]/page.tsx  (production, ISR revalidate=3600)
+  src/app/draft/[id]/page.tsx                        (draft preview)
+Verified live on branch preview (build READY, sha dfe135c1):
+  https://mrprops-content-ec8kbv6js-helvijs-schmoteks-projects.vercel.app/regulations/general/airbnb-rules-tennessee
