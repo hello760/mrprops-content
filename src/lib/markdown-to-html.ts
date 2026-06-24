@@ -30,6 +30,46 @@ export function markdownToHtml(html: string | undefined | null): string {
 }
 
 /**
+ * The body's "…Compliance Checklist" section — an H2/H3 whose text contains
+ * "Compliance Checklist" (sometimes wrapped in <strong>), plus everything up to
+ * the next sibling heading. Shared by two paths so the matcher never diverges:
+ *   - stripRedundantBodyBlocks Rule 10 REMOVES it from the in-place body — but
+ *     ONLY when options.relocateComplianceChecklist is true (opt-in), because
+ *     only a caller that ALSO re-renders the section may strip it. The other
+ *     stripRedundantBodyBlocks consumers (TaxView, GuidePostClient,
+ *     LeadGenTemplateClient, GlossaryTermPageClient, glossary route) do NOT pass
+ *     the flag, so their bodies are untouched — no silent content loss.
+ *   - extractComplianceChecklistSection RETURNS it so a caller can render it
+ *     elsewhere. On /regulations, RegulationView.tsx renders it at the BOTTOM
+ *     (after the Disclaimer, before the FAQ) and passes the strip flag.
+ * Stored as source strings, compiled per use, to avoid shared-lastIndex bugs
+ * between the global .replace() (strip) and single .match() (extract) paths.
+ */
+const COMPLIANCE_CHECKLIST_SECTION_SOURCES = [
+  String.raw`<h2[^>]*>(?:(?!</h2>)[\s\S])*?Compliance Checklist(?:(?!</h2>)[\s\S])*?</h2>[\s\S]*?(?=<h2|</section|</article|</main|$)`,
+  String.raw`<h3[^>]*>(?:(?!</h3>)[\s\S])*?Compliance Checklist(?:(?!</h3>)[\s\S])*?</h3>[\s\S]*?(?=<h2|<h3|</section|</article|</main|$)`,
+];
+
+/** Return the body's "…Compliance Checklist" section HTML (H2/H3 + items), or
+ *  "" if none. Used to relocate the detailed checklist to the page bottom. */
+export function extractComplianceChecklistSection(html: string | undefined | null): string {
+  if (!html) return "";
+  for (const src of COMPLIANCE_CHECKLIST_SECTION_SOURCES) {
+    const m = html.match(new RegExp(src, "i"));
+    if (m) return m[0];
+  }
+  return "";
+}
+
+/** Plain-text of the first H2/H3 heading in an HTML fragment (inner tags
+ *  stripped), or "" if none. Used to label/anchor the relocated checklist. */
+export function firstHeadingText(html: string | undefined | null): string {
+  if (!html) return "";
+  const m = html.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i);
+  return m ? m[1].replace(/<[^>]+>/g, "").trim() : "";
+}
+
+/**
  * FIX-017 (PF-17, multi-FAQ) + FIX-021 (PF-21 byline inside bodyHtml):
  *
  * Strip redundant blocks from content_body before rendering. The generator
@@ -76,6 +116,12 @@ export interface StripRedundantBodyBlocksOptions {
    *        Conclusion slot — strip it.
    *  No-op when not provided. */
   briefClosingTitle?: string;
+  /** /regulations only: when true, Rule 10 strips the body's "…Compliance
+   *  Checklist" section from the in-place body. REQUIRED to be opt-in because
+   *  only RegulationView re-renders that section elsewhere (the detailed
+   *  checklist at the page bottom). Default/absent = section is left intact, so
+   *  every other consumer of stripRedundantBodyBlocks is unaffected. */
+  relocateComplianceChecklist?: boolean;
 }
 
 export function stripRedundantBodyBlocks(
@@ -203,6 +249,19 @@ export function stripRedundantBodyBlocks(
     /<h2[^>]*>\s*[^<]*Common Mistakes to Avoid[^<]*<\/h2>[\s\S]*?(?=<h2|<\/section|<\/article|<\/main|$)/gi,
     ""
   );
+
+  // 10. (OPT-IN — options.relocateComplianceChecklist) Strip the body's
+  //     "…Compliance Checklist" section. Only RegulationView passes the flag,
+  //     because only it re-renders the section (the detailed checklist at the
+  //     page bottom, via extractComplianceChecklistSection). Without the flag
+  //     this is a no-op, so TaxView / Guide / Glossary / LeadGen bodies keep any
+  //     such section — no silent content loss in shared callers. Same matcher
+  //     source as the extractor, so strip and re-render stay in sync.
+  if (options?.relocateComplianceChecklist) {
+    for (const src of COMPLIANCE_CHECKLIST_SECTION_SOURCES) {
+      cleaned = cleaned.replace(new RegExp(src, "gi"), "");
+    }
+  }
 
   return cleaned;
 }
