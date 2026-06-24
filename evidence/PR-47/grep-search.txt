@@ -1,0 +1,5 @@
+NAILS evidence — PR #47 (stacked on #46). consumer grep.
+NewsletterSidebar consumers: only RegulationView.tsx (grep -rn NewsletterSidebar src).
+NewsletterSidebar imports: @/components/ui/{input,button}, @/lib/analytics, lucide-react, next/link, react — no shared body-transform touched.
+Button import removed from RegulationView (no remaining <Button usage). sidebarCta* no longer read.
+#46 relocation intact in this stacked tree; committed test src/lib/markdown-to-html.test.ts → 6/6 pass.

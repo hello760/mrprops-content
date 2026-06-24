@@ -1,0 +1,6 @@
+NAILS evidence — route reachability, PR #47.
+NewsletterSidebar rendered by RegulationView.tsx (sticky sidebar), which is reached via:
+  src/app/regulations/[platform]/[...slug]/page.tsx (production) + src/app/draft/[id]/page.tsx (draft).
+Subscribe endpoint: src/app/api/newsletter/subscribe/route.ts (POST).
+Verified live on branch preview (build READY, sha 8e125c26):
+  https://mrprops-content-f4vgrf8o2-helvijs-schmoteks-projects.vercel.app/regulations/general/airbnb-rules-tennessee
