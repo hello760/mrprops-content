@@ -1,8 +1,8 @@
 // Phase 5: shared regulation page renderer. Imported by both production and draft routes.
 import Link from "next/link";
 import { AlertTriangle, CheckSquare, ChevronRight, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SEOContentSkeleton } from "@/components/content/SEOContentSkeleton";
+import { NewsletterSidebar } from "@/components/newsletter/NewsletterSidebar";
 import { PortableTextContent, portableTextHeadings, headingId } from "@/components/content/PortableTextContent";
 import { markdownToHtml, stripRedundantBodyBlocks, extractComplianceChecklistSection, firstHeadingText } from "@/lib/markdown-to-html";
 import type { DirectoryEntry } from "@/lib/content-pages";
@@ -122,27 +122,13 @@ export function RegulationView({ regulation, platform, location }: { regulation:
             ) : null}
           </div>
           <div className="sticky top-24 space-y-8">
-            {/* CC↔Live truth fix (2026-05-19, Phase 4c): gate sidebar CTA card on
-                CC field presence. Was rendering "Automate Compliance / Don't risk
-                fines. Mr. Props automatically tracks..." + "Start Free Trial"
-                whenever CC fields were empty — none of which the operator could see. */}
-            {(regulation.sidebarCtaTitle || regulation.sidebarCtaDescription) ? (
-              <div className="bg-primary text-primary-foreground rounded-2xl p-6 border border-primary/20 shadow-xl relative overflow-hidden group">
-                <div className="relative z-10">
-                  {regulation.sidebarCtaTitle ? (
-                    <h3 className="font-display font-bold text-xl mb-2">{regulation.sidebarCtaTitle}</h3>
-                  ) : null}
-                  {regulation.sidebarCtaDescription ? (
-                    <p className="text-sm text-primary-foreground/90 mb-6 leading-relaxed">{regulation.sidebarCtaDescription}</p>
-                  ) : null}
-                  {regulation.sidebarCtaButtonLabel ? (
-                    <Button variant="secondary" className="w-full font-bold shadow-lg hover:shadow-xl transition-all h-12 text-primary" asChild>
-                      <a href={regulation.ctaPrimaryButton?.href || "https://app.mrprops.io/register"}>{regulation.sidebarCtaButtonLabel}</a>
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
+            {/* Uniform newsletter CTA (2026-06-16): replaced the per-page
+                sidebarCta* card (machine-written "Track {Location} STR
+                Compliance…", different on every page) with a single vertical
+                newsletter signup identical across all regulation pages. Real
+                subscribe wiring via NewsletterSidebar. sidebarCta* fields remain
+                in structured_data but are no longer read here. */}
+            <NewsletterSidebar source="regulations_sidebar" />
           </div>
         </div>
         {/* CC↔Live truth fix (2026-05-19, Phase 4c): drop hardcoded fallbacks
