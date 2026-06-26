@@ -3,7 +3,7 @@ import { permanentRedirect } from "next/navigation";
 import { RegulationView } from "@/components/content/views/RegulationView";
 import { fetchRegulations, fetchRegulationBySlug } from "@/lib/content-pages";
 import { buildMetadata } from "@/lib/metadata";
-import { buildStructuredData, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
+import { buildStructuredData, createArticleSchema, createBreadcrumbSchema, createFaqSchema } from "@/lib/structured-data";
 
 /**
  * Catch-all regulations route — handles 1/2/3/N-segment slugs after the
@@ -84,6 +84,16 @@ export default async function RegulationPage({ params }: { params: Promise<{ pla
       { name: "Regulations", path: "/regulations" },
       { name: reg.title },
     ]),
+    // Article schema with datePublished/dateModified — the SERP freshness signal
+    // (metadata home for the timestamp per FIX-007; not rendered in body).
+    // Mirrors the guides route wiring; createArticleSchema omits a missing date.
+    createArticleSchema({
+      headline: reg.title,
+      description: reg.seoDescription,
+      path: `/regulations/${platform}/${location}`,
+      datePublished: reg.publishedAt,
+      dateModified: reg.updatedAt,
+    }),
     createFaqSchema(faqs),
   );
   return (
