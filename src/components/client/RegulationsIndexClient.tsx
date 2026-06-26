@@ -122,11 +122,11 @@ export function RegulationsIndexClient({
               </p>
               {featured && (
                 <div className="flex flex-wrap gap-4 pt-2">
-                  <Link href={featured.href || `/regulations/${featured.platform}/${featured.slug.split("/").pop()}`}>
-                    <Button size="lg" className="rounded-full font-bold h-12 px-8 shadow-lg shadow-primary/20">
+                  <Button size="lg" className="rounded-full font-bold h-12 px-8 shadow-lg shadow-primary/20" asChild>
+                    <Link href={featured.href || `/regulations/${featured.platform}/${featured.slug.split("/").pop()}`}>
                       Read the Guide
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                   <div className="flex items-center text-sm font-medium text-muted-foreground ml-2">
                     <span className="h-1 w-1 rounded-full bg-primary mx-3" /> {featured.region}
                   </div>
@@ -166,28 +166,25 @@ export function RegulationsIndexClient({
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-2 hidden md:inline">
               Rental type:
             </span>
-            <Link href="/regulations">
-              <button
-                type="button"
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap",
-                  !currentPlatform ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
-                )}
-              >
-                All
-              </button>
+            <Link
+              href="/regulations"
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap inline-block",
+                !currentPlatform ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
+              )}
+            >
+              All
             </Link>
             {availablePlatforms.map((p) => (
-              <Link key={p} href={`/regulations/${p}`}>
-                <button
-                  type="button"
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap capitalize",
-                    currentPlatform === p ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
-                  )}
-                >
-                  {p}
-                </button>
+              <Link
+                key={p}
+                href={`/regulations/${p}`}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap capitalize inline-block",
+                  currentPlatform === p ? "bg-primary text-white shadow-sm" : "hover:bg-secondary text-muted-foreground border border-border"
+                )}
+              >
+                {p}
               </Link>
             ))}
           </div>
@@ -307,11 +304,11 @@ export function RegulationsIndexClient({
         {totalPages > 1 && filtered.length > 0 && (
           <nav aria-label="Regulations pagination" className="flex justify-center items-center gap-2 flex-wrap">
             {safePage > 1 ? (
-              <Link href={pageHref("/regulations", safePage - 1)} aria-label="Previous page" rel="prev">
-                <Button variant="outline" size="icon" className="rounded-full h-10 w-10">
+              <Button variant="outline" size="icon" className="rounded-full h-10 w-10" asChild>
+                <Link href={pageHref(basePath, safePage - 1)} aria-label="Previous page" rel="prev">
                   <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : (
               <Button variant="outline" size="icon" disabled className="rounded-full h-10 w-10 opacity-40">
                 <ChevronLeft className="h-4 w-4" />
@@ -328,21 +325,21 @@ export function RegulationsIndexClient({
                       {p}
                     </Button>
                   ) : (
-                    <Link href={pageHref("/regulations", p)} aria-label={`Page ${p}`}>
-                      <Button variant="outline" className="rounded-full h-10 w-10">
+                    <Button variant="outline" className="rounded-full h-10 w-10" asChild>
+                      <Link href={pageHref(basePath, p)} aria-label={`Page ${p}`}>
                         {p}
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </span>
               );
             })}
             {safePage < totalPages ? (
-              <Link href={pageHref("/regulations", safePage + 1)} aria-label="Next page" rel="next">
-                <Button variant="outline" size="icon" className="rounded-full h-10 w-10">
+              <Button variant="outline" size="icon" className="rounded-full h-10 w-10" asChild>
+                <Link href={pageHref(basePath, safePage + 1)} aria-label="Next page" rel="next">
                   <ChevronRight className="h-4 w-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : (
               <Button variant="outline" size="icon" disabled className="rounded-full h-10 w-10 opacity-40">
                 <ChevronRight className="h-4 w-4" />
