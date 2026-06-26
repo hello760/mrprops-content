@@ -23,6 +23,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendTemplate } from '@/lib/postmark';
 import { signToken } from '@/lib/newsletter-tokens';
 import { countryToCurrency, fetchFxRates, buildLocalizedModel } from '@/lib/newsletter-localize';
+import { normalizeNewsletterSource } from '@/lib/newsletter-sources';
 
 export const runtime = 'nodejs';
 
@@ -49,10 +50,6 @@ function rateLimitOk(ip: string): boolean {
   return b.count <= RATE_LIMIT_MAX;
 }
 
-const VALID_SOURCES = new Set([
-  'footer', 'guides_cta', 'tools_cta', 'regulations_cta', 'taxes_cta',
-  'glossary_cta', 'templates_cta', 'alternatives_cta', 'compare_cta', 'manual',
-]);
 
 export async function POST(req: NextRequest) {
   const url = process.env.SUPABASE_URL;
@@ -80,8 +77,7 @@ export async function POST(req: NextRequest) {
   }
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const sourceRaw = typeof body.source === 'string' ? body.source : 'footer';
-  const source = VALID_SOURCES.has(sourceRaw) ? sourceRaw : 'footer';
+  const source = normalizeNewsletterSource(body.source);
   const source_url = typeof body.source_url === 'string' ? body.source_url.slice(0, 2048) : null;
 
   if (!email || !EMAIL_RE.test(email)) {
